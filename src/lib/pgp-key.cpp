@@ -1667,7 +1667,7 @@ pgp_key_t::write_xfer(pgp_dest_t &dst, const rnp_key_store_t *keyring) const
     for (auto &fp : subkey_fps_) {
         const pgp_key_t *subkey = rnp_key_store_get_key_by_fpr(keyring, fp);
         if (!subkey) {
-            char fphex[PGP_FINGERPRINT_SIZE * 2 + 1] = {0};
+            char fphex[PGP_MAX_FINGERPRINT_SIZE * 2 + 1] = {0};
             rnp::hex_encode(
               fp.fingerprint, fp.length, fphex, sizeof(fphex), rnp::HEX_LOWERCASE);
             RNP_LOG("Warning! Subkey %s not found.", fphex);

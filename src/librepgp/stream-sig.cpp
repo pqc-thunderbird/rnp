@@ -676,7 +676,7 @@ pgp_signature_t::has_keyfp() const
         return false;
     }
     const pgp_sig_subpkt_t *subpkt = get_subpkt(PGP_SIG_SUBPKT_ISSUER_FPR);
-    return subpkt && (subpkt->fields.issuer_fp.len <= PGP_FINGERPRINT_SIZE);
+    return subpkt && (subpkt->fields.issuer_fp.len <= PGP_MAX_FINGERPRINT_SIZE); // TODOMTG: Second check adapted for new max length ... but could also be removed since the check seems to be arbitrary and the usefulness is questionable.
 }
 
 pgp_fingerprint_t
