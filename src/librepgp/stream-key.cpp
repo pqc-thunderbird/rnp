@@ -1478,7 +1478,6 @@ pgp_key_pkt_t::fill_hashed_data()
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
 #endif
-    //std::cout << "hbody = " << uint8_arr_to_hex_string(hbody.data(), hbody.size()) << std::endl;
     hashed_data = (uint8_t *) malloc(hbody.size());
     if (!hashed_data) {
         RNP_LOG("allocation failed");
