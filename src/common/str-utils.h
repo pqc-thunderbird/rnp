@@ -59,5 +59,6 @@ std::wstring wstr_from_utf8(const char *first, const char *last);
 std::wstring wstr_from_utf8(const std::string &s);
 std::string  wstr_to_utf8(const wchar_t *ws);
 std::string  wstr_to_utf8(const std::wstring &ws);
+std::string  uint8_arr_to_hex_string(const uint8_t *v, const size_t s);
 #endif // _WIN32
 #endif

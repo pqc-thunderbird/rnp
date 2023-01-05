@@ -57,7 +57,7 @@ pgp_fingerprint(pgp_fingerprint_t &fp, const pgp_key_pkt_t &key)
         }
     }
 
-    if (key.version != PGP_V4) {
+    if (key.version != PGP_V4 && key.version != PGP_V5) {
         RNP_LOG("unsupported key version");
         return RNP_ERROR_NOT_SUPPORTED;
     }
