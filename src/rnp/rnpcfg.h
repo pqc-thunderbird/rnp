@@ -114,6 +114,7 @@
 #define CFG_KG_PROT_HASH "kg-prot-hash"
 #define CFG_KG_PROT_ALG "kg-prot-alg"
 #define CFG_KG_PROT_ITERATIONS "kg-prot-iterations"
+#define CFG_KG_V5_KEY "kg-v5-key" /* represents a boolean property: non-empty string means 'true' */
 
 /* rnp CLI config : contains all the system-dependent and specified by the user configuration
  * options */

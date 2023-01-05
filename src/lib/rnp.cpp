@@ -3743,8 +3743,9 @@ str_to_locator(rnp_ffi_t         ffi,
     } break;
     case PGP_KEY_SEARCH_FINGERPRINT: {
         // Note: v2/v3 fingerprint are 16 bytes (32 chars) long
-        if(strlen(identifier) != (PGP_FINGERPRINT_V4_SIZE * 2) && strlen(identifier) != (PGP_FINGERPRINT_V5_SIZE * 2) && (strlen(identifier) != 32))
-        {
+        if (strlen(identifier) != (PGP_FINGERPRINT_V4_SIZE * 2) &&
+            strlen(identifier) != (PGP_FINGERPRINT_V5_SIZE * 2) &&
+            (strlen(identifier) != 32)) {
             FFI_LOG(ffi, "Invalid fingerprint: %s", identifier);
             return RNP_ERROR_BAD_PARAMETERS;
         }
@@ -5603,6 +5604,13 @@ try {
 FFI_GUARD
 
 rnp_result_t
+rnp_op_generate_set_v5_key(rnp_op_generate_t op)
+{
+    op->pgp_version = PGP_V5;
+    return RNP_SUCCESS;
+}
+
+rnp_result_t
 rnp_op_generate_execute(rnp_op_generate_t op)
 try {
     if (!op || !op->ffi) {
@@ -5618,6 +5626,7 @@ try {
         rnp_keygen_primary_desc_t keygen = {};
         keygen.crypto = op->crypto;
         keygen.cert = op->cert;
+        keygen.pgp_version = op->pgp_version;
         op->cert.prefs = {}; /* generate call will free prefs */
 
         if (!pgp_generate_primary_key(keygen, true, sec, pub, op->ffi->secring->format)) {
@@ -5628,6 +5637,7 @@ try {
         rnp_keygen_subkey_desc_t keygen = {};
         keygen.crypto = op->crypto;
         keygen.binding = op->binding;
+        keygen.pgp_version = op->pgp_version;
         if (!pgp_generate_subkey(keygen,
                                  true,
                                  *op->primary_sec,

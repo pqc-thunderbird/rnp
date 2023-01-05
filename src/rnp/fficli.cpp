@@ -25,6 +25,7 @@
  */
 
 #include "config.h"
+#include "rnpcfg.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdbool.h>
@@ -1542,6 +1543,10 @@ cli_rnp_generate_key(cli_rnp_t *rnp, const char *username)
     if (rnp_op_generate_set_hash(genkey, cfg.get_cstr(CFG_KG_HASH))) {
         ERR_MSG("Failed to set hash algorithm.");
         goto done;
+    }
+
+    if(cfg.get_bool(CFG_KG_V5_KEY)) {
+       rnp_op_generate_set_v5_key(genkey);
     }
 
     fprintf(rnp->userio_out, "Generating a new key...\n");

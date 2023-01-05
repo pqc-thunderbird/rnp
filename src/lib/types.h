@@ -119,7 +119,8 @@ template <> struct hash<pgp_fingerprint_t> {
         size_t res = 0;
         static_assert(sizeof(fp.fingerprint) == PGP_MAX_FINGERPRINT_SIZE,
                       "pgp_fingerprint_t size mismatch");
-        static_assert(PGP_MAX_FINGERPRINT_SIZE >= sizeof(res), "pgp_fingerprint_t size mismatch");
+        static_assert(PGP_MAX_FINGERPRINT_SIZE >= sizeof(res),
+                      "pgp_fingerprint_t size mismatch");
         std::memcpy(&res, fp.fingerprint, sizeof(res));
         return res;
     }
@@ -461,11 +462,13 @@ typedef struct rnp_selfsig_binding_info_t {
 typedef struct rnp_keygen_primary_desc_t {
     rnp_keygen_crypto_params_t crypto{};
     rnp_selfsig_cert_info_t    cert{};
+    pgp_version_t              pgp_version = PGP_V4;
 } rnp_keygen_primary_desc_t;
 
 typedef struct rnp_keygen_subkey_desc_t {
     rnp_keygen_crypto_params_t crypto;
     rnp_selfsig_binding_info_t binding;
+    pgp_version_t              pgp_version = PGP_V4;
 } rnp_keygen_subkey_desc_t;
 
 typedef struct rnp_key_protection_params_t {
