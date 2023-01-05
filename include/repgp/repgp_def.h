@@ -446,7 +446,8 @@ typedef enum {
     PGP_VUNKNOWN = 0,
     PGP_V2 = 2, /* Version 2 (essentially the same as v3) */
     PGP_V3 = 3, /* Version 3 */
-    PGP_V4 = 4  /* Version 4 */
+    PGP_V4 = 4, /* Version 4 */
+    PGP_V5 = 5  /* Version 5 */
 } pgp_version_t;
 
 typedef enum pgp_op_t {

@@ -2278,7 +2278,7 @@ pgp_key_t::mark_valid()
 void
 pgp_key_t::sign_init(pgp_signature_t &sig, pgp_hash_alg_t hash, uint64_t creation) const
 {
-    sig.version = PGP_V4;
+    sig.version = PGP_V4; // TODO: CHOOSE DEPENDENT ON KEY-VERSION
     sig.halg = pgp_hash_adjust_alg_to_key(hash, &pkt_);
     sig.palg = alg();
     sig.set_keyfp(fp());
