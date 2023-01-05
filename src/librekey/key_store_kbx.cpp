@@ -514,7 +514,7 @@ rnp_key_store_kbx_write_pgp(rnp_key_store_t *key_store, pgp_key_t *key, pgp_dest
         return false;
     }
 
-    if (!pbuf(&mem.dst(), key->fp().fingerprint, PGP_FINGERPRINT_SIZE) ||
+    if (!pbuf(&mem.dst(), key->fp().fingerprint, PGP_FINGERPRINT_V4_SIZE) ||    // TODOMTG: Need to distinguish V4 and V5 case
         !pu32(&mem.dst(), mem.writeb() - 8) || // offset to keyid (part of fpr for V4)
         !pu16(&mem.dst(), 0) ||                // flags, not used by GnuPG
         !pu16(&mem.dst(), 0)) {                // RFU
@@ -525,7 +525,7 @@ rnp_key_store_kbx_write_pgp(rnp_key_store_t *key_store, pgp_key_t *key, pgp_dest
     std::vector<uint32_t> subkey_sig_expirations;
     for (auto &sfp : key->subkey_fps()) {
         pgp_key_t *subkey = rnp_key_store_get_key_by_fpr(key_store, sfp);
-        if (!pbuf(&mem.dst(), subkey->fp().fingerprint, PGP_FINGERPRINT_SIZE) ||
+        if (!pbuf(&mem.dst(), subkey->fp().fingerprint, PGP_FINGERPRINT_V4_SIZE) ||     // TODOMTG: Need to distinguish V4 and V5 case
             !pu32(&mem.dst(), mem.writeb() - 8) || // offset to keyid (part of fpr for V4)
             !pu16(&mem.dst(), 0) ||                // flags, not used by GnuPG
             !pu16(&mem.dst(), 0)) {                // RFU

@@ -572,7 +572,7 @@ signature_dump_subpacket(rnp_dump_ctx_t *ctx, pgp_dest_t *dst, const pgp_sig_sub
         dst_printf(dst, "class: %d\n", (int) subpkt.fields.revocation_key.klass);
         dst_print_palg(dst, NULL, subpkt.fields.revocation_key.pkalg);
         dst_print_hex(
-          dst, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_SIZE, true);
+          dst, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_V4_SIZE, true); // TODOMTG: subpacket deprecated for V5, MUST NOT be generated
         break;
     case PGP_SIG_SUBPKT_ISSUER_KEY_ID:
         dst_print_hex(dst, sname, subpkt.fields.issuer, PGP_KEY_ID_SIZE, false);
@@ -1617,7 +1617,7 @@ signature_dump_subpacket_json(rnp_dump_ctx_t *        ctx,
                obj_add_field_json(
                  obj, "algorithm", json_object_new_int(subpkt.fields.revocation_key.pkalg)) &&
                obj_add_hex_json(
-                 obj, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_SIZE);
+                 obj, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_V4_SIZE); // TODOMTG: subpacket deprecated for V5, MUST NOT be generated
     case PGP_SIG_SUBPKT_ISSUER_KEY_ID:
         return obj_add_hex_json(obj, "issuer keyid", subpkt.fields.issuer, PGP_KEY_ID_SIZE);
     case PGP_SIG_SUBPKT_KEYSERV_PREFS:
