@@ -442,6 +442,7 @@ enum { PGP_SE_IP_DATA_VERSION = 1, PGP_PKSK_V3 = 3, PGP_SKSK_V4 = 4, PGP_SKSK_V5
 
 /** Version.
  * OpenPGP has two different protocol versions: version 3 and version 4.
+ * Also there is a draft that defines version 5, see https://datatracker.ietf.org/doc/draft-ietf-openpgp-crypto-refresh/
  *
  * \see RFC4880 5.2
  */
@@ -449,7 +450,8 @@ typedef enum {
     PGP_VUNKNOWN = 0,
     PGP_V2 = 2, /* Version 2 (essentially the same as v3) */
     PGP_V3 = 3, /* Version 3 */
-    PGP_V4 = 4  /* Version 4 */
+    PGP_V4 = 4, /* Version 4 */
+    PGP_V5 = 5  /* Version 5 */
 } pgp_version_t;
 
 typedef enum pgp_op_t {

@@ -1221,7 +1221,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     tag = (pgp_pkt_type_t) atag;
     /* version */
     uint8_t ver = 0;
-    if (!pkt.get(ver) || (ver < PGP_V2) || (ver > PGP_V4)) {
+    if (!pkt.get(ver) || (ver < PGP_V2) || (ver > PGP_V5)) {
         RNP_LOG("wrong key packet version");
         return RNP_ERROR_BAD_FORMAT;
     }
@@ -1245,6 +1245,13 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     if ((version < PGP_V4) && !is_rsa_key_alg(alg)) {
         RNP_LOG("wrong v3 pk algorithm");
         return RNP_ERROR_BAD_FORMAT;
+    }
+    /* v5 length field for public key material */
+    if (version == PGP_V5) {
+        uint32_t material_len; // TODOMTG: use this value
+        if (!pkt.get(material_len)) {
+            return RNP_ERROR_BAD_FORMAT;
+        }
     }
     /* algorithm specific fields */
     switch (alg) {
