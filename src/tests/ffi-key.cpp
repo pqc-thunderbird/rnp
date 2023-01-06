@@ -3154,6 +3154,28 @@ TEST_F(rnp_tests, test_ffi_v5_cert_import)
     assert_int_equal(keycount, 2);
     assert_rnp_success(rnp_get_secret_key_count(ffi, &keycount));
     assert_int_equal(keycount, 0);
+
+    /* check that fingerprint is correct by checking the fingerprint in the signature (coming from the correct input data) vs the computed fingerprint value of the primary key.
+      Issuer fingerprint is the priamry's key fingerprint for the primary and its subkeys */
+    /* TODOMTG: real test data instead of this hack. */
+    pgp_fingerprint_t primary_fp;
+    for (pgp_key_t key : ffi->pubring->keys) {
+      if(key.is_primary())
+      {
+        primary_fp = key.fp();
+      }
+    }
+
+    for (pgp_key_t key : ffi->pubring->keys) {
+      /* get first sig and its issuer fpr subpacket */
+      pgp_subsig_t subsig = key.get_sig(0);
+      const pgp_sig_subpkt_t* issuer_fpr = subsig.sig.get_subpkt(PGP_SIG_SUBPKT_ISSUER_FPR, false);
+      assert_non_null(issuer_fpr);   
+      
+      /* check that fingerprints match */
+      assert_int_equal(key.fp().length, PGP_FINGERPRINT_V5_SIZE);
+      assert_memory_equal(issuer_fpr->data + 1, primary_fp.fingerprint, primary_fp.length); // first byte in data is the version - skip
+    }
 }
 
 TEST_F(rnp_tests, test_ffi_iterated_key_import)

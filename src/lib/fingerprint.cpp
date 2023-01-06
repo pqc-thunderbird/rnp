@@ -62,8 +62,6 @@ pgp_fingerprint(pgp_fingerprint_t &fp, const pgp_key_pkt_t &key)
         return RNP_ERROR_NOT_SUPPORTED;
     }
 
-    // TODOMTG: V5 computation
-
     std::unique_ptr<rnp::Hash> hash;
     if (key.version == PGP_V4) {
         hash = rnp::Hash::create(PGP_HASH_SHA1);
