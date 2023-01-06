@@ -107,6 +107,13 @@
 #define PGP_MARKER_CONTENTS "PGP"
 #define PGP_MARKER_LEN 3
 
+/* V5 Signature Salt */
+#define PGP_SALT_SIZE_V5_SIG 16
+
+/* size of length for hashed/unhashed subpacket data*/
+#define PGP_SIG_HASHED_AREA_SIZE_OCTETS_V4 2
+#define PGP_SIG_HASHED_AREA_SIZE_OCTETS_V5 4
+
 /** Old Packet Format Lengths.
  * Defines the meanings of the 2 bits for length type in the
  * old packet format.
@@ -391,6 +398,7 @@ typedef enum {
     PGP_SIG_SUBPKT_EMBEDDED_SIGNATURE = 32, /* embedded signature */
     PGP_SIG_SUBPKT_ISSUER_FPR = 33,         /* issuer fingerprint */
     PGP_SIG_SUBPKT_PREFERRED_AEAD = 34,     /* preferred AEAD algorithms */
+    PGP_SIG_SUBPKT_PREFERRED_AEAD_CIPHERSUITE = 39,
     PGP_SIG_SUBPKT_PRIVATE_100 = 100,       /* private/experimental subpackets */
     PGP_SIG_SUBPKT_PRIVATE_101 = 101,
     PGP_SIG_SUBPKT_PRIVATE_102 = 102,

@@ -3151,7 +3151,9 @@ TEST_F(rnp_tests, test_ffi_v5_cert_import)
       rnp_import_keys(ffi, input, RNP_LOAD_SAVE_PUBLIC_KEYS | RNP_LOAD_SAVE_SINGLE | RNP_LOAD_SAVE_BASE64, NULL));
     rnp_input_destroy(input);
     assert_rnp_success(rnp_get_public_key_count(ffi, &keycount));
-    assert_int_equal(keycount, 1);
+    assert_int_equal(keycount, 2);
+    assert_rnp_success(rnp_get_secret_key_count(ffi, &keycount));
+    assert_int_equal(keycount, 0);
 }
 
 TEST_F(rnp_tests, test_ffi_iterated_key_import)

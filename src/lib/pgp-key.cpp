@@ -1830,8 +1830,9 @@ pgp_key_t::is_signer(const pgp_subsig_t &sig) const
         return sig.sig.keyfp() == fp();
     }
     if (!sig.sig.has_keyid()) {
-        return false;
+        return false || (version() == PGP_V5); // v5 packets MUST NOT include this subpacket, therefore return true for v5
     }
+
     return keyid() == sig.sig.keyid();
 }
 

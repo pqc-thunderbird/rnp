@@ -48,12 +48,23 @@
 void
 signature_hash_key(const pgp_key_pkt_t &key, rnp::Hash &hash)
 {
-    uint8_t hdr[3] = {0x99, 0x00, 0x00};
-    if (key.hashed_data) {
-        write_uint16(hdr + 1, key.hashed_len);
-        hash.add(hdr, 3);
-        hash.add(key.hashed_data, key.hashed_len);
-        return;
+    if(key.version < PGP_V5) {
+        uint8_t hdr[3] = {0x99, 0x00, 0x00};
+        if (key.hashed_data) {
+            write_uint16(hdr + 1, key.hashed_len);
+            hash.add(hdr, sizeof(hdr));
+            hash.add(key.hashed_data, key.hashed_len);
+            return;
+        }
+    }
+    else { // PGP_V5
+        uint8_t hdr[5] = {0x9a, 0x00, 0x00, 0x00, 0x00};
+        if (key.hashed_data) {
+            write_uint32(hdr + 1, key.hashed_len);
+            hash.add(hdr, sizeof(hdr));
+            hash.add(key.hashed_data, key.hashed_len);
+            return;
+        }
     }
 
     /* call self recursively if hashed data is not filled, to overcome const restriction */
@@ -92,7 +103,7 @@ signature_hash_certification(const pgp_signature_t & sig,
                              const pgp_key_pkt_t &   key,
                              const pgp_userid_pkt_t &userid)
 {
-    auto hash = signature_init(key.material, sig.halg);
+    auto hash = signature_init(key, sig);
     signature_hash_key(key, *hash);
     signature_hash_userid(userid, *hash, sig.version);
     return hash;
@@ -103,7 +114,7 @@ signature_hash_binding(const pgp_signature_t &sig,
                        const pgp_key_pkt_t &  key,
                        const pgp_key_pkt_t &  subkey)
 {
-    auto hash = signature_init(key.material, sig.halg);
+    auto hash = signature_init(key, sig);
     signature_hash_key(key, *hash);
     signature_hash_key(subkey, *hash);
     return hash;
@@ -112,7 +123,7 @@ signature_hash_binding(const pgp_signature_t &sig,
 std::unique_ptr<rnp::Hash>
 signature_hash_direct(const pgp_signature_t &sig, const pgp_key_pkt_t &key)
 {
-    auto hash = signature_init(key.material, sig.halg);
+    auto hash = signature_init(key, sig);
     signature_hash_key(key, *hash);
     return hash;
 }
@@ -373,6 +384,9 @@ pgp_sig_subpkt_t::parse()
             fields.issuer_fp.len = len - 1;
         }
         break;
+    case PGP_SIG_SUBPKT_PREFERRED_AEAD_CIPHERSUITE:
+        // TODOMTG: handle better
+        break;
     case PGP_SIG_SUBPKT_PRIVATE_100:
     case PGP_SIG_SUBPKT_PRIVATE_101:
     case PGP_SIG_SUBPKT_PRIVATE_102:
@@ -429,6 +443,9 @@ pgp_signature_t::pgp_signature_t(const pgp_signature_t &src)
     palg = src.palg;
     halg = src.halg;
     memcpy(lbits, src.lbits, sizeof(src.lbits));
+    if(version == PGP_V5) {
+        memcpy(salt, src.salt, sizeof(src.salt));
+    }
     creation_time = src.creation_time;
     signer = src.signer;
 
@@ -458,6 +475,9 @@ pgp_signature_t::pgp_signature_t(pgp_signature_t &&src)
     palg = src.palg;
     halg = src.halg;
     memcpy(lbits, src.lbits, sizeof(src.lbits));
+    if(version == PGP_V5) {
+        memcpy(salt, src.salt, sizeof(src.salt));
+    }
     creation_time = src.creation_time;
     signer = src.signer;
     hashed_len = src.hashed_len;
@@ -508,6 +528,9 @@ pgp_signature_t::operator=(const pgp_signature_t &src)
     palg = src.palg;
     halg = src.halg;
     memcpy(lbits, src.lbits, sizeof(src.lbits));
+    if(version == PGP_V5) {
+        memcpy(salt, src.salt, sizeof(src.salt));
+    }
     creation_time = src.creation_time;
     signer = src.signer;
 
@@ -540,6 +563,7 @@ pgp_signature_t::operator==(const pgp_signature_t &src) const
     if ((lbits[0] != src.lbits[0]) || (lbits[1] != src.lbits[1])) {
         return false;
     }
+    // TODOMTG: need to check memcmp salt, src.salt?
     if ((hashed_len != src.hashed_len) || memcmp(hashed_data, src.hashed_data, hashed_len)) {
         return false;
     }
@@ -1249,12 +1273,12 @@ pgp_signature_t::parse_subpackets(uint8_t *buf, size_t len, bool hashed)
 }
 
 rnp_result_t
-pgp_signature_t::parse_v4(pgp_packet_body_t &pkt)
+pgp_signature_t::parse_v4v5(pgp_packet_body_t &pkt)
 {
     /* parse v4-specific fields, not the whole signature */
-    uint8_t buf[5];
-    if (!pkt.get(buf, 5)) {
-        RNP_LOG("cannot get first 5 bytes");
+    uint8_t buf[3];
+    if (!pkt.get(buf, 3)) {
+        RNP_LOG("cannot get first 3 bytes");
         return RNP_ERROR_BAD_FORMAT;
     }
 
@@ -1265,35 +1289,65 @@ pgp_signature_t::parse_v4(pgp_packet_body_t &pkt)
     /* hash algorithm */
     halg = (pgp_hash_alg_t) buf[2];
     /* hashed subpackets length */
-    uint16_t splen = read_uint16(&buf[3]);
-    /* hashed subpackets length + 2 bytes of length of unhashed subpackets */
-    if (pkt.left() < (size_t)(splen + 2)) {
+    
+    uint8_t splen_buf[PGP_SIG_HASHED_AREA_SIZE_OCTETS_V5]; // large enough to hold V4 and V5 lengths
+    unsigned splen;
+    size_t splen_size;
+
+    if(version == PGP_V4) {
+        splen_size = PGP_SIG_HASHED_AREA_SIZE_OCTETS_V4;
+    }
+    else { /* PGP_V5 */
+        splen_size = PGP_SIG_HASHED_AREA_SIZE_OCTETS_V5;
+    }
+    if (!pkt.get(splen_buf, splen_size)) {
+        RNP_LOG("cannot get hashed len");
+        return RNP_ERROR_BAD_FORMAT;
+    }
+    
+    if(version == PGP_V4) {
+        splen = read_uint16(splen_buf);
+    }
+    else { /* PGP_V5 */
+        splen = read_uint32(splen_buf);
+    }
+
+    /* hashed subpackets length + splen_size bytes of length of unhashed subpackets */
+    if (pkt.left() < (size_t)(splen + splen_size)) {
         RNP_LOG("wrong packet or hashed subpackets length");
         return RNP_ERROR_BAD_FORMAT;
     }
     /* building hashed data */
     free(hashed_data);
-    if (!(hashed_data = (uint8_t *) malloc(splen + 6))) {
+    if (!(hashed_data = (uint8_t *) malloc(splen + 4 + splen_size))) {
         RNP_LOG("allocation failed");
         return RNP_ERROR_OUT_OF_MEMORY;
     }
     hashed_data[0] = version;
-    memcpy(hashed_data + 1, buf, 5);
+    memcpy(hashed_data + 1, buf, sizeof(buf));
+    memcpy(hashed_data + 1 + sizeof(buf), splen_buf, splen_size);
 
-    if (!pkt.get(hashed_data + 6, splen)) {
+    if (!pkt.get(hashed_data + 4 + splen_size, splen)) {
         RNP_LOG("cannot get hashed subpackets data");
         return RNP_ERROR_BAD_FORMAT;
     }
-    hashed_len = splen + 6;
+    hashed_len = splen + 4 + splen_size;
     /* parsing hashed subpackets */
-    if (!parse_subpackets(hashed_data + 6, splen, true)) {
+    if (!parse_subpackets(hashed_data + 4 + splen_size, splen, true)) {
         RNP_LOG("failed to parse hashed subpackets");
         return RNP_ERROR_BAD_FORMAT;
     }
+
     /* reading unhashed subpackets */
-    if (!pkt.get(splen)) {
-        RNP_LOG("cannot get unhashed len");
+    if (!pkt.get(splen_buf, splen_size)) {
+        RNP_LOG("cannot get hashed len");
         return RNP_ERROR_BAD_FORMAT;
+    }
+    if(version == PGP_V4) {
+        splen = read_uint16(splen_buf);
+    }
+    else { /* PGP_V5 */
+        splen = read_uint32(splen_buf);
     }
     if (pkt.left() < splen) {
         RNP_LOG("not enough data for unhashed subpackets");
@@ -1324,8 +1378,8 @@ pgp_signature_t::parse(pgp_packet_body_t &pkt)
     rnp_result_t res;
     if ((ver == PGP_V2) || (ver == PGP_V3)) {
         res = parse_v3(pkt);
-    } else if (ver == PGP_V4) {
-        res = parse_v4(pkt);
+    } else if (ver == PGP_V4 || ver == PGP_V5) {
+        res = parse_v4v5(pkt);
     } else {
         RNP_LOG("unknown signature version: %d", (int) ver);
         res = RNP_ERROR_BAD_FORMAT;
@@ -1340,6 +1394,14 @@ pgp_signature_t::parse(pgp_packet_body_t &pkt)
         RNP_LOG("not enough data for hash left bits");
         return RNP_ERROR_BAD_FORMAT;
     }
+    
+    if (ver == PGP_V5) {
+        if(!pkt.get(salt, PGP_SALT_SIZE_V5_SIG)) {
+            RNP_LOG("not enough data for v5 signature salt");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+    }
+
     /* raw signature material */
     material_len = pkt.left();
     if (!material_len) {
@@ -1422,7 +1484,7 @@ pgp_signature_t::parse_material(pgp_signature_material_t &material) const
 void
 pgp_signature_t::write(pgp_dest_t &dst) const
 {
-    if ((version < PGP_V2) || (version > PGP_V4)) {
+    if ((version < PGP_V2) || (version > PGP_V5)) {
         RNP_LOG("don't know version %d", (int) version);
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
@@ -1443,6 +1505,9 @@ pgp_signature_t::write(pgp_dest_t &dst) const
         pktbody.add_subpackets(*this, false);
     }
     pktbody.add(lbits, 2);
+    if(version == PGP_V5) {
+        pktbody.add(salt, PGP_SALT_SIZE_V5_SIG);
+    }
     /* write mpis */
     pktbody.add(material_buf, material_len);
     pktbody.write(dst);
