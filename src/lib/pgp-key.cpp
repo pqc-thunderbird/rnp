@@ -2397,7 +2397,7 @@ pgp_key_t::add_uid_cert(rnp_selfsig_cert_info_t &cert,
     /* Fill the transferable userid */
     pgp_userid_pkt_t uid;
     pgp_signature_t  sig;
-    sign_init(sig, hash, ctx.time(), pubkey->version());
+    sign_init(sig, hash, ctx.time(), pkt().version);
     cert.populate(uid, sig);
     try {
         sign_cert(pkt_, uid, sig, ctx);
