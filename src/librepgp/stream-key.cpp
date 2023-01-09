@@ -1249,12 +1249,8 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     }
     /* v5 length field for public key material */
     if (version == PGP_V5) {
-        uint32_t material_len;
+        uint32_t material_len; // TODOMTG: unused - are there reasonable checks? (for pubkey packets (pkt.left() == material_len), for secret key packets not)
         if (!pkt.get(material_len)) {
-            return RNP_ERROR_BAD_FORMAT;
-        }
-        if(pkt.left() != material_len)
-        {
             return RNP_ERROR_BAD_FORMAT;
         }
     }
@@ -1324,8 +1320,20 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
             RNP_LOG("failed to read key protection");
             return RNP_ERROR_BAD_FORMAT;
         }
+        if(version == PGP_V5 && usage == 255) {
+            RNP_LOG("Error when parsing S2K usage: A version 5 packet MUST NOT use the value 255.");
+            return RNP_ERROR_BAD_FORMAT;
+        }
         sec_protection.s2k.usage = (pgp_s2k_usage_t) usage;
         sec_protection.cipher_mode = PGP_CIPHER_MODE_CFB;
+
+        if(version == PGP_V5 && sec_protection.s2k.usage != PGP_S2KU_NONE) {
+            // V5 packages contain the count of the optional 1-byte parameters
+            uint8_t s2k_params_count;
+            if (!pkt.get(s2k_params_count)) {
+                RNP_LOG("failed to read key protection");
+            }
+        }
 
         switch (sec_protection.s2k.usage) {
         case PGP_S2KU_NONE:
@@ -1333,6 +1341,13 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
         case PGP_S2KU_ENCRYPTED:
         case PGP_S2KU_ENCRYPTED_AND_HASHED: {
             /* we have s2k */
+            if (version == PGP_V5) {
+                // V5 packages contain the count of the optional 1-byte parameters
+                uint8_t s2k_params_count;
+                if (!pkt.get(s2k_params_count)) {
+                    RNP_LOG("failed to read key protection");
+                }
+            }
             uint8_t salg = 0;
             if (!pkt.get(salg) || !pkt.get(sec_protection.s2k)) {
                 RNP_LOG("failed to read key protection");
