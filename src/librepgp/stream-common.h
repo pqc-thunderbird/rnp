@@ -374,8 +374,6 @@ rnp_result_t init_null_dest(pgp_dest_t *dst);
  **/
 rnp_result_t dst_write_src(pgp_source_t *src, pgp_dest_t *dst, uint64_t limit = 0);
 
-void write_uint32(uint8_t *buf, uint32_t val);
-
 namespace rnp {
 /* Temporary wrapper to destruct stack-based pgp_source_t */
 class Source {
