@@ -1380,9 +1380,6 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
 
 void pgp_key_pkt_t::make_alg_spec_fields_for_public_key(pgp_packet_body_t & hbody)
 {
-
-
-    /* Algorithm specific fields */
     switch (alg) {
     case PGP_PKA_RSA:
     case PGP_PKA_RSA_ENCRYPT_ONLY:
@@ -1436,55 +1433,14 @@ pgp_key_pkt_t::fill_hashed_data()
     hbody.add_uint32(creation_time);
     hbody.add_byte(alg);
 
-#if 0
+    /* Algorithm specific fields */
     pgp_packet_body_t alg_spec_fields(PGP_PKT_RESERVED);
     make_alg_spec_fields_for_public_key(alg_spec_fields);
     if(version == PGP_V5) {
-        uint8_t buf[4];
-        write_uint32(buf, alg_spec_fields.size());
-        hbody.add(buf, sizeof(buf));
+        hbody.add_uint32(alg_spec_fields.size());
     }
     hbody.add(alg_spec_fields.data(), alg_spec_fields.size());
-    /* Algorithm specific fields */
-#else
-    switch (alg) {
-    case PGP_PKA_RSA:
-    case PGP_PKA_RSA_ENCRYPT_ONLY:
-    case PGP_PKA_RSA_SIGN_ONLY:
-        hbody.add(material.rsa.n);
-        hbody.add(material.rsa.e);
-        break;
-    case PGP_PKA_DSA:
-        hbody.add(material.dsa.p);
-        hbody.add(material.dsa.q);
-        hbody.add(material.dsa.g);
-        hbody.add(material.dsa.y);
-        break;
-    case PGP_PKA_ELGAMAL:
-    case PGP_PKA_ELGAMAL_ENCRYPT_OR_SIGN:
-        hbody.add(material.eg.p);
-        hbody.add(material.eg.g);
-        hbody.add(material.eg.y);
-        break;
-    case PGP_PKA_ECDSA:
-    case PGP_PKA_EDDSA:
-    case PGP_PKA_SM2:
-        hbody.add(material.ec.curve);
-        hbody.add(material.ec.p);
-        break;
-    case PGP_PKA_ECDH:
-        hbody.add(material.ec.curve);
-        hbody.add(material.ec.p);
-        hbody.add_byte(3);
-        hbody.add_byte(1);
-        hbody.add_byte(material.ec.kdf_hash_alg);
-        hbody.add_byte(material.ec.key_wrap_alg);
-        break;
-    default:
-        RNP_LOG("unknown key algorithm: %d", (int) alg);
-        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
-    }
-#endif
+
     hashed_data = (uint8_t *) malloc(hbody.size());
     if (!hashed_data) {
         RNP_LOG("allocation failed");

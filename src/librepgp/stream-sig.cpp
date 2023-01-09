@@ -597,7 +597,8 @@ pgp_signature_t::get_id() const
 }
 
 pgp_sig_subpkt_t *
-pgp_signature_t::get_subpkt(pgp_sig_subpacket_type_t stype, bool hashed)
+pgp_signature_t::
+get_subpkt(pgp_sig_subpacket_type_t stype, bool hashed)
 {
     if (version < PGP_V4) {
         return NULL;
@@ -1556,7 +1557,7 @@ void
 pgp_signature_t::fill_hashed_data()
 {
     /* we don't have a need to write v2-v3 signatures */
-    if ((version < PGP_V2) || (version > PGP_V4)) {
+    if ((version < PGP_V2) || (version > PGP_V5)) {
         RNP_LOG("don't know version %d", (int) version);
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
