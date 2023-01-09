@@ -1249,8 +1249,12 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     }
     /* v5 length field for public key material */
     if (version == PGP_V5) {
-        uint32_t material_len; // TODOMTG: use this value
+        uint32_t material_len;
         if (!pkt.get(material_len)) {
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        if(pkt.left() != material_len)
+        {
             return RNP_ERROR_BAD_FORMAT;
         }
     }
