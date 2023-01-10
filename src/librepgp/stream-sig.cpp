@@ -298,6 +298,7 @@ pgp_sig_subpkt_t::parse()
         }
         break;
     case PGP_SIG_SUBPKT_ISSUER_KEY_ID:
+        // TODOMTG: MUST NOT be included in signatures issued by v5 keys: ignore, warn, or fail here?
         if ((oklen = len == 8)) {
             fields.issuer = data;
         }

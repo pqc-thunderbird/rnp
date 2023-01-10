@@ -2284,7 +2284,10 @@ pgp_key_t::sign_init(pgp_signature_t &sig, pgp_hash_alg_t hash, uint64_t creatio
     sig.palg = alg();
     sig.set_keyfp(fp());
     sig.set_creation(creation);
-    sig.set_keyid(keyid());
+    if(version == PGP_V4) {
+        // for v5 issuing keys, this MUST NOT be included
+        sig.set_keyid(keyid());
+    }
 }
 
 void
