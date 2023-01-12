@@ -1210,3 +1210,4 @@ dst_write_src(pgp_source_t *src, pgp_dest_t *dst, uint64_t limit)
     dst_flush(dst);
     return dst->werr;
 }
+

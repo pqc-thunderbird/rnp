@@ -1033,6 +1033,7 @@ RNP_API rnp_result_t rnp_op_generate_clear_pref_ciphers(rnp_op_generate_t op);
  */
 RNP_API rnp_result_t rnp_op_generate_set_pref_keyserver(rnp_op_generate_t op,
                                                         const char *      keyserver);
+RNP_API rnp_result_t rnp_op_generate_set_v5_key(rnp_op_generate_t op);
 
 /** Execute the prepared key or subkey generation operation.
  *  Note: if you set protection algorithm, then you need to specify ffi password provider to

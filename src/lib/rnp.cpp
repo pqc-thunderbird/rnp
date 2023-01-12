@@ -3742,14 +3742,15 @@ str_to_locator(rnp_ffi_t         ffi,
         }
     } break;
     case PGP_KEY_SEARCH_FINGERPRINT: {
-        // TODO: support v5 fingerprints
-        // Note: v2/v3 fingerprint are 16 bytes (32 chars) long.
-        if ((strlen(identifier) != (PGP_FINGERPRINT_SIZE * 2)) && (strlen(identifier) != 32)) {
+        // Note: v2/v3 fingerprint are 16 bytes (32 chars) long
+        if (strlen(identifier) != (PGP_FINGERPRINT_V4_SIZE * 2) &&
+            strlen(identifier) != (PGP_FINGERPRINT_V5_SIZE * 2) &&
+            (strlen(identifier) != 32)) {
             FFI_LOG(ffi, "Invalid fingerprint: %s", identifier);
             return RNP_ERROR_BAD_PARAMETERS;
         }
         locator->by.fingerprint.length = rnp::hex_decode(
-          identifier, locator->by.fingerprint.fingerprint, PGP_FINGERPRINT_SIZE);
+          identifier, locator->by.fingerprint.fingerprint, PGP_MAX_FINGERPRINT_SIZE);
         if (!locator->by.fingerprint.length) {
             FFI_LOG(ffi, "Invalid fingerprint: %s", identifier);
             return RNP_ERROR_BAD_PARAMETERS;
@@ -5603,6 +5604,13 @@ try {
 FFI_GUARD
 
 rnp_result_t
+rnp_op_generate_set_v5_key(rnp_op_generate_t op)
+{
+    op->pgp_version = PGP_V5;
+    return RNP_SUCCESS;
+}
+
+rnp_result_t
 rnp_op_generate_execute(rnp_op_generate_t op)
 try {
     if (!op || !op->ffi) {
@@ -5618,6 +5626,7 @@ try {
         rnp_keygen_primary_desc_t keygen = {};
         keygen.crypto = op->crypto;
         keygen.cert = op->cert;
+        keygen.pgp_version = op->pgp_version;
         op->cert.prefs = {}; /* generate call will free prefs */
 
         if (!pgp_generate_primary_key(keygen, true, sec, pub, op->ffi->secring->format)) {
@@ -5628,6 +5637,7 @@ try {
         rnp_keygen_subkey_desc_t keygen = {};
         keygen.crypto = op->crypto;
         keygen.binding = op->binding;
+        keygen.pgp_version = op->pgp_version;
         if (!pgp_generate_subkey(keygen,
                                  true,
                                  *op->primary_sec,
@@ -7757,7 +7767,7 @@ key_to_json(json_object *jso, rnp_key_handle_t handle, uint32_t flags)
         return RNP_ERROR_OUT_OF_MEMORY;
     }
     // fingerprint
-    char fpr[PGP_FINGERPRINT_SIZE * 2 + 1];
+    char fpr[PGP_MAX_FINGERPRINT_SIZE * 2 + 1];
     if (!rnp::hex_encode(key->fp().fingerprint, key->fp().length, fpr, sizeof(fpr))) {
         return RNP_ERROR_GENERIC;
     }

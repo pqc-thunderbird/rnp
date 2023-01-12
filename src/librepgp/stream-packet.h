@@ -58,6 +58,7 @@ typedef struct pgp_packet_body_t {
     size_t  hdr_len_{};                  /* number of bytes in hdr */
     size_t  pos_{};                      /* current read position in packet data */
     bool secure_{}; /* contents of the packet are secure so must be wiped in the destructor */
+
   public:
     /** @brief initialize writing of packet body
      *  @param tag tag of the packet
@@ -74,6 +75,8 @@ typedef struct pgp_packet_body_t {
     pgp_packet_body_t &operator=(const pgp_packet_body_t &) = delete;
     pgp_packet_body_t &operator=(pgp_packet_body_t &&) = delete;
     ~pgp_packet_body_t();
+
+
 
     /** @brief pointer to the data, kept in the packet */
     uint8_t *data() noexcept;
@@ -230,6 +233,8 @@ uint16_t read_uint16(const uint8_t *buf);
 uint32_t read_uint32(const uint8_t *buf);
 
 void write_uint16(uint8_t *buf, uint16_t val);
+
+void write_uint32(uint8_t *buf, uint32_t val);
 
 /** @brief write new packet length
  *  @param buf pre-allocated buffer, must have 5 bytes

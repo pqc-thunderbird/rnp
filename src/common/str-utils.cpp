@@ -30,6 +30,9 @@
 #include <cstddef>
 #include <cstring>
 #include <cctype>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
 #include "str-utils.h"
 #ifdef _WIN32
 #include <locale>
@@ -209,4 +212,17 @@ wstr_to_utf8(const std::wstring &ws)
 {
     return wstr_to_utf8(ws.c_str());
 }
+
+std::string
+uint8_arr_to_hex_string(const uint8_t *v, const size_t s)
+{
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for (int i = 0; i < s; i++) {
+        ss << std::hex << std::setw(2) << static_cast<int>(v[i]);
+    }
+
+    return ss.str();
+}
+
 #endif

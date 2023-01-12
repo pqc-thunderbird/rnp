@@ -48,6 +48,7 @@
 #include "crypto/signatures.h"
 #include "crypto/mem.h"
 #include "../librekey/key_store_pgp.h"
+#include "str-utils.h"
 #include <set>
 #include <algorithm>
 #include <cassert>
@@ -1221,7 +1222,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     tag = (pgp_pkt_type_t) atag;
     /* version */
     uint8_t ver = 0;
-    if (!pkt.get(ver) || (ver < PGP_V2) || (ver > PGP_V4)) {
+    if (!pkt.get(ver) || (ver < PGP_V2) || (ver > PGP_V5)) {
         RNP_LOG("wrong key packet version");
         return RNP_ERROR_BAD_FORMAT;
     }
@@ -1245,6 +1246,13 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     if ((version < PGP_V4) && !is_rsa_key_alg(alg)) {
         RNP_LOG("wrong v3 pk algorithm");
         return RNP_ERROR_BAD_FORMAT;
+    }
+    /* v5 length field for public key material */
+    if (version == PGP_V5) {
+        uint32_t material_len; // TODOMTG: unused - are there reasonable checks? (for pubkey packets (pkt.left() == material_len), for secret key packets not)
+        if (!pkt.get(material_len)) {
+            return RNP_ERROR_BAD_FORMAT;
+        }
     }
     /* algorithm specific fields */
     switch (alg) {
@@ -1312,8 +1320,20 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
             RNP_LOG("failed to read key protection");
             return RNP_ERROR_BAD_FORMAT;
         }
+        if(version == PGP_V5 && usage == 255) {
+            RNP_LOG("Error when parsing S2K usage: A version 5 packet MUST NOT use the value 255.");
+            return RNP_ERROR_BAD_FORMAT;
+        }
         sec_protection.s2k.usage = (pgp_s2k_usage_t) usage;
         sec_protection.cipher_mode = PGP_CIPHER_MODE_CFB;
+
+        if(version == PGP_V5 && sec_protection.s2k.usage != PGP_S2KU_NONE) {
+            // V5 packages contain the count of the optional 1-byte parameters
+            uint8_t s2k_params_count;
+            if (!pkt.get(s2k_params_count)) {
+                RNP_LOG("failed to read key protection");
+            }
+        }
 
         switch (sec_protection.s2k.usage) {
         case PGP_S2KU_NONE:
@@ -1321,6 +1341,13 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
         case PGP_S2KU_ENCRYPTED:
         case PGP_S2KU_ENCRYPTED_AND_HASHED: {
             /* we have s2k */
+            if (version == PGP_V5) {
+                // V5 packages contain the count of the optional 1-byte parameters
+                uint8_t s2k_params_count;
+                if (!pkt.get(s2k_params_count)) {
+                    RNP_LOG("failed to read key protection");
+                }
+            }
             uint8_t salg = 0;
             if (!pkt.get(salg) || !pkt.get(sec_protection.s2k)) {
                 RNP_LOG("failed to read key protection");
@@ -1370,20 +1397,8 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     return RNP_SUCCESS;
 }
 
-void
-pgp_key_pkt_t::fill_hashed_data()
+void pgp_key_pkt_t::make_alg_spec_fields_for_public_key(pgp_packet_body_t & hbody)
 {
-    /* we don't have a need to write v2-v3 signatures */
-    if (version != PGP_V4) {
-        RNP_LOG("unknown key version %d", (int) version);
-        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
-    }
-
-    pgp_packet_body_t hbody(PGP_PKT_RESERVED);
-    hbody.add_byte(version);
-    hbody.add_uint32(creation_time);
-    hbody.add_byte(alg);
-    /* Algorithm specific fields */
     switch (alg) {
     case PGP_PKA_RSA:
     case PGP_PKA_RSA_ENCRYPT_ONLY:
@@ -1421,6 +1436,29 @@ pgp_key_pkt_t::fill_hashed_data()
         RNP_LOG("unknown key algorithm: %d", (int) alg);
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
+}
+
+void
+pgp_key_pkt_t::fill_hashed_data()
+{
+    /* we don't have a need to write v2-v3 signatures */
+    if (version != PGP_V4 && version != PGP_V5) {
+        RNP_LOG("unknown key version %d", (int) version);
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
+    }
+
+    pgp_packet_body_t hbody(PGP_PKT_RESERVED);
+    hbody.add_byte(version);
+    hbody.add_uint32(creation_time);
+    hbody.add_byte(alg);
+
+    /* Algorithm specific fields */
+    pgp_packet_body_t alg_spec_fields(PGP_PKT_RESERVED);
+    make_alg_spec_fields_for_public_key(alg_spec_fields);
+    if(version == PGP_V5) {
+        hbody.add_uint32(alg_spec_fields.size());
+    }
+    hbody.add(alg_spec_fields.data(), alg_spec_fields.size());
 
     hashed_data = (uint8_t *) malloc(hbody.size());
     if (!hashed_data) {
