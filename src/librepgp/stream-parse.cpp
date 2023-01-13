@@ -1439,8 +1439,8 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
     /* Crypto Refresh:
         - The payload following any v5 PKESK or v5 SKESK packet MUST be a v2 SEIPD.
         - implementations MUST NOT precede a v2 SEIPD payload with either v3 PKESK or v4 SKESK packets. */
-    if((param->seipd_v2 && (!sesskey->version == PGP_PKSK_V5))
-    || (param->has_mdc && (!sesskey->version == PGP_PKSK_V3))) {
+    if((param->seipd_v2 && !(sesskey->version == PGP_PKSK_V5))
+    || (param->has_mdc && !(sesskey->version == PGP_PKSK_V3))) {
         RNP_LOG("Attempt to mix SEIPD v1 with PKESK v5 or SEIPD v2 with PKESK v3");
         return false;
     }
