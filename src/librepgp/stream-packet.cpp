@@ -1063,16 +1063,50 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
     }
     /* version */
     uint8_t bt = 0;
-    if (!pkt.get(bt) || (bt != PGP_PKSK_V3)) {
+    if (!pkt.get(bt)) {
+        RNP_LOG("Error when reading packet version");
+        return RNP_ERROR_BAD_FORMAT;
+    }
+    if((bt != PGP_PKSK_V3) && (bt != PGP_PKSK_V5)) {
         RNP_LOG("wrong packet version");
         return RNP_ERROR_BAD_FORMAT;
     }
-    version = bt;
-    /* key id */
-    if (!pkt.get(key_id)) {
-        RNP_LOG("failed to get key id");
-        return RNP_ERROR_BAD_FORMAT;
+    version = (pgp_pkesk_version_t) bt;
+
+    if (version == PGP_PKSK_V3) {
+        /* key id */
+        if (!pkt.get(key_id)) {
+            RNP_LOG("failed to get key id");
+            return RNP_ERROR_BAD_FORMAT;
+        }
     }
+    else { // PGP_PKSK_V5
+        size_t fp_len;
+        if (!pkt.get(bt)) {
+            RNP_LOG("Error when reading key version");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        switch(bt) {
+            case 0: // anonymous
+                fp_len = 0;
+                break;
+            case PGP_V4:
+                fp_len = PGP_FINGERPRINT_V4_SIZE;
+                break;
+            case PGP_V5:
+                fp_len = PGP_FINGERPRINT_V5_SIZE;
+                break;
+            default:
+                RNP_LOG("wrong key version used with PKESK v5");
+                return RNP_ERROR_BAD_FORMAT;
+        }
+        fp.length = fp_len;
+        if (!pkt.get(fp.fingerprint, fp.length)) {
+            RNP_LOG("Error when reading fingerprint");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+    }
+
     /* public key algorithm */
     if (!pkt.get(bt)) {
         RNP_LOG("failed to get palg");

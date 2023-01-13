@@ -94,11 +94,13 @@
 #define PGP_KEY_ID_SIZE 8
 
 /* Size of the fingerprint */
-
 #define PGP_FINGERPRINT_V4_SIZE 20
 #define PGP_FINGERPRINT_V5_SIZE 32
 #define PGP_MAX_FINGERPRINT_SIZE PGP_FINGERPRINT_V5_SIZE
 #define PGP_MAX_FINGERPRINT_HEX_SIZE (PGP_MAX_FINGERPRINT_SIZE * 2) + 1
+
+/* SEIPDv2 salt length */
+#define PGP_SEIPDV2_SALT_LEN 32
 
 /* Size of the key grip */
 #define PGP_KEY_GRIP_SIZE 20
@@ -446,7 +448,15 @@ typedef enum {
     PGP_C_UNKNOWN = 255
 } pgp_compression_type_t;
 
-enum { PGP_SE_IP_DATA_VERSION = 1, PGP_PKSK_V3 = 3, PGP_SKSK_V4 = 4, PGP_SKSK_V5 = 5 };
+enum { PGP_SKSK_V4 = 4, PGP_SKSK_V5 = 5 };
+typedef enum { 
+    PGP_PKSK_V3 = 3, 
+    PGP_PKSK_V5 = 5
+} pgp_pkesk_version_t;
+typedef enum {
+    PGP_SE_IP_DATA_VERSION = 1,
+    PGP_SE_IP_DATA_VERSION_2 = 2
+} pgp_seipd_version_t;
 
 /** Version.
  * OpenPGP has two different protocol versions: version 3 and version 4.

@@ -158,10 +158,16 @@ typedef struct pgp_packet_body_t {
 
 /** public-key encrypted session key packet */
 typedef struct pgp_pk_sesskey_t {
-    unsigned             version{};
-    pgp_key_id_t         key_id{};
+    pgp_pkesk_version_t  version{};
     pgp_pubkey_alg_t     alg{};
     std::vector<uint8_t> material_buf{};
+
+    /* v3 PKESK */
+    pgp_key_id_t         key_id{};
+
+    /* v5 PKESK */
+    pgp_fingerprint_t    fp{};
+
 
     void         write(pgp_dest_t &dst) const;
     rnp_result_t parse(pgp_source_t &src);
