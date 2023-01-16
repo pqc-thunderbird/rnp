@@ -25,6 +25,8 @@
  */
 
 #include "config.h"
+#include <algorithm>
+#include <cstdint>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -46,6 +48,7 @@
 #include "crypto/signatures.h"
 #include "fingerprint.h"
 #include "pgp-key.h"
+#include "crypto/hkdf.hpp"
 
 #ifdef HAVE_ZLIB_H
 #include <zlib.h>
@@ -88,7 +91,7 @@ typedef struct pgp_source_encrypted_param_t {
     std::vector<pgp_sk_sesskey_t> symencs;        /* array of sym-encrypted session keys */
     std::vector<pgp_pk_sesskey_t> pubencs;        /* array of pk-encrypted session keys */
     bool                          has_mdc;        /* SEIPD v1, encrypted with mdc (tag 18) */
-    bool                          seipd_v2;    /* SEIPD v2, encrypted with AEAD (tag 18)*/
+    bool                          seipd_v2;       /* SEIPD v2, encrypted with AEAD (tag 18)*/
     bool                          mdc_validated;  /* mdc was validated already */
     bool                          aead;           /* AEAD encrypted data packet, tag 20 */
     bool                          aead_validated; /* we read and validated last chunk */
@@ -99,13 +102,15 @@ typedef struct pgp_source_encrypted_param_t {
     size_t                        chunkidx; /* index of the current chunk */
     uint8_t                       cache[PGP_AEAD_CACHE_LEN]; /* read cache */
     size_t                        cachelen;                  /* number of bytes in the cache */
-    size_t                        cachepos; /* index of first unread byte in the cache */
-    pgp_aead_hdr_t                aead_hdr; /* AEAD encryption parameters */
+    size_t                        cachepos;    /* index of first unread byte in the cache */
+    pgp_aead_hdr_t                aead_hdr;    /* AEAD encryption parameters */
     pgp_seipdv2_hdr_t             seipdv2_hdr; /* SEIPDv2 encryption parameters */
-    uint8_t                       aead_ad[PGP_AEAD_MAX_AD_LEN]; /* additional data (used for AEAD and SEIPDv2 packets) */
-    size_t                        aead_adlen; /* length of the additional data */
-    pgp_symm_alg_t                salg;       /* data encryption algorithm */
-    pgp_parse_handler_t *         handler;    /* parsing handler with callbacks */
+    std::vector<uint8_t>          seipd_v2_nonce;
+    uint8_t
+      aead_ad[PGP_AEAD_MAX_AD_LEN];  /* additional data (used for AEAD and SEIPDv2 packets) */
+    size_t               aead_adlen; /* length of the additional data */
+    pgp_symm_alg_t       salg;       /* data encryption algorithm */
+    pgp_parse_handler_t *handler;    /* parsing handler with callbacks */
 } pgp_source_encrypted_param_t;
 
 typedef struct pgp_source_signed_param_t {
@@ -159,6 +164,61 @@ typedef struct pgp_source_partial_param_t {
     size_t        pleft;   /* bytes left to read from the current part */
     bool          last;    /* current part is last */
 } pgp_source_partial_param_t;
+
+namespace {
+
+struct seipd_v2_aead_fields_t {
+    std::vector<uint8_t> key, nonce;
+};
+
+seipd_v2_aead_fields_t
+seipd_v2_key_and_nonce_derivation(pgp_seipdv2_hdr_t &hdr, uint8_t *sesskey)
+{
+    auto hkdf = rnp::Hkdf::create(PGP_HASH_SHA256);
+
+    size_t   sesskey_len = pgp_key_size(hdr.cipher_alg);
+    uint32_t nonce_size = 0;
+    uint32_t key_size = pgp_key_size(hdr.cipher_alg);
+
+    switch (hdr.aead_alg) {
+    case PGP_AEAD_EAX:
+        nonce_size = 16;
+        break;
+    case PGP_AEAD_OCB:
+        nonce_size = 15;
+    case PGP_AEAD_NONE:
+    case PGP_AEAD_UNKNOWN:
+        RNP_LOG("only EAX and OCB is supported for v2 SEIPD packets");
+        throw rnp::rnp_exception(RNP_ERROR_NOT_SUPPORTED);
+    }
+    const uint8_t        info[5] = {uint8_t(hdr.version | 0xC0),
+                             (uint8_t) hdr.version,
+                             (uint8_t) hdr.cipher_alg,
+                             (uint8_t) hdr.aead_alg,
+                             hdr.chunk_size_octet};
+    uint32_t             out_size = key_size + nonce_size - 8;
+    std::vector<uint8_t> hkdf_out(out_size);
+    hkdf->extract_expand(hdr.salt,
+                         sizeof(hdr.salt),
+                         sesskey,
+                         sesskey_len,
+                         info,
+                         sizeof(info),
+                         hkdf_out.data(),
+                         hkdf_out.size());
+
+    seipd_v2_aead_fields_t result;
+    result.key = std::vector<uint8_t>(hkdf_out.data(), hkdf_out.data() + key_size);
+    result.nonce =
+      std::vector<uint8_t>(hkdf_out.data() + key_size, hkdf_out.data() + hkdf_out.size());
+    for (uint32_t i = 0; i < 8; i++) {
+        // fill up the nonce with zero octets
+        result.nonce.push_back(0);
+    }
+    return result;
+}
+
+} // namespace
 
 static bool
 is_pgp_source(pgp_source_t &src)
@@ -476,8 +536,12 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     param->chunkidx = idx;
     param->chunkin = 0;
 
+    uint8_t *nonce_base = param->aead_hdr.iv;
+    if (param->seipd_v2) {
+        nonce_base = param->seipd_v2_nonce.data();
+    }
     /* set chunk index for nonce */
-    nlen = pgp_cipher_aead_nonce(param->aead_hdr.aalg, param->aead_hdr.iv, nonce, idx);
+    nlen = pgp_cipher_aead_nonce(param->aead_hdr.aalg, nonce_base, nonce, idx);
 
     /* start cipher */
     return pgp_cipher_aead_start(&param->decrypt, nonce, nlen);
@@ -1380,13 +1444,6 @@ error:
 }
 
 static bool
-encrypted_start_SEIPDv2(pgp_source_encrypted_param_t *param, uint8_t *key)
-{
-    // TODOMTG
-    return false;
-}
-
-static bool
 encrypted_start_aead(pgp_source_encrypted_param_t *param, pgp_symm_alg_t alg, uint8_t *key)
 {
 #if !defined(ENABLE_AEAD)
@@ -1397,6 +1454,15 @@ encrypted_start_aead(pgp_source_encrypted_param_t *param, pgp_symm_alg_t alg, ui
 
     if (alg != param->aead_hdr.ealg) {
         return false;
+    }
+
+    std::vector<uint8_t> seipd_v2_key;
+    if (param->seipd_v2) {
+        seipd_v2_aead_fields_t aead_fields =
+          seipd_v2_key_and_nonce_derivation(param->seipdv2_hdr, key);
+        seipd_v2_key = aead_fields.key;
+        key = std::move(seipd_v2_key.data());
+        param->seipd_v2_nonce = std::move(aead_fields.nonce);
     }
 
     /* initialize cipher with key */
@@ -1438,9 +1504,10 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 
     /* Crypto Refresh:
         - The payload following any v5 PKESK or v5 SKESK packet MUST be a v2 SEIPD.
-        - implementations MUST NOT precede a v2 SEIPD payload with either v3 PKESK or v4 SKESK packets. */
-    if((param->seipd_v2 && !(sesskey->version == PGP_PKSK_V5))
-    || (param->has_mdc && !(sesskey->version == PGP_PKSK_V3))) {
+        - implementations MUST NOT precede a v2 SEIPD payload with either v3 PKESK or v4 SKESK
+       packets. */
+    if ((param->seipd_v2 && !(sesskey->version == PGP_PKSK_V5)) ||
+        (param->has_mdc && !(sesskey->version == PGP_PKSK_V3))) {
         RNP_LOG("Attempt to mix SEIPD v1 with PKESK v5 or SEIPD v2 with PKESK v3");
         return false;
     }
@@ -1513,9 +1580,9 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
     }
 
     pgp_symm_alg_t salg;
-    uint8_t *decbuf_sesskey = decbuf.data();
-    size_t decbuf_sesskey_len = declen;
-    if(sesskey->version == PGP_PKSK_V3) {
+    uint8_t *      decbuf_sesskey = decbuf.data();
+    size_t         decbuf_sesskey_len = declen;
+    if (sesskey->version == PGP_PKSK_V3) {
         /* Check algorithm and key length */
         salg = (pgp_symm_alg_t) decbuf[0];
         if (!pgp_is_sa_supported(salg)) {
@@ -1546,7 +1613,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         return false;
     }
 
-    if(sesskey->version == PGP_PKSK_V3) {
+    if (sesskey->version == PGP_PKSK_V3) {
         if (!param->aead) {
             /* Decrypt header */
             res = encrypted_decrypt_cfb_header(param, salg, decbuf_sesskey);
@@ -1558,11 +1625,9 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             param->salg = salg;
         }
         return res;
-    } 
-    else { // PGP_PKSK_V5
-        // TODOMTG: decbuf_sesskey -> HKDF
-        return encrypted_start_SEIPDv2(param, decbuf_sesskey);
-    } 
+    } else { // PGP_PKSK_V5
+        return encrypted_start_aead(param, salg, decbuf_sesskey);
+    }
 }
 
 #if defined(ENABLE_AEAD)
@@ -1922,7 +1987,9 @@ get_compressed_src_alg(pgp_source_t *src, uint8_t *alg)
     return true;
 }
 
-static bool parse_aead_chunk_size(uint8_t chunk_size_octet, size_t *chunk_size) { // TODOMTG:CMT-FALKO: should be in an anonymous namespace instead of "static"
+static bool
+parse_aead_chunk_size(uint8_t chunk_size_octet, size_t *chunk_size)
+{ // TODOMTG:CMT-FALKO: should be in an anonymous namespace instead of "static"
     if (chunk_size_octet > 56) {
         RNP_LOG("too large chunk size: %d", chunk_size_octet);
         return false;
@@ -2063,7 +2130,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
         }
 
         /* parse chunk size */
-        if(!parse_aead_chunk_size(param->aead_hdr.csize, &param->chunklen)) {
+        if (!parse_aead_chunk_size(param->aead_hdr.csize, &param->chunklen)) {
             return RNP_ERROR_BAD_FORMAT;
         }
 
@@ -2082,8 +2149,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
         if (SEIPD_version == 1) {
             param->has_mdc = true;
             param->mdc_validated = false;
-        }
-        else if(SEIPD_version == 2) {
+        } else if (SEIPD_version == 2) {
             param->seipd_v2 = true;
             uint8_t hdr[4];
             if (!src_peek_eq(param->pkt.readsrc, hdr, 4)) {
@@ -2100,13 +2166,14 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
                 RNP_LOG("Expect SEIPDv2, got version: %d", param->aead_hdr.version);
                 return RNP_ERROR_BAD_FORMAT;
             }
-            if ((param->seipdv2_hdr.aead_alg != PGP_AEAD_EAX) && (param->seipdv2_hdr.aead_alg != PGP_AEAD_OCB)) {
+            if ((param->seipdv2_hdr.aead_alg != PGP_AEAD_EAX) &&
+                (param->seipdv2_hdr.aead_alg != PGP_AEAD_OCB)) {
                 RNP_LOG("unknown AEAD alg: %d", (int) param->seipdv2_hdr.aead_alg);
                 return RNP_ERROR_BAD_FORMAT;
             }
 
             /* parse chunk size */
-            if(!parse_aead_chunk_size(param->aead_hdr.csize, &param->chunklen)) {
+            if (!parse_aead_chunk_size(param->aead_hdr.csize, &param->chunklen)) {
                 return RNP_ERROR_BAD_FORMAT;
             }
 
@@ -2114,8 +2181,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             param->aead_adlen = 5;
             param->aead_ad[0] = param->pkt.hdr[0];
             memcpy(param->aead_ad + 1, hdr, 4);
-        }
-        else {
+        } else {
             RNP_LOG("unknown SEIPD version: %d", (int) SEIPD_version);
             return RNP_ERROR_BAD_FORMAT;
         }
@@ -2181,13 +2247,12 @@ init_encrypted_src(pgp_parse_handler_t *handler, pgp_source_t *src, pgp_source_t
         errcode = RNP_ERROR_NO_SUITABLE_KEY;
         while (pubidx < param->pubencs.size()) {
             auto &pubenc = param->pubencs[pubidx];
-            if(pubenc.version == PGP_PKSK_V3) {
+            if (pubenc.version == PGP_PKSK_V3) {
                 keyctx.search.by.keyid = pubenc.key_id;
-            }
-            else { // PGP_PKSK_V5
+            } else { // PGP_PKSK_V5
                 keyctx.search.by.fingerprint = pubenc.fp;
             }
-            
+
             /* Get the key if any */
             pgp_key_t *seckey = pgp_request_key(handler->key_provider, &keyctx);
             if (!seckey) {
@@ -2196,10 +2261,9 @@ init_encrypted_src(pgp_parse_handler_t *handler, pgp_source_t *src, pgp_source_t
             }
             /* Check whether key fits our needs */
             bool hidden;
-            if(pubenc.version == PGP_PKSK_V3) {
+            if (pubenc.version == PGP_PKSK_V3) {
                 hidden = (pubenc.key_id == pgp_key_id_t({}));
-            }
-            else { // PGP_PKSK_V5
+            } else { // PGP_PKSK_V5
                 hidden = (pubenc.fp.length == 0);
             }
             if (!hidden || (++hidden_tries >= MAX_HIDDEN_TRIES)) {
