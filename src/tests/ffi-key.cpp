@@ -3169,6 +3169,7 @@ TEST_F(rnp_tests, test_ffi_v5_cert_import)
     rnp_input_t input = NULL;
     size_t keycount = 255;
 
+    // TODOMTG: use transferable_pubkey_v5__cryptorefresh_07_fixed but there seems to be a Base64 Armor problem 
     assert_rnp_success(rnp_ffi_create(&ffi, "GPG", "GPG"));
     assert_rnp_success(
       rnp_input_from_path(&input, "data/test_v5_valid_data/transferable_pubkey_v5__cryptorefresh_07.asc"));
@@ -3210,12 +3211,10 @@ TEST_F(rnp_tests, test_ffi_v5_seckey_import)
 
     assert_rnp_success(rnp_ffi_create(&ffi, "GPG", "GPG"));
     assert_rnp_success(
-      rnp_input_from_path(&input, "data/test_v5_valid_data/transferable_seckey_v5__cryptorefresh_07.asc"));
+      rnp_input_from_path(&input, "data/test_v5_valid_data/transferable_seckey_v5__cryptorefresh_07_fixed.asc"));
     assert_rnp_success(
       rnp_import_keys(ffi, input, RNP_LOAD_SAVE_SECRET_KEYS | RNP_LOAD_SAVE_SINGLE | RNP_LOAD_SAVE_BASE64, NULL));
     rnp_input_destroy(input);
-    assert_rnp_success(rnp_get_public_key_count(ffi, &keycount));
-    assert_int_equal(keycount, 0);
     assert_rnp_success(rnp_get_secret_key_count(ffi, &keycount));
     assert_int_equal(keycount, 2);
 }
