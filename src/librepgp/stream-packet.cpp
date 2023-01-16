@@ -1082,11 +1082,11 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
     }
     else { // PGP_PKSK_V5
         size_t fp_len;
-        if (!pkt.get(bt)) {
+        if (!pkt.get(bt)) { // TODO:CMT-FALKO: this was already checked above. seems unnecessary her
             RNP_LOG("Error when reading key version");
             return RNP_ERROR_BAD_FORMAT;
         }
-        switch(bt) {
+        switch(bt) { // // TODO:CMT-FALKO: *version* should be used here preferably
             case 0: // anonymous
                 fp_len = 0;
                 break;

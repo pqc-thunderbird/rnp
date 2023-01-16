@@ -1922,7 +1922,7 @@ get_compressed_src_alg(pgp_source_t *src, uint8_t *alg)
     return true;
 }
 
-static bool parse_aead_chunk_size(uint8_t chunk_size_octet, size_t *chunk_size) {
+static bool parse_aead_chunk_size(uint8_t chunk_size_octet, size_t *chunk_size) { // TODOMTG:CMT-FALKO: should be in an anonymous namespace instead of "static"
     if (chunk_size_octet > 56) {
         RNP_LOG("too large chunk size: %d", chunk_size_octet);
         return false;
