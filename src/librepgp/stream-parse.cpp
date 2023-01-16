@@ -1945,9 +1945,9 @@ get_seipdv2_src_hdr(pgp_source_t *src, pgp_seipdv2_hdr_t *hdr)
     }
 
     hdr->version = hdrbt[0];
-    hdr->ealg = (pgp_symm_alg_t) hdrbt[1];
-    hdr->aalg = (pgp_aead_alg_t) hdrbt[2];
-    hdr->csize = hdrbt[3];
+    hdr->cipher_alg = (pgp_symm_alg_t) hdrbt[1];
+    hdr->aead_alg = (pgp_aead_alg_t) hdrbt[2];
+    hdr->chunk_size_octet = hdrbt[3];
 
     return src_read_eq(src, hdr->salt, PGP_SEIPDV2_SALT_LEN);
 }
@@ -2100,8 +2100,8 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
                 RNP_LOG("Expect SEIPDv2, got version: %d", param->aead_hdr.version);
                 return RNP_ERROR_BAD_FORMAT;
             }
-            if ((param->seipdv2_hdr.aalg != PGP_AEAD_EAX) && (param->seipdv2_hdr.aalg != PGP_AEAD_OCB)) {
-                RNP_LOG("unknown AEAD alg: %d", (int) param->seipdv2_hdr.aalg);
+            if ((param->seipdv2_hdr.aead_alg != PGP_AEAD_EAX) && (param->seipdv2_hdr.aead_alg != PGP_AEAD_OCB)) {
+                RNP_LOG("unknown AEAD alg: %d", (int) param->seipdv2_hdr.aead_alg);
                 return RNP_ERROR_BAD_FORMAT;
             }
 
