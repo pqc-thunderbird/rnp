@@ -436,7 +436,8 @@ typedef enum {
 typedef enum {
     PGP_KEY_FEATURE_MDC = 0x01,
     PGP_KEY_FEATURE_AEAD = 0x02,
-    PGP_KEY_FEATURE_V5 = 0x04
+    PGP_KEY_FEATURE_V5 = 0x04,
+    PGP_KEY_FEATURE_SEIPDV2 = 0x08
 } pgp_key_feature_t;
 
 /** Types of Compression */

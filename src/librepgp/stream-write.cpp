@@ -520,7 +520,8 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
                         pgp_dest_t *         dst,
                         pgp_key_t *          userkey,
                         const uint8_t *      key,
-                        const unsigned       keylen)
+                        const unsigned       keylen,
+                        pgp_pkesk_version_t  pkesk_version)
 {
     pgp_pk_sesskey_t            pkey;
     pgp_dest_encrypted_param_t *param = (pgp_dest_encrypted_param_t *) dst->param;
@@ -533,7 +534,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     }
 
     /* Fill pkey */
-    pkey.version = PGP_PKSK_V3;
+    pkey.version = pkesk_version;
     pkey.alg = userkey->alg();
     pkey.key_id = userkey->keyid();
 
@@ -921,7 +922,8 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
 
     /* Configuring and writing pk-encrypted session keys */
     for (auto recipient : handler->ctx->recipients) {
-        ret = encrypted_add_recipient(handler, dst, recipient, enckey.data(), keylen);
+        pgp_pkesk_version_t pkesk_version = handler->ctx->pkeskv5_capable() ? PGP_PKSK_V5 : PGP_PKSK_V3;
+        ret = encrypted_add_recipient(handler, dst, recipient, enckey.data(), keylen, pkesk_version);
         if (ret) {
             goto finish;
         }
