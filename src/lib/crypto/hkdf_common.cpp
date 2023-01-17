@@ -29,6 +29,11 @@ Hkdf::size() const
     return size_;
 }
 
+pgp_hash_alg_t Hkdf::alg() const
+{
+    return hash_alg_;
+}
+
 Hkdf::~Hkdf()
 {
 }
