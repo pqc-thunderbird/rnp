@@ -374,7 +374,11 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
     }
 
     /* set chunk index for nonce */
-    nlen = pgp_cipher_aead_nonce(param->aalg, param->iv, nonce, idx);
+    uint8_t *nonce_src_ptr = param->iv;
+    if(param->is_v2_seipd) {
+        nonce_src_ptr = param->v2_seipd_nonce.data();
+    }
+    nlen = pgp_cipher_aead_nonce(param->aalg, nonce_src_ptr, nonce, idx);
 
     /* start cipher */
     res = pgp_cipher_aead_start(&param->encrypt, nonce, nlen);
@@ -855,21 +859,29 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     uint8_t raw_packet_tag = PGP_PKT_AEAD_ENCRYPTED;
     if (param->is_v2_seipd) {
         raw_packet_tag = PGP_PKT_SE_IP_DATA;
-    } 
+    }
     param->ad[0] = raw_packet_tag | PGP_PTAG_ALWAYS_SET | PGP_PTAG_NEW_FORMAT;
     memcpy(param->ad + 1, hdr, 4);
-    if(!param->is_v2_seipd)
-    {
+    if (!param->is_v2_seipd) {
         memset(param->ad + 5, 0, 8);
         param->adlen = 13;
-    }
-    else
-    {
-       param->adlen = 5; 
+    } else {
+        param->adlen = 5;
     }
 
-    /*pgp_seipdv2_hdr_t v2_seipd_hdr;
-    v2_seipd_hdr.aead_alg = */
+    //std::vector<uint8_t> message_key;
+    seipd_v2_aead_fields_t s2_fields;
+    if (param->is_v2_seipd) {
+        pgp_seipdv2_hdr_t v2_seipd_hdr;
+        v2_seipd_hdr.cipher_alg = param->ctx->ealg;
+        v2_seipd_hdr.aead_alg = param->ctx->aalg;
+        v2_seipd_hdr.chunk_size_octet = param->ctx->abits;
+        v2_seipd_hdr.version = 2;
+        memcpy(v2_seipd_hdr.salt, iv_or_salt, PGP_SEIPDV2_SALT_LEN);
+        s2_fields = seipd_v2_key_and_nonce_derivation(v2_seipd_hdr, enckey);
+        enckey = s2_fields.key.data();
+        param->v2_seipd_nonce = std::move(s2_fields.nonce);
+    }
 
     /* initialize cipher */
     if (!pgp_cipher_aead_init(
