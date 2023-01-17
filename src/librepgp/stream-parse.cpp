@@ -534,7 +534,7 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
                               static_cast<uint8_t>(param->seipdv2_hdr.cipher_alg),
                               static_cast<uint8_t>(param->seipdv2_hdr.aead_alg),
                               param->seipdv2_hdr.chunk_size_octet};
-    if (!param->seipd_v2) {
+    if (param->seipd_v2) {
         add_data = add_data_seipd_v2.data();
         add_data_len = add_data_seipd_v2.size();
     }
