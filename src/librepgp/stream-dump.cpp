@@ -653,6 +653,7 @@ signature_dump_subpacket(rnp_dump_ctx_t *ctx, pgp_dest_t *dst, const pgp_sig_sub
         dst_printf(dst, "%s", subpkt.fields.features & PGP_KEY_FEATURE_MDC ? "mdc " : "");
         dst_printf(dst, "%s", subpkt.fields.features & PGP_KEY_FEATURE_AEAD ? "aead " : "");
         dst_printf(dst, "%s", subpkt.fields.features & PGP_KEY_FEATURE_V5 ? "v5 keys " : "");
+        dst_printf(dst, "%s", subpkt.fields.features & PGP_KEY_FEATURE_SEIPDV2 ? "SEIPD v2 " : "");
         dst_printf(dst, ")\n");
         break;
     case PGP_SIG_SUBPKT_EMBEDDED_SIGNATURE:
@@ -1703,7 +1704,11 @@ signature_dump_subpacket_json(rnp_dump_ctx_t *        ctx,
                obj_add_field_json(
                  obj,
                  "v5 keys",
-                 json_object_new_boolean(subpkt.fields.features & PGP_KEY_FEATURE_V5));
+                 json_object_new_boolean(subpkt.fields.features & PGP_KEY_FEATURE_V5)) &&
+               obj_add_field_json(
+                 obj,
+                 "SEIPD v2",
+                 json_object_new_boolean(subpkt.fields.features & PGP_KEY_FEATURE_SEIPDV2));
     case PGP_SIG_SUBPKT_EMBEDDED_SIGNATURE: {
         json_object *sig = json_object_new_object();
         if (!sig || !obj_add_field_json(obj, "signature", sig)) {
