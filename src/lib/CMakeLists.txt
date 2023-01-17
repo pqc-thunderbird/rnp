@@ -272,6 +272,7 @@ add_library(librnp-obj OBJECT
   ../librepgp/stream-parse.cpp
   ../librepgp/stream-sig.cpp
   ../librepgp/stream-write.cpp
+  ../librepgp/v2_seipd.cpp
 
   # librekey
   ../librekey/key_store_g10.cpp

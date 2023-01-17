@@ -49,6 +49,7 @@
 #include "fingerprint.h"
 #include "pgp-key.h"
 #include "crypto/hkdf.hpp"
+#include "v2_seipd.h"
 
 #ifdef HAVE_ZLIB_H
 #include <zlib.h>
@@ -166,57 +167,6 @@ typedef struct pgp_source_partial_param_t {
 } pgp_source_partial_param_t;
 
 namespace {
-
-struct seipd_v2_aead_fields_t {
-    std::vector<uint8_t> key, nonce;
-};
-
-seipd_v2_aead_fields_t
-seipd_v2_key_and_nonce_derivation(pgp_seipdv2_hdr_t &hdr, uint8_t *sesskey)
-{
-    auto hkdf = rnp::Hkdf::create(PGP_HASH_SHA256);
-
-    size_t   sesskey_len = pgp_key_size(hdr.cipher_alg);
-    uint32_t nonce_size = 0;
-    uint32_t key_size = pgp_key_size(hdr.cipher_alg);
-
-    switch (hdr.aead_alg) {
-    case PGP_AEAD_EAX:
-        nonce_size = 16;
-        break;
-    case PGP_AEAD_OCB:
-        nonce_size = 15;
-    case PGP_AEAD_NONE:
-    case PGP_AEAD_UNKNOWN:
-        RNP_LOG("only EAX and OCB is supported for v2 SEIPD packets");
-        throw rnp::rnp_exception(RNP_ERROR_NOT_SUPPORTED);
-    }
-    const uint8_t        info[5] = {static_cast<uint8_t>(/*packet tag*/ 18 | 0xC0),
-                             static_cast<uint8_t>(hdr.version),
-                             static_cast<uint8_t>(hdr.cipher_alg),
-                             static_cast<uint8_t>(hdr.aead_alg),
-                             hdr.chunk_size_octet};
-    uint32_t             out_size = key_size + nonce_size - 8;
-    std::vector<uint8_t> hkdf_out(out_size);
-    hkdf->extract_expand(hdr.salt,
-                         sizeof(hdr.salt),
-                         sesskey,
-                         sesskey_len,
-                         info,
-                         sizeof(info),
-                         hkdf_out.data(),
-                         hkdf_out.size());
-
-    seipd_v2_aead_fields_t result;
-    result.key = std::vector<uint8_t>(hkdf_out.data(), hkdf_out.data() + key_size);
-    result.nonce =
-      std::vector<uint8_t>(hkdf_out.data() + key_size, hkdf_out.data() + hkdf_out.size());
-    for (uint32_t i = 0; i < 8; i++) {
-        // fill up the nonce with zero octets
-        result.nonce.push_back(0);
-    }
-    return result;
-}
 
 } // namespace
 
@@ -529,11 +479,12 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     uint8_t *add_data = param->aead_ad;
     size_t   add_data_len = param->aead_adlen;
 
-    std::array<uint8_t, 5> add_data_seipd_v2 = {static_cast<uint8_t>(0xC0 | /* packet tag */ 18),
-                              static_cast<uint8_t>(param->seipdv2_hdr.version),
-                              static_cast<uint8_t>(param->seipdv2_hdr.cipher_alg),
-                              static_cast<uint8_t>(param->seipdv2_hdr.aead_alg),
-                              param->seipdv2_hdr.chunk_size_octet};
+    std::array<uint8_t, 5> add_data_seipd_v2 = {
+      static_cast<uint8_t>(PGP_PKT_SE_IP_DATA | PGP_PTAG_ALWAYS_SET | PGP_PTAG_NEW_FORMAT),
+      static_cast<uint8_t>(param->seipdv2_hdr.version),
+      static_cast<uint8_t>(param->seipdv2_hdr.cipher_alg),
+      static_cast<uint8_t>(param->seipdv2_hdr.aead_alg),
+      param->seipdv2_hdr.chunk_size_octet};
     if (param->seipd_v2) {
         add_data = add_data_seipd_v2.data();
         add_data_len = add_data_seipd_v2.size();

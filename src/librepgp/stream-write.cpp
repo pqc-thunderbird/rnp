@@ -55,6 +55,7 @@
 #include "defaults.h"
 #include <time.h>
 #include <algorithm>
+#include "v2_seipd.h"
 
 /* 8192 bytes, as GnuPG */
 #define PGP_PARTIAL_PKT_SIZE_BITS (13)
@@ -99,6 +100,9 @@ typedef struct pgp_dest_encrypted_param_t {
     size_t                     chunkidx; /* index of the current AEAD chunk */
     size_t                     cachelen; /* how many bytes are in cache, for AEAD */
     uint8_t cache[PGP_AEAD_CACHE_LEN];   /* pre-allocated cache for encryption */
+    bool    is_v2_seipd = false;
+    std::array<uint8_t, PGP_SEIPDV2_SALT_LEN> v2_seipd_salt; /* SEIPDv2 salt value */
+    std::vector<uint8_t>                      v2_seipd_nonce;
 } pgp_dest_encrypted_param_t;
 
 typedef struct pgp_dest_signer_info_t {
@@ -541,15 +545,14 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     /* Encrypt the session key */
     rnp::secure_array<uint8_t, PGP_MAX_KEY_SIZE + 3> enckey;
     uint8_t *sesskey = enckey.data(); /* pointer to the actual session key */
-    size_t enckey_len;
+    size_t   enckey_len;
 
     if (pkey.version == PGP_PKSK_V3) {
         enckey[0] = param->ctx->ealg;
         memcpy(&enckey[1], key, keylen);
         sesskey += 1;
         enckey_len = keylen + 3; // keylen + algorithm octet + checksum
-    }
-    else { // PGP_PKSK_V5
+    } else {                     // PGP_PKSK_V5
         memcpy(&enckey[0], key, keylen);
         enckey_len = keylen + 2; // keylen + checksum
     }
@@ -560,7 +563,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     for (unsigned i = 0; i < keylen; i++) {
         checksum[0] += sesskey[i];
     }
-    sesskey[keylen]     = (checksum[0] >> 8) & 0xff;
+    sesskey[keylen] = (checksum[0] >> 8) & 0xff;
     sesskey[keylen + 1] = checksum[0] & 0xff;
 
     pgp_encrypted_material_t material;
@@ -813,7 +816,7 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     RNP_LOG("AEAD support is not enabled.");
     return RNP_ERROR_NOT_IMPLEMENTED;
 #else
-    uint8_t hdr[4 + PGP_AEAD_MAX_NONCE_LEN];
+    uint8_t hdr[4 + PGP_SEIPDV2_SALT_LEN];
     size_t  nlen;
 
     if (pgp_block_size(param->ctx->ealg) != 16) {
@@ -821,32 +824,52 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     }
 
     /* fill header */
-    hdr[0] = 1;
+    hdr[0] = param->is_v2_seipd ? 2 : 1;
     hdr[1] = param->ctx->ealg;
     hdr[2] = param->ctx->aalg;
     hdr[3] = param->ctx->abits;
 
     /* generate iv */
     nlen = pgp_cipher_aead_nonce_len(param->ctx->aalg);
+    uint8_t *iv_or_salt = param->iv;
+    size_t   iv_or_salt_len = nlen;
+    if (param->is_v2_seipd) {
+        iv_or_salt = param->v2_seipd_salt.data();
+        iv_or_salt_len = param->v2_seipd_salt.size();
+    }
     try {
-        param->ctx->ctx->rng.get(param->iv, nlen);
+        param->ctx->ctx->rng.get(iv_or_salt, iv_or_salt_len);
     } catch (const std::exception &e) {
         return RNP_ERROR_RNG;
     }
-    memcpy(hdr + 4, param->iv, nlen);
+    memcpy(hdr + 4, iv_or_salt, iv_or_salt_len);
 
     /* output header */
-    dst_write(param->pkt.writedst, hdr, 4 + nlen);
+    dst_write(param->pkt.writedst, hdr, 4 + iv_or_salt_len);
 
     /* initialize encryption */
     param->chunklen = 1L << (hdr[3] + 6);
     param->chunkout = 0;
 
     /* fill additional/authenticated data */
-    param->ad[0] = PGP_PKT_AEAD_ENCRYPTED | PGP_PTAG_ALWAYS_SET | PGP_PTAG_NEW_FORMAT;
+    uint8_t raw_packet_tag = PGP_PKT_AEAD_ENCRYPTED;
+    if (param->is_v2_seipd) {
+        raw_packet_tag = PGP_PKT_SE_IP_DATA;
+    } 
+    param->ad[0] = raw_packet_tag | PGP_PTAG_ALWAYS_SET | PGP_PTAG_NEW_FORMAT;
     memcpy(param->ad + 1, hdr, 4);
-    memset(param->ad + 5, 0, 8);
-    param->adlen = 13;
+    if(!param->is_v2_seipd)
+    {
+        memset(param->ad + 5, 0, 8);
+        param->adlen = 13;
+    }
+    else
+    {
+       param->adlen = 5; 
+    }
+
+    /*pgp_seipdv2_hdr_t v2_seipd_hdr;
+    v2_seipd_hdr.aead_alg = */
 
     /* initialize cipher */
     if (!pgp_cipher_aead_init(
@@ -934,10 +957,12 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     /* Configuring and writing pk-encrypted session keys */
     for (auto recipient : handler->ctx->recipients) {
         pgp_pkesk_version_t pkesk_version = PGP_PKSK_V3;
-        if(handler->ctx->enable_pkesk_v5 && handler->ctx->pkeskv5_capable()) {
+        if (handler->ctx->enable_pkesk_v5 && handler->ctx->pkeskv5_capable()) {
             pkesk_version = PGP_PKSK_V5;
+            param->is_v2_seipd = true;
         }
-        ret = encrypted_add_recipient(handler, dst, recipient, enckey.data(), keylen, pkesk_version);
+        ret = encrypted_add_recipient(
+          handler, dst, recipient, enckey.data(), keylen, pkesk_version);
         if (ret) {
             goto finish;
         }
@@ -1155,11 +1180,13 @@ signed_write_signature(pgp_dest_signed_param_t *param,
     try {
         pgp_signature_t sig;
         if (signer->onepass.version) {
-            signer->key->sign_init(sig, signer->onepass.halg, param->ctx->ctx->time(), signer->key->version());
+            signer->key->sign_init(
+              sig, signer->onepass.halg, param->ctx->ctx->time(), signer->key->version());
             sig.palg = signer->onepass.palg;
             sig.set_type(signer->onepass.type);
         } else {
-            signer->key->sign_init(sig, signer->halg, param->ctx->ctx->time(), signer->key->version());
+            signer->key->sign_init(
+              sig, signer->halg, param->ctx->ctx->time(), signer->key->version());
             /* line below should be checked */
             sig.set_type(param->ctx->detached ? PGP_SIG_BINARY : PGP_SIG_TEXT);
         }
