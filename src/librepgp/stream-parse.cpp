@@ -191,10 +191,10 @@ seipd_v2_key_and_nonce_derivation(pgp_seipdv2_hdr_t &hdr, uint8_t *sesskey)
         RNP_LOG("only EAX and OCB is supported for v2 SEIPD packets");
         throw rnp::rnp_exception(RNP_ERROR_NOT_SUPPORTED);
     }
-    const uint8_t        info[5] = {uint8_t(hdr.version | 0xC0),
-                             (uint8_t) hdr.version,
-                             (uint8_t) hdr.cipher_alg,
-                             (uint8_t) hdr.aead_alg,
+    const uint8_t        info[5] = {static_cast<uint8_t>(/*packet tag*/ 18 | 0xC0),
+                             static_cast<uint8_t>(hdr.version),
+                             static_cast<uint8_t>(hdr.cipher_alg),
+                             static_cast<uint8_t>(hdr.aead_alg),
                              hdr.chunk_size_octet};
     uint32_t             out_size = key_size + nonce_size - 8;
     std::vector<uint8_t> hkdf_out(out_size);
@@ -526,8 +526,19 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
         STORE64BE(param->aead_ad + param->aead_adlen, total);
         param->aead_adlen += 8;
     }
+    uint8_t *add_data = param->aead_ad;
+    size_t   add_data_len = param->aead_adlen;
 
-    if (!pgp_cipher_aead_set_ad(&param->decrypt, param->aead_ad, param->aead_adlen)) {
+    std::array<uint8_t, 5> add_data_seipd_v2 = {static_cast<uint8_t>(0xC0 | /* packet tag */ 18),
+                              static_cast<uint8_t>(param->seipdv2_hdr.version),
+                              static_cast<uint8_t>(param->seipdv2_hdr.cipher_alg),
+                              static_cast<uint8_t>(param->seipdv2_hdr.aead_alg),
+                              param->seipdv2_hdr.chunk_size_octet};
+    if (!param->seipd_v2) {
+        add_data = add_data_seipd_v2.data();
+        add_data_len = add_data_seipd_v2.size();
+    }
+    if (!pgp_cipher_aead_set_ad(&param->decrypt, add_data, add_data_len)) {
         RNP_LOG("failed to set ad");
         return false;
     }
