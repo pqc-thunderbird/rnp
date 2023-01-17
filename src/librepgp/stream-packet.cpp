@@ -1047,7 +1047,13 @@ pgp_pk_sesskey_t::write(pgp_dest_t &dst) const
 {
     pgp_packet_body_t pktbody(PGP_PKT_PK_SESSION_KEY);
     pktbody.add_byte(version);
-    pktbody.add(key_id);
+    if(version == PGP_PKSK_V3) {
+        pktbody.add(key_id);
+    }
+    else { // PGP_PKSK_V5
+        pktbody.add_byte((fp.length == PGP_FINGERPRINT_V5_SIZE) ? PGP_V5 : PGP_V4);
+        pktbody.add(fp.fingerprint, fp.length);
+    }
     pktbody.add_byte(alg);
     pktbody.add(material_buf.data(), material_buf.size());
     pktbody.write(dst);
@@ -1082,11 +1088,12 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
     }
     else { // PGP_PKSK_V5
         size_t fp_len;
-        if (!pkt.get(bt)) {
+        uint8_t fp_key_version;
+        if (!pkt.get(fp_key_version)) {
             RNP_LOG("Error when reading key version");
             return RNP_ERROR_BAD_FORMAT;
         }
-        switch(bt) { // // TODO:CMT-FALKO: *version* should be used here preferably
+        switch(fp_key_version) {
             case 0: // anonymous
                 fp_len = 0;
                 break;

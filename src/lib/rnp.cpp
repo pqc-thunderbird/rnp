@@ -2549,6 +2549,18 @@ try {
 FFI_GUARD
 
 rnp_result_t
+rnp_op_encrypt_enable_pkesk_v5(rnp_op_encrypt_t op)
+try {
+    if (!op) {
+        return RNP_ERROR_NULL_POINTER;
+    }
+
+    op->rnpctx.enable_pkesk_v5 = true;
+    return RNP_SUCCESS;
+}
+FFI_GUARD
+
+rnp_result_t
 rnp_op_encrypt_add_signature(rnp_op_encrypt_t         op,
                              rnp_key_handle_t         key,
                              rnp_op_sign_signature_t *sig)
@@ -5605,10 +5617,14 @@ FFI_GUARD
 
 rnp_result_t
 rnp_op_generate_set_v5_key(rnp_op_generate_t op)
-{
+try {
+    if (!op) {
+        return RNP_ERROR_NULL_POINTER;
+    }
     op->pgp_version = PGP_V5;
     return RNP_SUCCESS;
 }
+FFI_GUARD
 
 rnp_result_t
 rnp_op_generate_execute(rnp_op_generate_t op)

@@ -1033,6 +1033,12 @@ RNP_API rnp_result_t rnp_op_generate_clear_pref_ciphers(rnp_op_generate_t op);
  */
 RNP_API rnp_result_t rnp_op_generate_set_pref_keyserver(rnp_op_generate_t op,
                                                         const char *      keyserver);
+
+/** Set the generated key version to v5.
+ *
+ * @param op pointer to opaque key generation context.
+ * @return RNP_SUCCESS or error code if failed.
+ */
 RNP_API rnp_result_t rnp_op_generate_set_v5_key(rnp_op_generate_t op);
 
 /** Execute the prepared key or subkey generation operation.
@@ -2796,6 +2802,15 @@ RNP_API rnp_result_t rnp_op_encrypt_create(rnp_op_encrypt_t *op,
  * @return RNP_SUCCESS if operation succeeds or error code otherwise.
  */
 RNP_API rnp_result_t rnp_op_encrypt_add_recipient(rnp_op_encrypt_t op, rnp_key_handle_t key);
+
+/**
+ * @brief Enables the creation of PKESK v5 (instead of v3) which results in the use of SEIPDv2. 
+ * The actually created version depends on the capabilities of the list of recipients. 
+ *
+ * @param op opaque encrypting context. Must be allocated and initialized.
+ * @return RNP_SUCCESS or errorcode if failed.
+ */
+RNP_API rnp_result_t rnp_op_encrypt_enable_pkesk_v5(rnp_op_encrypt_t op);
 
 /**
  * @brief Add signature to encrypting context, so data will be encrypted and signed.
