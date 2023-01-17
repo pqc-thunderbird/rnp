@@ -3,7 +3,7 @@
 #ifdef CRYPTO_BACKEND_BOTAN
 #include "crypto/hkdf_botan.hpp"
 
-TEST_F(rnp_tests, hkdf_extract)
+TEST_F(rnp_tests, hkdf_test_case_1)
 {
     /* rfc5869 Test Case 1   
    Hash = SHA-256

@@ -59,9 +59,9 @@ Hkdf_Botan::extract_expand(const uint8_t *salt,
         throw rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
 
-    std::vector<uint8_t> salt_vec(salt, salt+salt_len); 
-    std::vector<uint8_t> ikm_vec(ikm, ikm+ikm_len); 
-    std::vector<uint8_t> info_vec(info, info+info_len); 
+    std::vector<uint8_t> salt_vec(salt, salt+salt_len);
+    std::vector<uint8_t> ikm_vec(ikm, ikm+ikm_len);
+    std::vector<uint8_t> info_vec(info, info+info_len);
 
     Botan::secure_vector<uint8_t> PRK = extract(salt_vec, ikm_vec);
     std::vector<uint8_t>          OKM = expand(PRK, info_vec, output_length);
