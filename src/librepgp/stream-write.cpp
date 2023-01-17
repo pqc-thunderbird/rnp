@@ -520,7 +520,8 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
                         pgp_dest_t *         dst,
                         pgp_key_t *          userkey,
                         const uint8_t *      key,
-                        const unsigned       keylen)
+                        const unsigned       keylen,
+                        pgp_pkesk_version_t  pkesk_version)
 {
     pgp_pk_sesskey_t            pkey;
     pgp_dest_encrypted_param_t *param = (pgp_dest_encrypted_param_t *) dst->param;
@@ -533,23 +534,34 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     }
 
     /* Fill pkey */
-    pkey.version = PGP_PKSK_V3;
+    pkey.version = pkesk_version;
     pkey.alg = userkey->alg();
     pkey.key_id = userkey->keyid();
 
     /* Encrypt the session key */
     rnp::secure_array<uint8_t, PGP_MAX_KEY_SIZE + 3> enckey;
-    enckey[0] = param->ctx->ealg;
-    memcpy(&enckey[1], key, keylen);
+    uint8_t *sesskey = enckey.data(); /* pointer to the actual session key */
+    size_t enckey_len;
+
+    if (pkey.version == PGP_PKSK_V3) {
+        enckey[0] = param->ctx->ealg;
+        memcpy(&enckey[1], key, keylen);
+        sesskey += 1;
+        enckey_len = keylen + 3; // keylen + algorithm octet + checksum
+    }
+    else { // PGP_PKSK_V5
+        memcpy(&enckey[0], key, keylen);
+        enckey_len = keylen + 2; // keylen + checksum
+    }
 
     /* Calculate checksum */
     rnp::secure_array<unsigned, 1> checksum;
 
-    for (unsigned i = 1; i <= keylen; i++) {
-        checksum[0] += enckey[i];
+    for (unsigned i = 0; i < keylen; i++) {
+        checksum[0] += sesskey[i];
     }
-    enckey[keylen + 1] = (checksum[0] >> 8) & 0xff;
-    enckey[keylen + 2] = checksum[0] & 0xff;
+    sesskey[keylen]     = (checksum[0] >> 8) & 0xff;
+    sesskey[keylen + 1] = checksum[0] & 0xff;
 
     pgp_encrypted_material_t material;
 
@@ -559,7 +571,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         ret = rsa_encrypt_pkcs1(&handler->ctx->ctx->rng,
                                 &material.rsa,
                                 enckey.data(),
-                                keylen + 3,
+                                enckey_len,
                                 &userkey->material().rsa);
         if (ret) {
             RNP_LOG("rsa_encrypt_pkcs1 failed");
@@ -572,7 +584,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         ret = sm2_encrypt(&handler->ctx->ctx->rng,
                           &material.sm2,
                           enckey.data(),
-                          keylen + 3,
+                          enckey_len,
                           PGP_HASH_SM3,
                           &userkey->material().ec);
         if (ret) {
@@ -594,7 +606,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         ret = ecdh_encrypt_pkcs5(&handler->ctx->ctx->rng,
                                  &material.ecdh,
                                  enckey.data(),
-                                 keylen + 3,
+                                 enckey_len,
                                  &userkey->material().ec,
                                  userkey->fp());
         if (ret) {
@@ -607,7 +619,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         ret = elgamal_encrypt_pkcs1(&handler->ctx->ctx->rng,
                                     &material.eg,
                                     enckey.data(),
-                                    keylen + 3,
+                                    enckey_len,
                                     &userkey->material().eg);
         if (ret) {
             RNP_LOG("pgp_elgamal_public_encrypt failed");
@@ -921,7 +933,11 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
 
     /* Configuring and writing pk-encrypted session keys */
     for (auto recipient : handler->ctx->recipients) {
-        ret = encrypted_add_recipient(handler, dst, recipient, enckey.data(), keylen);
+        pgp_pkesk_version_t pkesk_version = PGP_PKSK_V3;
+        if(handler->ctx->enable_pkesk_v5 && handler->ctx->pkeskv5_capable()) {
+            pkesk_version = PGP_PKSK_V5;
+        }
+        ret = encrypted_add_recipient(handler, dst, recipient, enckey.data(), keylen, pkesk_version);
         if (ret) {
             goto finish;
         }
