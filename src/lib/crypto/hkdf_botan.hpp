@@ -28,18 +28,28 @@
 #define CRYPTO_HKDF_BOTAN_HPP_
 
 #include "hkdf.hpp"
-#include "botan/kdf.h"
+#include "botan/mac.h"
 
 namespace rnp {
 
 class Hkdf_Botan : public Hkdf {
   private:
+    std::string alg() const;
+
+  public:
     // std::unique_ptr<Botan::HkdfFunction> fn_;
 
     Hkdf_Botan(pgp_hash_alg_t alg);
     Hkdf_Botan(const Hkdf_Botan &src);
 
-  public:
+//  public:
+    Botan::secure_vector<uint8_t> extract(std::vector<uint8_t> salt,
+                                          std::vector<uint8_t> ikm);
+
+    std::vector<uint8_t> expand(Botan::secure_vector<uint8_t> PRK,
+                                std::vector<uint8_t>          info,
+                                size_t                        output_length);
+
     virtual ~Hkdf_Botan();
 
     static std::unique_ptr<Hkdf_Botan> create(pgp_hash_alg_t alg);
