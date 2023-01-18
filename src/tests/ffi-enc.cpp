@@ -502,7 +502,7 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v5_key)
     ;
     //assert_rnp_failure(rnp_op_encrypt_add_recipient(op, NULL)); // what for ?
     assert_rnp_success(rnp_op_encrypt_add_recipient(op, key));
-    //assert_rnp_success(rnp_op_encrypt_enable_pkesk_v5(op));
+    assert_rnp_success(rnp_op_encrypt_enable_pkesk_v5(op));
     rnp_key_handle_destroy(key);
     key = NULL;
     /*assert_rnp_success(rnp_locate_key(ffi, "userid", "key1-uid1", &key));
