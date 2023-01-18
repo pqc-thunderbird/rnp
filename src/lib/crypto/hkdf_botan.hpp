@@ -28,7 +28,7 @@
 #define CRYPTO_HKDF_BOTAN_HPP_
 
 #include "hkdf.hpp"
-#include "botan/hmac.h"
+#include "botan/mac.h"
 
 namespace rnp {
 
