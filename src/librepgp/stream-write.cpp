@@ -360,6 +360,7 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
         }
 
         total = idx * param->chunklen;
+        RNP_LOG("stream-write: param->chunklen = %lu\n", param->chunklen);
         if (param->cachelen + param->chunkout) {
             if (param->chunklen < (param->cachelen + param->chunkout)) {
                 RNP_LOG("wrong last chunk state in aead");
@@ -851,8 +852,8 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     hdr[2] = param->ctx->aalg;
 
     }
-    hdr[3] = param->ctx->abits;
-
+    hdr[3] = param->ctx->abits; 
+    RNP_LOG("stream-write: encrypted_start_aead: chunk size octet in hdr = %u\n", param->ctx->abits);
     /* generate iv */
     nlen = pgp_cipher_aead_nonce_len(param->ctx->aalg);
     uint8_t *iv_or_salt = param->iv;

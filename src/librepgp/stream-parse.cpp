@@ -534,6 +534,7 @@ encrypted_src_read_aead_part(pgp_source_encrypted_param_t *param)
     taglen = pgp_cipher_aead_tag_len(param->aead_hdr.aalg);
     read = sizeof(param->cache) - 2 * PGP_AEAD_MAX_TAG_LEN;
 
+    RNP_LOG("stream-parse: param->chunklen = %lu\n", param->chunklen);
     if (read >= param->chunklen - param->chunkin) {
         read = param->chunklen - param->chunkin;
         chunkend = true;
@@ -1972,7 +1973,7 @@ parse_aead_chunk_size(uint8_t chunk_size_octet, size_t *chunk_size)
         RNP_LOG("Warning: AEAD chunk bits > 16.");
     }
     *chunk_size = 1L << (chunk_size_octet + 6);
-
+    RNP_LOG("stream-parse: parsed chunk size octet = %u to chunklen %lu", chunk_size_octet, *chunk_size);
     return true;
 }
 
@@ -2149,7 +2150,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             }
 
             /* parse chunk size */
-            if (!parse_aead_chunk_size(param->aead_hdr.csize, &param->chunklen)) {
+            if (!parse_aead_chunk_size(param->seipdv2_hdr.chunk_size_octet, &param->chunklen)) {
                 return RNP_ERROR_BAD_FORMAT;
             }
 
@@ -2159,7 +2160,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             memcpy(param->aead_ad + 1, hdr, 4);
 
             param->aead_hdr.aalg = param->seipdv2_hdr.aead_alg;
-            //param->aead_hdr.csize = param->seipdv2_hdr.chunk_size_octet; // needed?
+            param->aead_hdr.csize = param->seipdv2_hdr.chunk_size_octet; // needed?
             param->aead_hdr.ealg = param->seipdv2_hdr.cipher_alg;
         } else {
             RNP_LOG("unknown SEIPD version: %d", (int) SEIPD_version);
