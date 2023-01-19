@@ -1547,6 +1547,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
     pgp_symm_alg_t salg;
     uint8_t *      decbuf_sesskey = decbuf.data();
     size_t         decbuf_sesskey_len = declen;
+    size_t         keylen;
     if (sesskey->version == PGP_PKSK_V3) {
         /* Check algorithm and key length */
         salg = (pgp_symm_alg_t) decbuf[0];
@@ -1555,15 +1556,22 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             return false;
         }
 
-        /* skip over the first byte which aligns the code for v3 and v5 PKESK packets. */
-        decbuf_sesskey++;
-        decbuf_sesskey_len -= 1;
-    }
-
-    size_t keylen = pgp_key_size(salg);
-    if (decbuf_sesskey_len != keylen + 2) { // 2 checksum bytes
-        RNP_LOG("invalid symmetric key length");
-        return false;
+        keylen = pgp_key_size(salg);
+        if (decbuf_sesskey_len != keylen + 2) { // 2 checksum bytes
+            RNP_LOG("invalid symmetric key length");
+            return false;
+            /* skip over the first byte which aligns the code for v3 and v5 PKESK packets. */
+            decbuf_sesskey++;
+            decbuf_sesskey_len -= 1;
+        }
+    } else {
+        // V5 PKESK
+        // required key length is not yet known
+        if(decbuf_sesskey_len <= 2) {
+            RNP_LOG("invalid symmetric key length");
+            return false;
+        }
+        keylen = decbuf_sesskey_len - 2;
     }
 
     /* Validate checksum */
@@ -1591,6 +1599,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         }
         return res;
     } else { // PGP_PKSK_V5
+        salg = param->aead_hdr.ealg; // NOTEMTG: salg not part of the v5 PKESK, assignment here just to make the following call "happy"
         return encrypted_start_aead(param, salg, decbuf_sesskey);
     }
 }
@@ -2107,7 +2116,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
     } else if (ptype == PGP_PKT_SE_IP_DATA) {
         // TODOMTG: should probably make this a separate function
         uint8_t SEIPD_version;
-        //if (!src_read_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
+        // if (!src_read_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
         if (!src_peek_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
             return RNP_ERROR_READ;
         }
@@ -2148,6 +2157,10 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             param->aead_adlen = 5;
             param->aead_ad[0] = param->pkt.hdr[0];
             memcpy(param->aead_ad + 1, hdr, 4);
+
+            param->aead_hdr.aalg = param->seipdv2_hdr.aead_alg;
+            //param->aead_hdr.csize = param->seipdv2_hdr.chunk_size_octet; // needed?
+            param->aead_hdr.ealg = param->seipdv2_hdr.cipher_alg;
         } else {
             RNP_LOG("unknown SEIPD version: %d", (int) SEIPD_version);
             return RNP_ERROR_BAD_FORMAT;
@@ -2183,7 +2196,7 @@ init_encrypted_src(pgp_parse_handler_t *handler, pgp_source_t *src, pgp_source_t
         goto finish;
     }
 
-    src->read = param->aead ? encrypted_src_read_aead : encrypted_src_read_cfb;
+    src->read = (param->aead || param->seipd_v2) ? encrypted_src_read_aead : encrypted_src_read_cfb;
 
     /* Obtaining the symmetric key */
     if (!handler->password_provider) {
