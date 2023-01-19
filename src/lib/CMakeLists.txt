@@ -248,6 +248,8 @@ elseif(CRYPTO_BACKEND_BOTAN)
     crypto/cipher_botan.cpp
     crypto/dilithium.cpp
     crypto/dilithium_common.cpp
+    crypto/kyber_common.cpp
+    crypto/kyber.cpp
   )
   if(ENABLE_SM2)
     list(APPEND CRYPTO_SOURCES crypto/sm2.cpp)

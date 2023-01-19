@@ -124,6 +124,7 @@ add_executable(rnp_tests
   utils-hex2bin.cpp
   utils-rnpcfg.cpp
   dilithium.cpp
+  kyber.cpp
   issues/1030.cpp
   issues/1115.cpp
   issues/1171.cpp

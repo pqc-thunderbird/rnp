@@ -463,6 +463,8 @@ void test_result_to_string(void **state);
 
 void test_dilithium_key_function(void **state);
 
+void test_kyber_key_function(void **state);
+
 #define assert_true(a) EXPECT_TRUE((a))
 #define assert_false(a) EXPECT_FALSE((a))
 #define assert_string_equal(a, b) EXPECT_STREQ((a), (b))
