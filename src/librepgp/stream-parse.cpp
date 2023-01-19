@@ -2107,7 +2107,8 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
     } else if (ptype == PGP_PKT_SE_IP_DATA) {
         // TODOMTG: should probably make this a separate function
         uint8_t SEIPD_version;
-        if (!src_read_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
+        //if (!src_read_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
+        if (!src_peek_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
             return RNP_ERROR_READ;
         }
 

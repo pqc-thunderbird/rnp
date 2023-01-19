@@ -839,8 +839,18 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
 
     /* fill header */
     hdr[0] = param->is_v2_seipd ? 2 : 1;
+
+    if(param->is_v2_seipd) {
     hdr[1] = param->ctx->ealg;
     hdr[2] = param->ctx->aalg;
+    //hdr[3] = param->;
+
+    }
+    else {
+    hdr[1] = param->ctx->ealg;
+    hdr[2] = param->ctx->aalg;
+
+    }
     hdr[3] = param->ctx->abits;
 
     /* generate iv */
@@ -985,6 +995,7 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
         if (handler->ctx->enable_pkesk_v5 && handler->ctx->pkeskv5_capable()) {
             pkesk_version = PGP_PKSK_V5;
             param->is_v2_seipd = true;
+            param->ctx->aalg = PGP_AEAD_OCB; // TODOMTG: this must be done elsewhere / differently
             dst->write = encrypted_dst_write_aead;
         }
         ret = encrypted_add_recipient(
