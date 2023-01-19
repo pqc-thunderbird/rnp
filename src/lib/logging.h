@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <string>
 
 /* environment variable name */
 static const char RNP_LOG_CONSOLE[] = "RNP_LOG_CONSOLE";
@@ -56,6 +57,9 @@ class LogStop {
         }
     }
 };
+
+std::string hex_encode(const char *name, const uint8_t *data, size_t data_len);
+
 } // namespace rnp
 
 #define RNP_LOG_FD(fd, ...)                                                  \
@@ -92,6 +96,14 @@ class LogStop {
         rnp::hex_encode(                                                               \
           keyid.data(), keyid.size(), keyidhex, sizeof(keyidhex), rnp::HEX_LOWERCASE); \
         RNP_LOG(msg, keyidhex);                                                        \
+    } while (0)
+
+#define RNP_LOG_HEX(name, data_, data_len_)                                            \
+    do {                                                                               \
+        std::vector<char> hex(data_len_ * 2 + 1);                                      \
+        rnp::hex_encode(data_, data_len_, hex.data(), hex.size(), rnp::HEX_LOWERCASE); \
+        printf("%s: %s", name, hex.data());                                            \
+        RNP_LOG("%s: %s", name, hex.data());                                           \
     } while (0)
 
 #endif

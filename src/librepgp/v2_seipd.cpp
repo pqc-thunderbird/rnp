@@ -43,6 +43,7 @@ seipd_v2_key_and_nonce_derivation(pgp_seipdv2_hdr_t &hdr, uint8_t *sesskey)
         break;
     case PGP_AEAD_OCB:
         nonce_size = 15;
+        break;
     case PGP_AEAD_NONE:
     case PGP_AEAD_UNKNOWN:
         RNP_LOG("only EAX and OCB is supported for v2 SEIPD packets");

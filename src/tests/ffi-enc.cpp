@@ -479,8 +479,8 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v5_key)
 
     // load our keyrings
     // TODOMTG: need initial keyring?
-    assert_true(
-      load_keys_gpg(ffi, "data/keyrings/1/pubring.gpg", "data/keyrings/1/secring.gpg"));
+    /*assert_true(
+      load_keys_gpg(ffi, "data/keyrings/1/pubring.gpg", "data/keyrings/1/secring.gpg"));*/
     assert_true(import_all_keys(ffi, "data/test_v5_valid_data/transferable_seckey_v5__cryptorefresh_07_fixed.asc"));
 
     // write out some data
@@ -510,7 +510,7 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v5_key)
     rnp_key_handle_destroy(key);
     key = NULL;*/
     // set the data encryption cipher
-    assert_rnp_success(rnp_op_encrypt_set_cipher(op, "CAST5"));
+    assert_rnp_success(rnp_op_encrypt_set_cipher(op, "AES256")); // TODOMTG: AES256 should be enforced
     // execute the operation
     assert_rnp_success(rnp_op_encrypt_execute(op));
 

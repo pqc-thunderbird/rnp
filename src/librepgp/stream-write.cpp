@@ -25,6 +25,7 @@
  */
 
 #include "config.h"
+#include "logging.h"
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -348,7 +349,9 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
     }
 
     /* set chunk index for additional data */
-    STORE64BE(param->ad + param->adlen - 8, idx);
+    if (!param->is_v2_seipd) {
+        STORE64BE(param->ad + param->adlen - 8, idx);
+    }
 
     if (last) {
         if (!(param->chunkout + param->cachelen)) {
@@ -368,6 +371,7 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
         STORE64BE(param->ad + param->adlen, total);
         param->adlen += 8;
     }
+    RNP_LOG_HEX("stream-write/ad", param->ad, param->adlen);
     if (!pgp_cipher_aead_set_ad(&param->encrypt, param->ad, param->adlen)) {
         RNP_LOG("failed to set ad");
         return RNP_ERROR_BAD_STATE;
@@ -375,10 +379,13 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
 
     /* set chunk index for nonce */
     uint8_t *nonce_src_ptr = param->iv;
-    if(param->is_v2_seipd) {
+    if (param->is_v2_seipd) {
         nonce_src_ptr = param->v2_seipd_nonce.data();
     }
     nlen = pgp_cipher_aead_nonce(param->aalg, nonce_src_ptr, nonce, idx);
+    if(nlen == 0) {
+        RNP_LOG("ERROR: when starting encrypted AEAD chunk: could not determine nonce length");
+    }
 
     /* start cipher */
     res = pgp_cipher_aead_start(&param->encrypt, nonce, nlen);
@@ -465,7 +472,7 @@ encrypted_dst_finish(pgp_dest_t *dst)
 {
     pgp_dest_encrypted_param_t *param = (pgp_dest_encrypted_param_t *) dst->param;
 
-    if (param->aead) {
+    if (param->aead || param->is_v2_seipd) {
 #if !defined(ENABLE_AEAD)
         RNP_LOG("AEAD is not enabled.");
         rnp_result_t res = RNP_ERROR_NOT_IMPLEMENTED;
@@ -511,7 +518,7 @@ encrypted_dst_close(pgp_dest_t *dst, bool discard)
         return;
     }
 
-    if (param->aead) {
+    if (param->aead || param->is_v2_seipd) {
 #if defined(ENABLE_AEAD)
         pgp_cipher_aead_destroy(&param->encrypt);
 #endif
@@ -545,6 +552,9 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     pkey.version = pkesk_version;
     pkey.alg = userkey->alg();
     pkey.key_id = userkey->keyid();
+    if(param->is_v2_seipd) { // TODOMTG: is that correct?
+        pkey.fp = userkey->fp();
+    }
 
     /* Encrypt the session key */
     rnp::secure_array<uint8_t, PGP_MAX_KEY_SIZE + 3> enckey;
@@ -869,9 +879,11 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
         param->adlen = 5;
     }
 
-    //std::vector<uint8_t> message_key;
+    // std::vector<uint8_t> message_key;
     seipd_v2_aead_fields_t s2_fields;
     if (param->is_v2_seipd) {
+        param->ctx->aalg = PGP_AEAD_OCB; // NOTEMTG: would have to be set be preference of recipient
+        param->aalg = PGP_AEAD_OCB;
         pgp_seipdv2_hdr_t v2_seipd_hdr;
         v2_seipd_hdr.cipher_alg = param->ctx->ealg;
         v2_seipd_hdr.aead_alg = param->ctx->aalg;
@@ -941,7 +953,8 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     param->aalg = handler->ctx->aalg;
     param->ctx = handler->ctx;
     param->pkt.origdst = writedst;
-    dst->write = param->aead ? encrypted_dst_write_aead : encrypted_dst_write_cfb;
+    // the following assignment is covered for the v2 SEIPD case further below
+    dst->write = (param->aead) ? encrypted_dst_write_aead : encrypted_dst_write_cfb;
     dst->finish = encrypted_dst_finish;
     dst->close = encrypted_dst_close;
     dst->type = PGP_STREAM_ENCRYPTED;
@@ -972,6 +985,7 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
         if (handler->ctx->enable_pkesk_v5 && handler->ctx->pkeskv5_capable()) {
             pkesk_version = PGP_PKSK_V5;
             param->is_v2_seipd = true;
+            dst->write = encrypted_dst_write_aead;
         }
         ret = encrypted_add_recipient(
           handler, dst, recipient, enckey.data(), keylen, pkesk_version);
@@ -1005,7 +1019,7 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
         goto finish;
     }
 
-    if (param->aead) {
+    if (param->aead || param->is_v2_seipd) {
         /* initialize AEAD encryption */
         ret = encrypted_start_aead(param, enckey.data());
     } else {

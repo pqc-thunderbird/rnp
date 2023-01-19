@@ -26,6 +26,10 @@
 
 #include "string.h"
 #include "logging.h"
+#include <iomanip>
+#include <ios>
+#include <vector>
+#include <string>
 
 /* -1 -- not initialized
     0 -- logging is off
@@ -73,3 +77,7 @@ rnp_log_continue()
         _rnp_log_disable--;
     }
 }
+
+namespace rnp {
+
+} // namespace rnp

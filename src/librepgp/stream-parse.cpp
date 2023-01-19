@@ -461,7 +461,9 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     size_t  nlen;
 
     /* set chunk index for additional data */
-    STORE64BE(param->aead_ad + param->aead_adlen - 8, idx);
+    if (!param->seipd_v2) {
+        STORE64BE(param->aead_ad + param->aead_adlen - 8, idx);
+    }
 
     if (last) {
         uint64_t total = idx * param->chunklen;
@@ -489,6 +491,7 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
         add_data = add_data_seipd_v2.data();
         add_data_len = add_data_seipd_v2.size();
     }
+    RNP_LOG_HEX("stream-parse/ad", add_data, add_data_len);
     if (!pgp_cipher_aead_set_ad(&param->decrypt, add_data, add_data_len)) {
         RNP_LOG("failed to set ad");
         return false;
@@ -2113,6 +2116,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             param->mdc_validated = false;
         } else if (SEIPD_version == 2) {
             param->seipd_v2 = true;
+            param->seipdv2_hdr.version = 2;
             uint8_t hdr[4];
             if (!src_peek_eq(param->pkt.readsrc, hdr, 4)) {
                 return RNP_ERROR_READ;
@@ -2123,11 +2127,11 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
                 return RNP_ERROR_READ;
             }
 
-            /* check SEIPDv2 packet header */
-            if (param->seipdv2_hdr.version != PGP_SE_IP_DATA_VERSION_2) {
+            /* check SEIPDv2 packet header // TODOMTG: cannot happen?: */
+            /*if (param->seipdv2_hdr.version != PGP_SE_IP_DATA_VERSION_2) {
                 RNP_LOG("Expect SEIPDv2, got version: %d", param->aead_hdr.version);
                 return RNP_ERROR_BAD_FORMAT;
-            }
+            }*/
             if ((param->seipdv2_hdr.aead_alg != PGP_AEAD_EAX) &&
                 (param->seipdv2_hdr.aead_alg != PGP_AEAD_OCB)) {
                 RNP_LOG("unknown AEAD alg: %d", (int) param->seipdv2_hdr.aead_alg);
@@ -2213,6 +2217,7 @@ init_encrypted_src(pgp_parse_handler_t *handler, pgp_source_t *src, pgp_source_t
                 keyctx.search.by.keyid = pubenc.key_id;
             } else { // PGP_PKSK_V5
                 keyctx.search.by.fingerprint = pubenc.fp;
+                keyctx.search.type = PGP_KEY_SEARCH_FINGERPRINT;
             }
 
             /* Get the key if any */

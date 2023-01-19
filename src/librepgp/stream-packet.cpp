@@ -1053,6 +1053,7 @@ pgp_pk_sesskey_t::write(pgp_dest_t &dst) const
     else { // PGP_PKSK_V5
         pktbody.add_byte((fp.length == PGP_FINGERPRINT_V5_SIZE) ? PGP_V5 : PGP_V4);
         pktbody.add(fp.fingerprint, fp.length);
+        RNP_LOG("DBG: pgp_pk_sesskey_t::write(): fp size = %i", fp.length);
     }
     pktbody.add_byte(alg);
     pktbody.add(material_buf.data(), material_buf.size());
