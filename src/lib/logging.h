@@ -102,8 +102,7 @@ std::string hex_encode(const char *name, const uint8_t *data, size_t data_len);
     do {                                                                               \
         std::vector<char> hex(data_len_ * 2 + 1);                                      \
         rnp::hex_encode(data_, data_len_, hex.data(), hex.size(), rnp::HEX_LOWERCASE); \
-        printf("%s: %s", name, hex.data());                                            \
-        RNP_LOG("%s: %s", name, hex.data());                                           \
+        RNP_LOG("%s: %s\n", name, hex.data());                                           \
     } while (0)
 
 #endif
