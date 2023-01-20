@@ -552,11 +552,10 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     /* Fill pkey */
     pkey.version = pkesk_version;
     pkey.alg = userkey->alg();
+    /* set key_id (used for PKESK v3) and fingerprint (used for PKESK v5) */
     pkey.key_id = userkey->keyid();
-    if(param->is_v2_seipd) { // TODOMTG: is that correct?
-        pkey.fp = userkey->fp();
-    }
-
+    pkey.fp = userkey->fp();
+    
     /* Encrypt the session key */
     rnp::secure_array<uint8_t, PGP_MAX_KEY_SIZE + 3> enckey;
     uint8_t *sesskey = enckey.data(); /* pointer to the actual session key */
