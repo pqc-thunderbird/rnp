@@ -1558,13 +1558,13 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         }
 
         keylen = pgp_key_size(salg);
-        if (decbuf_sesskey_len != keylen + 2) { // 2 checksum bytes
+        if (decbuf_sesskey_len != keylen + 3) { // alg id + 2 checksum bytes
             RNP_LOG("invalid symmetric key length");
             return false;
-            /* skip over the first byte which aligns the code for v3 and v5 PKESK packets. */
-            decbuf_sesskey++;
-            decbuf_sesskey_len -= 1;
         }
+
+        /* skip over the first byte which aligns the code for v3 and v5 PKESK packets. */
+        decbuf_sesskey++;
     } else {
         // V5 PKESK
         // required key length is not yet known
