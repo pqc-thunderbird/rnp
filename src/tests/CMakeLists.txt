@@ -125,6 +125,7 @@ add_executable(rnp_tests
   utils-rnpcfg.cpp
   dilithium.cpp
   kyber.cpp
+  kyber_ecc_composite.cpp
   issues/1030.cpp
   issues/1115.cpp
   issues/1171.cpp
