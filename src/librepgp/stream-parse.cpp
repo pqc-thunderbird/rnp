@@ -1980,16 +1980,16 @@ parse_aead_chunk_size(uint8_t chunk_size_octet, size_t *chunk_size)
 bool
 get_seipdv2_src_hdr(pgp_source_t *src, pgp_seipdv2_hdr_t *hdr)
 {
-    uint8_t hdrbt[4 + PGP_SEIPDV2_SALT_LEN] = {0};
+    uint8_t hdrbt[3 + PGP_SEIPDV2_SALT_LEN] = {0};
 
     if (!src_read_eq(src, hdrbt, sizeof(hdrbt))) {
         return false;
     }
 
-    hdr->version = hdrbt[0];
-    hdr->cipher_alg = (pgp_symm_alg_t) hdrbt[1];
-    hdr->aead_alg = (pgp_aead_alg_t) hdrbt[2];
-    hdr->chunk_size_octet = hdrbt[3];
+    hdr->version = 2;
+    hdr->cipher_alg = (pgp_symm_alg_t) hdrbt[0];
+    hdr->aead_alg = (pgp_aead_alg_t) hdrbt[1];
+    hdr->chunk_size_octet = hdrbt[2];
 
     return src_read_eq(src, hdr->salt, PGP_SEIPDV2_SALT_LEN);
 }
@@ -2118,7 +2118,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
         // TODOMTG: should probably make this a separate function
         uint8_t SEIPD_version;
         // if (!src_read_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
-        if (!src_peek_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
+        if (!src_read_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
             return RNP_ERROR_READ;
         }
 
