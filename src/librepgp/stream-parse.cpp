@@ -27,6 +27,7 @@
 #include "config.h"
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -460,6 +461,7 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     uint8_t nonce[PGP_AEAD_MAX_NONCE_LEN];
     size_t  nlen;
 
+    RNP_LOG("DBG: stream-parse: encrypted_start_aead_chunk: idx = %lu, last = %i\n", idx, last);
     /* set chunk index for additional data */
     if (!param->seipd_v2) {
         STORE64BE(param->aead_ad + param->aead_adlen - 8, idx);
@@ -481,13 +483,16 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     uint8_t *add_data = param->aead_ad;
     size_t   add_data_len = param->aead_adlen;
 
-    std::array<uint8_t, 5> add_data_seipd_v2 = {
+    std::vector<uint8_t> add_data_seipd_v2 = {
       static_cast<uint8_t>(PGP_PKT_SE_IP_DATA | PGP_PTAG_ALWAYS_SET | PGP_PTAG_NEW_FORMAT),
       static_cast<uint8_t>(param->seipdv2_hdr.version),
       static_cast<uint8_t>(param->seipdv2_hdr.cipher_alg),
       static_cast<uint8_t>(param->seipdv2_hdr.aead_alg),
       param->seipdv2_hdr.chunk_size_octet};
     if (param->seipd_v2) {
+        if(last) {
+            std::copy(&param->aead_ad[5], &param->aead_ad[5 + 8], std::back_inserter(add_data_seipd_v2));
+        }
         add_data = add_data_seipd_v2.data();
         add_data_len = add_data_seipd_v2.size();
     }
@@ -534,7 +539,7 @@ encrypted_src_read_aead_part(pgp_source_encrypted_param_t *param)
     taglen = pgp_cipher_aead_tag_len(param->aead_hdr.aalg);
     read = sizeof(param->cache) - 2 * PGP_AEAD_MAX_TAG_LEN;
 
-    RNP_LOG("stream-parse: param->chunklen = %lu\n", param->chunklen);
+    
     if (read >= param->chunklen - param->chunkin) {
         read = param->chunklen - param->chunkin;
         chunkend = true;
@@ -580,7 +585,6 @@ encrypted_src_read_aead_part(pgp_source_encrypted_param_t *param)
         if (tagread > taglen) {
             src_skip(param->pkt.readsrc, tagread - taglen);
         }
-
         res = pgp_cipher_aead_finish(
           &param->decrypt, param->cache, param->cache, read + tagread - taglen);
         if (!res) {
@@ -1990,8 +1994,8 @@ get_seipdv2_src_hdr(pgp_source_t *src, pgp_seipdv2_hdr_t *hdr)
     hdr->cipher_alg = (pgp_symm_alg_t) hdrbt[0];
     hdr->aead_alg = (pgp_aead_alg_t) hdrbt[1];
     hdr->chunk_size_octet = hdrbt[2];
-
-    return src_read_eq(src, hdr->salt, PGP_SEIPDV2_SALT_LEN);
+    std::memcpy(hdr->salt, &hdrbt[3], PGP_SEIPDV2_SALT_LEN);
+    return true;
 }
 
 bool

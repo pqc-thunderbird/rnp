@@ -50,10 +50,14 @@
 #include "crypto/mem.h"
 #include <algorithm>
 #include <memory>
+#include "lib/logging.h"
 
 bool
 src_read(pgp_source_t *src, void *buf, size_t len, size_t *readres)
 {
+    // DEBUG
+    uint8_t* input_buf = (uint8_t*) buf; 
+    // END DEBUG
     size_t              left = len;
     size_t              read;
     pgp_source_cache_t *cache = src->cache;
@@ -127,13 +131,14 @@ src_read(pgp_source_t *src, void *buf, size_t len, size_t *readres)
             }
         }
     }
-
 finish:
     src->readb += len;
     if (src->knownsize && (src->readb == src->size)) {
         src->eof = 1;
     }
     *readres = len;
+    RNP_LOG("DBG: stream-common: src_read(): read %lu bytes:", *readres); 
+    RNP_LOG_HEX("DBG: stream-common: src_read(): read:", (uint8_t*) input_buf, *readres); 
     return true;
 }
 
@@ -377,6 +382,7 @@ typedef struct pgp_source_file_param_t {
 static bool
 file_src_read(pgp_source_t *src, void *buf, size_t len, size_t *readres)
 {
+   
     pgp_source_file_param_t *param = (pgp_source_file_param_t *) src->param;
     if (!param) {
         return false;
@@ -387,6 +393,7 @@ file_src_read(pgp_source_t *src, void *buf, size_t len, size_t *readres)
         return false;
     }
     *readres = rres;
+    RNP_LOG_HEX("DBG: file_src_read:", (uint8_t*) buf, *readres);
     return true;
 }
 
@@ -497,6 +504,7 @@ typedef struct pgp_dest_mem_param_t {
 static bool
 mem_src_read(pgp_source_t *src, void *buf, size_t len, size_t *read)
 {
+
     pgp_source_mem_param_t *param = (pgp_source_mem_param_t *) src->param;
     if (!param) {
         return false;
@@ -508,6 +516,7 @@ mem_src_read(pgp_source_t *src, void *buf, size_t len, size_t *read)
     memcpy(buf, (uint8_t *) param->memory + param->pos, len);
     param->pos += len;
     *read = len;
+    RNP_LOG_HEX("DBG: mem_src_read:", (uint8_t*) buf, len);
     return true;
 }
 
@@ -644,6 +653,7 @@ init_dst_common(pgp_dest_t *dst, size_t paramsize)
 void
 dst_write(pgp_dest_t *dst, const void *buf, size_t len)
 {
+    RNP_LOG_HEX("DBG: dst_write:", (uint8_t*) buf, len);
     /* we call write function only if all previous calls succeeded */
     if ((len > 0) && (dst->write) && (dst->werr == RNP_SUCCESS)) {
         /* if cache non-empty and len will overflow it then fill it and write out */
@@ -739,6 +749,8 @@ typedef struct pgp_dest_file_param_t {
 static rnp_result_t
 file_dst_write(pgp_dest_t *dst, const void *buf, size_t len)
 {
+
+    RNP_LOG_HEX("DBG: file_dst_write:", (uint8_t*) buf, len);
     pgp_dest_file_param_t *param = (pgp_dest_file_param_t *) dst->param;
 
     if (!param) {
@@ -965,6 +977,8 @@ init_stdout_dest(pgp_dest_t *dst)
 static rnp_result_t
 mem_dst_write(pgp_dest_t *dst, const void *buf, size_t len)
 {
+
+    RNP_LOG_HEX("DBG: mem_dst_write:", (uint8_t*) buf, len);
     pgp_dest_mem_param_t *param = (pgp_dest_mem_param_t *) dst->param;
     if (!param) {
         return RNP_ERROR_BAD_PARAMETERS;
@@ -1140,6 +1154,7 @@ mem_dest_secure_memory(pgp_dest_t *dst, bool secure)
 static rnp_result_t
 null_dst_write(pgp_dest_t *dst, const void *buf, size_t len)
 {
+    RNP_LOG_HEX("DBG: null_dst_write:", (uint8_t*) buf, len);
     return RNP_SUCCESS;
 }
 
