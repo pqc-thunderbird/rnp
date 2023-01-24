@@ -461,7 +461,7 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     uint8_t nonce[PGP_AEAD_MAX_NONCE_LEN];
     size_t  nlen;
 
-    RNP_LOG("DBG: stream-parse: encrypted_start_aead_chunk: idx = %lu, last = %i\n", idx, last);
+    RNP_DBG_LOG("DBG: stream-parse: encrypted_start_aead_chunk: idx = %lu, last = %i\n", idx, last);
     /* set chunk index for additional data */
     if (!param->seipd_v2) {
         STORE64BE(param->aead_ad + param->aead_adlen - 8, idx);
@@ -496,7 +496,7 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
         add_data = add_data_seipd_v2.data();
         add_data_len = add_data_seipd_v2.size();
     }
-    RNP_LOG_HEX("stream-parse/ad", add_data, add_data_len);
+    RNP_DBG_LOG_HEX("stream-parse/ad", add_data, add_data_len);
     if (!pgp_cipher_aead_set_ad(&param->decrypt, add_data, add_data_len)) {
         RNP_LOG("failed to set ad");
         return false;
@@ -1977,7 +1977,7 @@ parse_aead_chunk_size(uint8_t chunk_size_octet, size_t *chunk_size)
         RNP_LOG("Warning: AEAD chunk bits > 16.");
     }
     *chunk_size = 1L << (chunk_size_octet + 6);
-    RNP_LOG("stream-parse: parsed chunk size octet = %u to chunklen %lu", chunk_size_octet, *chunk_size);
+    RNP_DBG_LOG("stream-parse: parsed chunk size octet = %u to chunklen %lu", chunk_size_octet, *chunk_size);
     return true;
 }
 

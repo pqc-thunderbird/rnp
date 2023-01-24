@@ -547,7 +547,7 @@ pgp_cipher_aead_set_ad(pgp_crypt_t *crypt, const uint8_t *ad, size_t len)
 bool
 pgp_cipher_aead_start(pgp_crypt_t *crypt, const uint8_t *nonce, size_t len)
 {
-        RNP_LOG("DBG: called pgp_cipher_aead_start\n");
+    RNP_DBG_LOG("DBG: called pgp_cipher_aead_start\n");
     return botan_cipher_start(crypt->aead.obj, nonce, len) == 0;
 }
 
@@ -589,9 +589,8 @@ pgp_cipher_aead_finish(pgp_crypt_t *crypt, uint8_t *out, const uint8_t *in, size
     size_t   outwr = 0;
     int      res;
 
-
-        RNP_LOG("DBG: called pgp_cipher_aead_finish\n");
-        RNP_LOG_HEX("... data = ", in, len);
+    RNP_DBG_LOG("DBG: called pgp_cipher_aead_finish\n");
+    RNP_DBG_LOG_HEX("... data = ", in, len);
 
     if (crypt->aead.decrypt) {
         size_t datalen = len - crypt->aead.taglen;

@@ -98,6 +98,16 @@ std::string hex_encode(const char *name, const uint8_t *data, size_t data_len);
         RNP_LOG(msg, keyidhex);                                                        \
     } while (0)
 
+//#define RNP_DO_DBG_LOG
+
+#ifdef RNP_DO_DBG_LOG
+#define RNP_DBG_LOG_HEX(name, data_, data_len_) RNP_LOG_HEX(name, data_, data_len_)
+#define RNP_DBG_LOG(...) RNP_LOG_FD(stderr, __VA_ARGS__)
+#else
+#define RNP_DBG_LOG_HEX(name, data_, data_len_)
+#define RNP_DBG_LOG(...)
+#endif
+
 #define RNP_LOG_HEX(name, data_, data_len_)                                            \
     do {                                                                               \
         std::vector<char> hex(data_len_ * 2 + 1);                                      \

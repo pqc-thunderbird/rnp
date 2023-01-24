@@ -2792,7 +2792,6 @@ try {
     if (!op || !op->input || !op->output) {
         return RNP_ERROR_NULL_POINTER;
     }
-    RNP_LOG("DBG: rnp_op_encrypt_execute starting\n");
     // set the default hash alg if none was specified
     if (!op->rnpctx.halg) {
         op->rnpctx.halg = DEFAULT_PGP_HASH_ALG;
@@ -3710,7 +3709,6 @@ try {
         return RNP_ERROR_NULL_POINTER;
     }
 
-    RNP_LOG("DBG: rnp_decrypt starting\n");
     rnp_op_verify_t op = NULL;
     rnp_result_t    ret = rnp_op_verify_create(&op, ffi, input, output);
     if (ret) {

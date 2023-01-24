@@ -332,7 +332,7 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
     uint64_t total;
 
     taglen = pgp_cipher_aead_tag_len(param->aalg);
-    RNP_LOG("DBG stream-write: starting new chunk %lu (is last = %i)", idx, last);
+    RNP_DBG_LOG("DBG stream-write: starting new chunk %lu (is last = %i)", idx, last);
     /* finish the previous chunk if needed*/
     if ((idx > 0) && (param->chunkout + param->cachelen > 0)) {
         if (param->cachelen + taglen > sizeof(param->cache)) {
@@ -360,7 +360,7 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
         }
 
         total = idx * param->chunklen;
-        RNP_LOG("stream-write: param->chunklen = %lu\n", param->chunklen);
+        RNP_DBG_LOG("stream-write: param->chunklen = %lu\n", param->chunklen);
         if (param->cachelen + param->chunkout) {
             if (param->chunklen < (param->cachelen + param->chunkout)) {
                 RNP_LOG("wrong last chunk state in aead");
@@ -372,7 +372,7 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
         STORE64BE(param->ad + param->adlen, total);
         param->adlen += 8;
     }
-    RNP_LOG_HEX("stream-write/ad", param->ad, param->adlen);
+    RNP_DBG_LOG_HEX("stream-write/ad", param->ad, param->adlen);
     if (!pgp_cipher_aead_set_ad(&param->encrypt, param->ad, param->adlen)) {
         RNP_LOG("failed to set ad");
         return RNP_ERROR_BAD_STATE;
@@ -852,7 +852,7 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
 
     }
     hdr[3] = param->ctx->abits; 
-    RNP_LOG("stream-write: encrypted_start_aead: chunk size octet in hdr = %u\n", param->ctx->abits);
+    RNP_DBG_LOG("stream-write: encrypted_start_aead: chunk size octet in hdr = %u\n", param->ctx->abits);
     /* generate iv */
     nlen = pgp_cipher_aead_nonce_len(param->ctx->aalg);
     uint8_t *iv_or_salt = param->iv;
@@ -866,11 +866,8 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     } catch (const std::exception &e) {
         return RNP_ERROR_RNG;
     }
-    // TODOMTG: HACK! REMOVE DEBUG CODE
-    memset(iv_or_salt, 0xFF, iv_or_salt_len); 
-    // END REMOVE DEBUG CODE
     memcpy(hdr + 4, iv_or_salt, iv_or_salt_len);
-    RNP_LOG_HEX("DBG: stream-write: iv or salt:", iv_or_salt, iv_or_salt_len);
+    RNP_DBG_LOG_HEX("DBG: stream-write: iv or salt:", iv_or_salt, iv_or_salt_len);
     /* output header */
     dst_write(param->pkt.writedst, hdr, 4 + iv_or_salt_len);
 
@@ -1713,7 +1710,7 @@ finish:
 static rnp_result_t
 literal_dst_write(pgp_dest_t *dst, const void *buf, size_t len)
 {
-    RNP_LOG_HEX("DBG: literal_dst_write:", (uint8_t*) buf, len);
+    RNP_DBG_LOG_HEX("DBG: literal_dst_write:", (uint8_t*) buf, len);
     pgp_dest_packet_param_t *param = (pgp_dest_packet_param_t *) dst->param;
 
     if (!param) {
@@ -1813,7 +1810,7 @@ process_stream_sequence(pgp_source_t *src,
     /* processing source stream */
     while (!src->eof) {
         size_t read = 0;
-        RNP_LOG("DBG: stream-write/process_stream_sequence(): calling problematic src_read()\n");
+        RNP_DBG_LOG("DBG: stream-write/process_stream_sequence(): calling problematic src_read()\n");
         if (!src_read(src, readbuf.get(), PGP_INPUT_CACHE_SIZE, &read)) {
             RNP_LOG("failed to read from source");
             return RNP_ERROR_READ;
