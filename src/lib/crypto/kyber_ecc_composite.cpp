@@ -119,6 +119,26 @@ size_t ecdh_curve_keyshare_size(pgp_curve_t curve) {
 }
 }
 
+/* copy assignment operator is used on materials struct and thus needs to be defined for this class as well */
+pgp_kyber_ecc_composite_private_key_t& pgp_kyber_ecc_composite_private_key_t::operator=(const pgp_kyber_ecc_composite_private_key_t& other)
+{
+    key_encoded_= std::vector<uint8_t>(other.key_encoded_.data(), other.key_encoded_.data() + other.key_encoded_.size()),
+    pk_alg_ = other.pk_alg_,
+    kyber_key = kyber_key_from_encoded();
+    ecc_key = ecc_key_from_encoded();
+    return *this;
+}
+
+/* copy assignment operator is used on materials struct and thus needs to be defined for this class as well */
+pgp_kyber_ecc_composite_public_key_t& pgp_kyber_ecc_composite_public_key_t::operator=(const pgp_kyber_ecc_composite_public_key_t& other)
+{
+    key_encoded_= std::vector<uint8_t>(other.key_encoded_.data(), other.key_encoded_.data() + other.key_encoded_.size()),
+    pk_alg_ = other.pk_alg_,
+    kyber_key = kyber_key_from_encoded();
+    ecc_key = ecc_key_from_encoded();
+    return *this;
+}
+
 
 pgp_kyber_ecc_composite_private_key_t::pgp_kyber_ecc_composite_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg):
     key_encoded_(key_encoded, key_encoded + key_encoded_len),
@@ -172,6 +192,76 @@ pgp_kyber_ecc_composite_private_key_t::ecc_key_from_encoded()
 }
 
 
+std::vector<uint8_t>
+pgp_kyber_ecc_composite_private_key_t::decapsulate(const uint8_t *ciphertext, size_t ciphertext_len)
+{
+    /* TODO: implement*/
+    return std::vector<uint8_t>(ciphertext, ciphertext + ciphertext_len); // do nothing
+}
+
+
+
+pgp_kyber_ecc_composite_public_key_t::pgp_kyber_ecc_composite_public_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg):
+    key_encoded_(key_encoded, key_encoded + key_encoded_len),
+    pk_alg_(pk_alg),
+    kyber_key(kyber_key_from_encoded()),
+    ecc_key(ecc_key_from_encoded())
+{
+}
+
+pgp_kyber_ecc_composite_public_key_t::pgp_kyber_ecc_composite_public_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg):
+    key_encoded_(key_encoded),
+    pk_alg_(pk_alg),
+    kyber_key(kyber_key_from_encoded()),
+    ecc_key(ecc_key_from_encoded())
+{
+}
+
+size_t
+pgp_kyber_ecc_composite_public_key_t::encoded_size(pgp_pubkey_alg_t pk_alg)
+{
+  kyber_parameter_e kyber_param = pk_alg_to_kyber_id(pk_alg);
+  pgp_curve_t curve = pk_alg_to_curve_id(pk_alg);
+  return ecdh_curve_pubkey_size(curve) + kyber_pubkey_size(kyber_param);
+}
+
+pgp_kyber_private_key_t 
+pgp_kyber_ecc_composite_public_key_t::kyber_key_from_encoded() 
+{
+    if (key_encoded_.size() != encoded_size(pk_alg_)) {
+        RNP_LOG("Kyber composite key format invalid: length mismatch");
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
+    }
+
+    // make private key from second part of the composite structure
+    size_t offset = ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
+    kyber_parameter_e param = pk_alg_to_kyber_id(pk_alg_);
+    return pgp_kyber_private_key_t(key_encoded_.data() + offset, key_encoded_.size() - offset, param);
+}
+
+std::vector<uint8_t>
+pgp_kyber_ecc_composite_public_key_t::ecc_key_from_encoded() 
+{
+    if (key_encoded_.size() != encoded_size(pk_alg_)) {
+        RNP_LOG("Kyber composite key format invalid: length mismatch");
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
+    }
+
+    // make private key from first part of the composite structure
+    size_t len = ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
+    return std::vector<uint8_t>(key_encoded_.data(), key_encoded_.data() + len);
+}
+
+pgp_kyber_ecc_encrypted_t
+pgp_kyber_ecc_composite_public_key_t::encapsulate(const uint8_t* in, size_t in_len)
+{
+    /* TODO: implement*/
+    pgp_kyber_ecc_encrypted_t result;
+    result.ciphertext = std::vector<uint8_t>(in, in + in_len); // do nothing
+    return result;
+}
+
+
 kyber_parameter_e pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg) {
     switch(pk_alg)
     {
@@ -179,9 +269,9 @@ kyber_parameter_e pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg) {
         [[fallthrough]];
       case PGP_PKA_KYBER768_P256:
         [[fallthrough]];
-      case PGP_PKA_KYBER768_BP256R1:
+      case PGP_PKA_KYBER768_BP256:
           return kyber_768;
-      case PGP_PKA_KYBER1024_BP384r1:
+      case PGP_PKA_KYBER1024_BP384:
         [[fallthrough]];
       case PGP_PKA_KYBER1024_P384:
         [[fallthrough]];
@@ -200,9 +290,9 @@ pgp_curve_t pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg) {
         return PGP_CURVE_25519;
       case PGP_PKA_KYBER768_P256:
         return PGP_CURVE_NIST_P_256;
-      case PGP_PKA_KYBER768_BP256R1:
+      case PGP_PKA_KYBER768_BP256:
           return PGP_CURVE_BP256;
-      case PGP_PKA_KYBER1024_BP384r1:
+      case PGP_PKA_KYBER1024_BP384:
         return PGP_CURVE_BP384;
       case PGP_PKA_KYBER1024_P384:
         return PGP_CURVE_NIST_P_384;
@@ -215,3 +305,9 @@ pgp_curve_t pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg) {
 }
 
 
+rnp_result_t kyber_ecc_gen_keypair(rnp::RNG *rng, pgp_kyber_ecc_key_t *key, pgp_pubkey_alg_t alg) {
+    // TODOMTG: actually generate the keys
+   key->priv = pgp_kyber_ecc_composite_private_key_t(std::vector<uint8_t>(pgp_kyber_ecc_composite_private_key_t::encoded_size(alg)), alg);
+   key->pub = pgp_kyber_ecc_composite_public_key_t(std::vector<uint8_t>(pgp_kyber_ecc_composite_public_key_t::encoded_size(alg)), alg);
+   return RNP_SUCCESS;
+}

@@ -209,8 +209,8 @@ typedef enum : uint8_t {
     PGP_PKA_KYBER1024_X448 = 26,                  /* Kyer1024 + X448 from draft-wussler-openpgp-pqc-00 */
     PGP_PKA_KYBER768_P256 = 27,                   /* Kyber768 + NIST P-256 from draft-wussler-openpgp-pqc-00 */
     PGP_PKA_KYBER1024_P384 = 28,                  /* Kyber1024 + NIST P-384 from draft-wussler-openpgp-pqc-00 */
-    PGP_PKA_KYBER768_BP256R1 = 29,                /* Kyber768 + Brainpool P256r1 from draft-wussler-openpgp-pqc-00 */
-    PGP_PKA_KYBER1024_BP384r1 = 30,               /* Kyber1024 + Brainpool P384r1 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER768_BP256 = 29,                  /* Kyber768 + Brainpool P256r1 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER1024_BP384 = 30,                 /* Kyber1024 + Brainpool P384r1 from draft-wussler-openpgp-pqc-00 */
 
     PGP_PKA_SM2 = 99,                     /* SM2 encryption/signature schemes */
 
