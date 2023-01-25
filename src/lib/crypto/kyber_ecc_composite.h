@@ -37,12 +37,11 @@
 #include <repgp/repgp_def.h>
 #include "crypto/rng.h"
 #include "crypto/kyber.h"
+#include "crypto/kyber_common.h"
 #include "crypto/ecdh.h"
 
 kyber_parameter_e pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg);
 pgp_curve_t pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg);
-
-
 
 struct kem_kyber_ecc_composite_result_t {
     std::vector<uint8_t> ciphertext;
@@ -54,62 +53,34 @@ struct kem_kyber_ecc_composite_result_t {
     const pgp_ec_key_t *        key,
 */
 
-/*
-  Botan KDF: 
-    SP800-56C
-
-    KDF from NIST SP 800-56C.
-
-    Available if BOTAN_HAS_SP800_56C is defined.
-
-*/
-
-// go: https://github.com/ProtonMail/go-crypto/pull/135/files 
-  // has kdf etc
-
-  // also https://github.com/openpgpjs/openpgpjs/tree/v6 ?
-  // https://github.com/twiss/openpgpjs/tree/v5-direct-key-sigs
-
-
-  /* MB = KMAC256(domSeparation, encKeyShares, oBits, customizationString) 
-  
-    Botan:
-    SP800_56C::kdf(uint8_t key[], size_t key_len,
-                    const uint8_t secret[], size_t secret_len,
-                    const uint8_t salt[], size_t salt_len,
-                    const uint8_t label[], size_t label_len) const
-
-    salt: domSeparation
-    secret: encKeyShares = counter || eccKeyShare || kyberKeyShare || fixedInfo
-    key_len: oBits (key=outBuf)
-    label: "KDF"
-  */
-
-
-
-
 class pgp_kyber_ecc_composite_private_key_t {
   public:
     pgp_kyber_ecc_composite_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg);
     pgp_kyber_ecc_composite_private_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg);
+    /* TODO: do we need a constructor with independent kyber/ecc keys? */
 
     std::vector<uint8_t> decapsulate(const uint8_t *ciphertext, size_t ciphertext_len);
     std::vector<uint8_t>
     get_encoded()
     {
-        // TODO encode kyber + encode ecc
-        return std::vector<uint8_t>();
+        return key_encoded_;
     };
 
+    static size_t encoded_size(pgp_pubkey_alg_t pk_alg);
+
   private:
+    pgp_kyber_private_key_t kyber_key_from_encoded();
+    std::vector<uint8_t> ecc_key_from_encoded();
+
+
+    std::vector<uint8_t> key_encoded_;
     pgp_pubkey_alg_t pk_alg_;
 
-    /* ecc part*/
-    pgp_ec_key_t ecc_priv;
-
     /* kyber part */
-    pgp_kyber_private_key_t keyber_priv;
+    pgp_kyber_private_key_t kyber_key;
 
+    /* ecc part*/
+    std::vector<uint8_t> ecc_key;
 };
 
 class pgp_kyber_ecc_composite_public_key_t {

@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /* environment variable name */
 static const char RNP_LOG_CONSOLE[] = "RNP_LOG_CONSOLE";

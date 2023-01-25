@@ -31,3 +31,7 @@
 #include "kyber.h"
 
 
+size_t kyber_privkey_size(kyber_parameter_e parameter);
+size_t kyber_pubkey_size(kyber_parameter_e parameter);
+size_t kyber_keyshare_size(kyber_parameter_e parameter);
+size_t kyber_ciphertext_size(kyber_parameter_e parameter);
