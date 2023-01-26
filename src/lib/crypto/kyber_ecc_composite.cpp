@@ -122,20 +122,26 @@ size_t ecdh_curve_keyshare_size(pgp_curve_t curve) {
 /* copy assignment operator is used on materials struct and thus needs to be defined for this class as well */
 pgp_kyber_ecc_composite_private_key_t& pgp_kyber_ecc_composite_private_key_t::operator=(const pgp_kyber_ecc_composite_private_key_t& other)
 {
-    key_encoded_= std::vector<uint8_t>(other.key_encoded_.data(), other.key_encoded_.data() + other.key_encoded_.size()),
-    pk_alg_ = other.pk_alg_,
-    kyber_key = kyber_key_from_encoded();
-    ecc_key = ecc_key_from_encoded();
+    if(key_encoded_.size())
+    {
+        key_encoded_= std::vector<uint8_t>(other.key_encoded_.data(), other.key_encoded_.data() + other.key_encoded_.size()),
+        pk_alg_ = other.pk_alg_,
+        kyber_key = kyber_key_from_encoded();
+        ecc_key = ecc_key_from_encoded();
+    }
     return *this;
 }
 
 /* copy assignment operator is used on materials struct and thus needs to be defined for this class as well */
 pgp_kyber_ecc_composite_public_key_t& pgp_kyber_ecc_composite_public_key_t::operator=(const pgp_kyber_ecc_composite_public_key_t& other)
 {
-    key_encoded_= std::vector<uint8_t>(other.key_encoded_.data(), other.key_encoded_.data() + other.key_encoded_.size()),
-    pk_alg_ = other.pk_alg_,
-    kyber_key = kyber_key_from_encoded();
-    ecc_key = ecc_key_from_encoded();
+    if(key_encoded_.size())
+    {
+        key_encoded_= std::vector<uint8_t>(other.key_encoded_.data(), other.key_encoded_.data() + other.key_encoded_.size()),
+        pk_alg_ = other.pk_alg_,
+        kyber_key = kyber_key_from_encoded();
+        ecc_key = ecc_key_from_encoded();
+    }
     return *this;
 }
 
