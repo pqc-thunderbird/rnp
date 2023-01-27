@@ -255,6 +255,13 @@ validate_pgp_key_material(const pgp_key_material_t *material, rnp::RNG *rng)
     case PGP_PKA_ELGAMAL_ENCRYPT_OR_SIGN:
         return elgamal_validate_key(&material->eg, material->secret) ? RNP_SUCCESS :
                                                                        RNP_ERROR_GENERIC;
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        return kyber_ecc_validate_key(rng, &material->kyber_ecc, material->secret);
     default:
         RNP_LOG("unknown public key algorithm: %d", (int) material->alg);
     }

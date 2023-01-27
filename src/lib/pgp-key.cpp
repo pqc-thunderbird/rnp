@@ -2743,6 +2743,12 @@ pgp_key_material_t::bits() const
         const ec_curve_desc_t *curve = get_curve_desc(ec.curve);
         return curve ? curve->bitlen : 0;
     }
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384: return 0; /* TODOMTG: anything meaninful for pqc composite? */
     default:
         RNP_LOG("Unknown public key alg: %d", (int) alg);
         return 0;

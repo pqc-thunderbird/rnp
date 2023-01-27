@@ -317,3 +317,8 @@ rnp_result_t kyber_ecc_gen_keypair(rnp::RNG *rng, pgp_kyber_ecc_key_t *key, pgp_
    key->pub = pgp_kyber_ecc_composite_public_key_t(std::vector<uint8_t>(pgp_kyber_ecc_composite_public_key_t::encoded_size(alg)), alg);
    return RNP_SUCCESS;
 }
+
+rnp_result_t kyber_ecc_validate_key(rnp::RNG *rng, const pgp_kyber_ecc_key_t *key, bool secret) {
+    // TODOMTG: implement
+    return RNP_SUCCESS;
+}

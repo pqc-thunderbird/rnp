@@ -150,6 +150,7 @@ adjust_hash_alg(rnp_keygen_crypto_params_t &crypto)
 static void
 keygen_merge_crypto_defaults(rnp_keygen_crypto_params_t &crypto)
 {
+    // TODOMTG: default to kyber-ecc for our version...?
     // default to RSA
     if (!crypto.key_alg) {
         crypto.key_alg = PGP_PKA_RSA;
@@ -254,6 +255,7 @@ get_numbits(const rnp_keygen_crypto_params_t *crypto)
     case PGP_PKA_ELGAMAL:
     case PGP_PKA_ELGAMAL_ENCRYPT_OR_SIGN:
         return crypto->elgamal.key_bitlen;
+    // TODOMTG: anything meaningful for pqc composite?
     default:
         return 0;
     }

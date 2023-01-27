@@ -143,6 +143,12 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_RESERVED_DH, "Reserved for DH (X9.42)"},
   {PGP_PKA_EDDSA, "EdDSA"},
   {PGP_PKA_SM2, "SM2"},
+  {PGP_PKA_KYBER768_X25519, "Kyber768 + X25519"},
+  {PGP_PKA_KYBER1024_X448, "Kyber1024 + X448"},
+  {PGP_PKA_KYBER768_P256, "Kyber768 + NIST P-256"},
+  {PGP_PKA_KYBER1024_P384, "Kyber1024 + NIST P-384"},
+  {PGP_PKA_KYBER768_BP256, "Kyber768 + Brainpool256"},
+  {PGP_PKA_KYBER1024_BP384, "Kyber1024 + Brainpool384"},
   {0x00, NULL},
 };
 

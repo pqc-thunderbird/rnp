@@ -133,4 +133,6 @@ typedef struct pgp_kyber_ecc_key_t {
 
 rnp_result_t kyber_ecc_gen_keypair(rnp::RNG *rng, pgp_kyber_ecc_key_t *key, pgp_pubkey_alg_t alg);
 
+rnp_result_t kyber_ecc_validate_key(rnp::RNG *rng, const pgp_kyber_ecc_key_t *key, bool secret);
+
 #endif
