@@ -90,6 +90,11 @@
 /* Salt size for hashing */
 #define PGP_SALT_SIZE 8
 
+/* max buffer size for any PQC scheme */
+#define PGP_MAX_PQC_KEY_SIZE 10000 // TODOMTG: max composite key size
+#define PGP_MAX_PQC_CT_SIZE 10000 // TODOMTG: max composite ct size
+#define PGP_MAX_PQC_SIG_SIZE 49856
+
 /* Size of the keyid */
 #define PGP_KEY_ID_SIZE 8
 

@@ -326,6 +326,19 @@ dst_print_mpi(pgp_dest_t *dst, const char *name, pgp_mpi_t *mpi, bool dumpbin)
     }
 }
 
+/* draft-wussler-openpgp-pqc-00 does not use MPIs but only fixed-length buffers */
+static void
+dst_print_pqc_buf(pgp_dest_t *dst, const char *name, uint8_t *encoded, size_t encoded_len, bool dumpbin)
+{
+    char hex[(PGP_MAX_PQC_KEY_SIZE > PGP_MAX_PQC_CT_SIZE ? PGP_MAX_PQC_KEY_SIZE : PGP_MAX_PQC_CT_SIZE)];
+    if (!dumpbin) {
+        dst_printf(dst, "%s\n", name);
+    } else {
+        vsnprinthex(hex, sizeof(hex), encoded, encoded_len);
+        dst_printf(dst, "%s, %s\n", name, hex);
+    }
+}
+
 static void
 dst_print_palg(pgp_dest_t *dst, const char *name, pgp_pubkey_alg_t palg)
 {
@@ -867,6 +880,13 @@ stream_dump_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *dst)
         dst_printf(dst, "ecdh key wrap algorithm: %d\n", (int) key.material.ec.key_wrap_alg);
         break;
     }
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        dst_print_pqc_buf(dst, "encoded pubkey", key.material.kyber_ecc.pub.get_encoded().data(), key.material.kyber_ecc.pub.get_encoded().size(), ctx->dump_mpi);
     default:
         dst_printf(dst, "unknown public key algorithm\n");
     }
@@ -1021,6 +1041,14 @@ stream_dump_pk_session_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *d
         } else {
             dst_printf(dst, "ecdh m: %d bytes\n", (int) material.ecdh.mlen);
         }
+        break;
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        dst_print_pqc_buf(dst, "kyber-ecc m", material.kyber_ecc.ct, material.kyber_ecc.ct_len, ctx->dump_mpi);
         break;
     default:
         dst_printf(dst, "unknown public key algorithm\n");
@@ -2000,6 +2028,14 @@ stream_dump_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_object *pkt)
         }
         break;
     }
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        // TODOMTG
+        break;
     default:
         break;
     }
@@ -2132,6 +2168,14 @@ stream_dump_pk_session_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_obj
             !obj_add_hex_json(material, "m", pkmaterial.ecdh.m, pkmaterial.ecdh.mlen)) {
             return RNP_ERROR_OUT_OF_MEMORY;
         }
+        break;
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        // TODOMTG
         break;
     default:;
     }

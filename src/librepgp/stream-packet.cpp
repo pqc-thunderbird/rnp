@@ -1138,6 +1138,18 @@ pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
         }
         break;
     }
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        material.kyber_ecc.ct_len = pgp_kyber_ecc_encrypted_t::encoded_size(alg);
+        if (!pkt.get(material.kyber_ecc.ct, material.kyber_ecc.ct_len)) {
+            RNP_LOG("failed to get kyber ecc ciphertext");
+            return false;
+        }
+        break;
     default:
         RNP_LOG("unknown pk alg %d", (int) alg);
         return false;
@@ -1172,6 +1184,13 @@ pgp_pk_sesskey_t::write_material(const pgp_encrypted_material_t &material)
         pktbody.add(material.eg.g);
         pktbody.add(material.eg.m);
         break;
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        pktbody.add(material.kyber_ecc.ct, material.kyber_ecc.ct_len);
     default:
         RNP_LOG("Unknown pk alg: %d", (int) alg);
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);

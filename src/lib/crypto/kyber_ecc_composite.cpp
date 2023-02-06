@@ -198,11 +198,18 @@ pgp_kyber_ecc_composite_private_key_t::ecc_key_from_encoded()
 }
 
 
-std::vector<uint8_t>
-pgp_kyber_ecc_composite_private_key_t::decapsulate(const uint8_t *ciphertext, size_t ciphertext_len)
+rnp_result_t
+pgp_kyber_ecc_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, const pgp_kyber_ecc_encrypted_t *enc)
 {
     /* TODO: implement*/
-    return std::vector<uint8_t>(ciphertext, ciphertext + ciphertext_len); // do nothing
+    memcpy(out, enc->ct, enc->ct_len);
+    *out_len = enc->ct_len;
+    return RNP_SUCCESS;
+}
+
+void
+pgp_kyber_ecc_composite_private_key_t::secure_clear() {
+    // TODOMTG: securely erase the data
 }
 
 
@@ -258,13 +265,13 @@ pgp_kyber_ecc_composite_public_key_t::ecc_key_from_encoded()
     return std::vector<uint8_t>(key_encoded_.data(), key_encoded_.data() + len);
 }
 
-pgp_kyber_ecc_encrypted_t
-pgp_kyber_ecc_composite_public_key_t::encapsulate(const uint8_t* in, size_t in_len)
+rnp_result_t
+pgp_kyber_ecc_composite_public_key_t::encrypt(pgp_kyber_ecc_encrypted_t *out, const uint8_t *in, size_t in_len)
 {
-    /* TODO: implement*/
-    pgp_kyber_ecc_encrypted_t result;
-    result.ciphertext = std::vector<uint8_t>(in, in + in_len); // do nothing
-    return result;
+    /* TODOMTG: implement*/
+    memcpy(out->ct, in, in_len);
+    out->ct_len = in_len;
+    return RNP_SUCCESS;
 }
 
 

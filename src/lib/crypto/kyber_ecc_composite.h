@@ -40,9 +40,20 @@
 #include "crypto/kyber_common.h"
 #include "crypto/ecdh.h"
 #include <memory>
+#include "mem.h"
 
 kyber_parameter_e pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg);
 pgp_curve_t pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg);
+
+
+typedef struct pgp_kyber_ecc_encrypted_t {
+    uint8_t ct[PGP_MAX_PQC_CT_SIZE];
+    size_t ct_len;
+
+    static size_t encoded_size(pgp_pubkey_alg_t pk_alg) {
+      return 100; // TODOMTG: compute and return correct sizes
+    }
+} pgp_kyber_ecc_encrypted_t;
 
 
 class pgp_kyber_ecc_composite_private_key_t {
@@ -54,7 +65,7 @@ class pgp_kyber_ecc_composite_private_key_t {
     pgp_kyber_ecc_composite_private_key_t() = default;
 
 
-    std::vector<uint8_t> decapsulate(const uint8_t *ciphertext, size_t ciphertext_len);
+    rnp_result_t decrypt(uint8_t *out, size_t *out_len, const pgp_kyber_ecc_encrypted_t *enc);
 
     std::vector<uint8_t>
     get_encoded()
@@ -66,6 +77,8 @@ class pgp_kyber_ecc_composite_private_key_t {
     {
       return pk_alg_;
     }
+
+    void secure_clear();
 
     static size_t encoded_size(pgp_pubkey_alg_t pk_alg);
 
@@ -84,10 +97,6 @@ class pgp_kyber_ecc_composite_private_key_t {
 };
 
 
-typedef struct pgp_kyber_ecc_encrypted_t {
-    std::vector<uint8_t> ciphertext;
-} pgp_kyber_ecc_encrypted_t;
-
 class pgp_kyber_ecc_composite_public_key_t {
   public:
     pgp_kyber_ecc_composite_public_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg);
@@ -96,7 +105,7 @@ class pgp_kyber_ecc_composite_public_key_t {
     pgp_kyber_ecc_composite_public_key_t& operator=(const pgp_kyber_ecc_composite_public_key_t &other);
     pgp_kyber_ecc_composite_public_key_t() = default;
 
-    pgp_kyber_ecc_encrypted_t encapsulate(const uint8_t * in, size_t in_len);
+    rnp_result_t encrypt(pgp_kyber_ecc_encrypted_t *out, const uint8_t *in, size_t in_len);
 
     std::vector<uint8_t>
     get_encoded()

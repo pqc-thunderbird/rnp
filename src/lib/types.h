@@ -212,10 +212,11 @@ typedef struct pgp_signature_material_t {
  */
 typedef struct pgp_encrypted_material_t {
     union {
-        pgp_rsa_encrypted_t  rsa;
-        pgp_eg_encrypted_t   eg;
-        pgp_sm2_encrypted_t  sm2;
-        pgp_ecdh_encrypted_t ecdh;
+        pgp_rsa_encrypted_t       rsa;
+        pgp_eg_encrypted_t        eg;
+        pgp_sm2_encrypted_t       sm2;
+        pgp_ecdh_encrypted_t      ecdh;
+        pgp_kyber_ecc_encrypted_t kyber_ecc;
     };
 } pgp_encrypted_material_t;
 
