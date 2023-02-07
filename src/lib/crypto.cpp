@@ -154,7 +154,7 @@ pgp_generate_seckey(const rnp_keygen_crypto_params_t &crypto,
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        if(kyber_ecc_gen_keypair(&crypto.ctx->rng, &seckey.material.kyber_ecc, seckey.alg)) {
+        if(pgp_kyber_ecc_composite_key_t::gen_keypair(&crypto.ctx->rng, &seckey.material.kyber_ecc, seckey.alg)) {
             RNP_LOG("failed to generate Kyber-ECC-composite key for PK alg %d", seckey.alg);
             return false;
         }

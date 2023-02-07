@@ -55,8 +55,32 @@ typedef struct pgp_kyber_ecc_encrypted_t {
     }
 } pgp_kyber_ecc_encrypted_t;
 
+struct pgp_kyber_ecc_key_t; /* forward declaration */
 
-class pgp_kyber_ecc_composite_private_key_t {
+class pgp_kyber_ecc_composite_key_t {
+
+public:
+  virtual ~pgp_kyber_ecc_composite_key_t() = 0;
+
+  static rnp_result_t gen_keypair(rnp::RNG *rng, pgp_kyber_ecc_key_t *key, pgp_pubkey_alg_t alg);
+
+  static size_t ecdh_curve_privkey_size(pgp_curve_t curve);
+  static size_t ecdh_curve_pubkey_size(pgp_curve_t curve);
+  static size_t ecdh_curve_ephemeral_size(pgp_curve_t curve);
+  static size_t ecdh_curve_keyshare_size(pgp_curve_t curve);
+  static pgp_curve_t pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg);
+  static kyber_parameter_e pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg);
+
+  bool is_initialized() {
+    return is_ecc_initialized_ && is_kyber_initialized_;
+  }
+protected: 
+  bool is_ecc_initialized_ = false;
+  bool is_kyber_initialized_ = false;
+  void initialized_or_throw();
+};
+
+class pgp_kyber_ecc_composite_private_key_t : public pgp_kyber_ecc_composite_key_t {
   public:
     pgp_kyber_ecc_composite_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg);
     pgp_kyber_ecc_composite_private_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg);
@@ -67,11 +91,7 @@ class pgp_kyber_ecc_composite_private_key_t {
 
     rnp_result_t decrypt(uint8_t *out, size_t *out_len, const pgp_kyber_ecc_encrypted_t *enc);
 
-    std::vector<uint8_t>
-    get_encoded()
-    {
-        return key_encoded_;
-    };
+    std::vector<uint8_t> get_encoded();
 
     pgp_pubkey_alg_t pk_alg(pgp_pubkey_alg_t) const 
     {
@@ -83,10 +103,9 @@ class pgp_kyber_ecc_composite_private_key_t {
     static size_t encoded_size(pgp_pubkey_alg_t pk_alg);
 
   private:
-    pgp_kyber_private_key_t kyber_key_from_encoded();
-    std::vector<uint8_t> ecc_key_from_encoded();
+    void kyber_key_from_encoded(std::vector<uint8_t> key_encoded);
+    void ecc_key_from_encoded(std::vector<uint8_t> key_encoded);
 
-    std::vector<uint8_t> key_encoded_;
     pgp_pubkey_alg_t pk_alg_;
 
     /* kyber part */
@@ -97,7 +116,7 @@ class pgp_kyber_ecc_composite_private_key_t {
 };
 
 
-class pgp_kyber_ecc_composite_public_key_t {
+class pgp_kyber_ecc_composite_public_key_t : public pgp_kyber_ecc_composite_key_t {
   public:
     pgp_kyber_ecc_composite_public_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg);
     pgp_kyber_ecc_composite_public_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg);
@@ -107,11 +126,7 @@ class pgp_kyber_ecc_composite_public_key_t {
 
     rnp_result_t encrypt(pgp_kyber_ecc_encrypted_t *out, const uint8_t *in, size_t in_len);
 
-    std::vector<uint8_t>
-    get_encoded()
-    {
-        return key_encoded_;
-    };
+    std::vector<uint8_t> get_encoded();
 
     pgp_pubkey_alg_t pk_alg(pgp_pubkey_alg_t) const 
     {
@@ -121,10 +136,9 @@ class pgp_kyber_ecc_composite_public_key_t {
     static size_t encoded_size(pgp_pubkey_alg_t pk_alg);
 
   private:
-    pgp_kyber_private_key_t kyber_key_from_encoded();
-    std::vector<uint8_t> ecc_key_from_encoded();
+    void kyber_key_from_encoded(std::vector<uint8_t> key_encoded);
+    void ecc_key_from_encoded(std::vector<uint8_t> key_encoded);
 
-    std::vector<uint8_t> key_encoded_;
     pgp_pubkey_alg_t pk_alg_;
 
     /* kyber part */
@@ -139,8 +153,6 @@ typedef struct pgp_kyber_ecc_key_t {
     pgp_kyber_ecc_composite_private_key_t priv;
     pgp_kyber_ecc_composite_public_key_t pub;
 } pgp_kyber_ecc_key_t;
-
-rnp_result_t kyber_ecc_gen_keypair(rnp::RNG *rng, pgp_kyber_ecc_key_t *key, pgp_pubkey_alg_t alg);
 
 rnp_result_t kyber_ecc_validate_key(rnp::RNG *rng, const pgp_kyber_ecc_key_t *key, bool secret);
 
