@@ -1191,6 +1191,7 @@ pgp_pk_sesskey_t::write_material(const pgp_encrypted_material_t &material)
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
         pktbody.add(material.kyber_ecc.ct, material.kyber_ecc.ct_len);
+        break;
     default:
         RNP_LOG("Unknown pk alg: %d", (int) alg);
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);

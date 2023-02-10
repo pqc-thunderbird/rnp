@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2023 MTG AG
  * All rights reserved.
@@ -28,23 +29,53 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "rnp_tests.h"
-#include "crypto/kyber.h"
+#include "ecdh_kem.h"
+#include "ec.h"
+#include "logging.h"
+#include "string.h"
 
-TEST_F(rnp_tests, test_kyber_key_function)
-{
-    kyber_parameter_e params[2] = {kyber_768, kyber_1024};
-    for(kyber_parameter_e param : params)
+ecdh_kem_public_key_t::ecdh_kem_public_key_t(uint8_t *pubkey_buf, size_t pubkey_buf_len, pgp_curve_t curve)
+    : key(std::vector<uint8_t>(pubkey_buf, pubkey_buf + pubkey_buf_len)),
+      curve(curve)
+{}
+ecdh_kem_public_key_t::ecdh_kem_public_key_t(std::vector<uint8_t> pubkey_buf, pgp_curve_t curve)
+    : key(pubkey_buf),
+      curve(curve)
+{}
+
+ecdh_kem_encap_result_t
+ecdh_kem_public_key_t::encapsulate(rnp::RNG *rng) {
+    ecdh_kem_encap_result_t ecdh_kem_result;
+
+    return ecdh_kem_result;
+}
+
+ecdh_kem_private_key_t::ecdh_kem_private_key_t(uint8_t *privkey_buf, size_t privkey_buf_len, pgp_curve_t curve)
+    : key(std::vector<uint8_t>(privkey_buf, privkey_buf + privkey_buf_len)),
+      curve(curve)
+{}
+ecdh_kem_private_key_t::ecdh_kem_private_key_t(std::vector<uint8_t> privkey_buf, pgp_curve_t curve)
+    : key(privkey_buf),
+      curve(curve)
+{}
+
+std::vector<uint8_t>
+ecdh_kem_private_key_t::decapsulate(const uint8_t *ciphertext, size_t ciphertext_len) {
+
+}
+
+rnp_result_t generate_ecdh_kem_key_pair(rnp::RNG *rng, ecdh_kem_key_t *out, pgp_curve_t curve) {
+
+    pgp_ec_key_t tmp_ec;
+    rnp_result_t result = ec_generate(rng, &tmp_ec, PGP_PKA_ECDH, curve);
+    if(result != RNP_SUCCESS)
     {
-
-    auto public_and_private_key = kyber_generate_keypair(param);
-
-    kyber_encap_result_t encap_res = public_and_private_key.first.encapsulate();
-    
-    std::vector<uint8_t> decrypted = public_and_private_key.second.decapsulate(encap_res.ciphertext.data(), encap_res.ciphertext.size());
-    assert_int_equal(encap_res.symmetric_key.size(), decrypted.size());
-    assert_memory_equal(encap_res.symmetric_key.data(), decrypted.data(), decrypted.size());
-
+        RNP_LOG("error when generating EC key pair");
+        return result;
     }
+    
+    out->priv = ecdh_kem_private_key_t(tmp_ec.x.mpi, tmp_ec.x.len, curve);
+    out->pub = ecdh_kem_public_key_t(tmp_ec.p.mpi, tmp_ec.p.len, curve);
 
+    return RNP_SUCCESS;
 }

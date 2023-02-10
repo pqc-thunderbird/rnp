@@ -76,7 +76,7 @@ kyber_generate_keypair(/*rnp::RNG *rng,*/ kyber_parameter_e kyber_param)
                                                   kyber_param));
 }
 
-kem_encap_result_t
+kyber_encap_result_t
 pgp_kyber_public_key_t::encapsulate()
 {
     System_RNG      rng;
@@ -88,7 +88,7 @@ pgp_kyber_public_key_t::encapsulate()
     secure_vector<uint8_t> data_encryption_key; // this is the key used for
     // encryption of the payload data
     kem_enc.encrypt(encap_key, data_encryption_key, key_share_size_from_kyber_param(kyber_mode_), rng);
-    kem_encap_result_t result;
+    kyber_encap_result_t result;
     result.ciphertext.insert(
       result.ciphertext.end(), encap_key.data(), encap_key.data() + encap_key.size());
     result.symmetric_key.insert(result.symmetric_key.end(),

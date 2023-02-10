@@ -27,63 +27,61 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifndef KYBER_H_
-#define KYBER_H_
+#ifndef ECDH_KEM_H_
+#define ECDH_KEM_H_
 
 #include "config.h"
 #include <rnp/rnp_def.h>
 #include <vector>
 #include <repgp/repgp_def.h>
 #include "crypto/rng.h"
+#include <memory>
 
-enum kyber_parameter_e { kyber_768, kyber_1024 };
-
-struct kyber_encap_result_t {
+struct ecdh_kem_encap_result_t {
     std::vector<uint8_t> ciphertext;
     std::vector<uint8_t> symmetric_key;
 };
 
-class pgp_kyber_private_key_t {
-  public:
-    pgp_kyber_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, kyber_parameter_e mode);
-    pgp_kyber_private_key_t(std::vector<uint8_t> const &key_encoded, kyber_parameter_e mode);
-    pgp_kyber_private_key_t() = default;
+class ecdh_kem_public_key_t {
+
+public:
+    ecdh_kem_public_key_t(uint8_t *pubkey_buf, size_t pubkey_buf_len, pgp_curve_t curve);
+    ecdh_kem_public_key_t(std::vector<uint8_t> pubkey_buf, pgp_curve_t curve);
+    ecdh_kem_public_key_t() = default;
+    std::vector<uint8_t> get_encoded() const
+    {
+        return key;
+    }
+
+    ecdh_kem_encap_result_t encapsulate(rnp::RNG *rng);
+
+private:
+    std::vector<uint8_t> key;
+    pgp_curve_t curve;
+};
+
+
+class ecdh_kem_private_key_t {
+
+public:
+    ecdh_kem_private_key_t(uint8_t *privkey_buf, size_t privkey_buf_len, pgp_curve_t curve);
+    ecdh_kem_private_key_t(std::vector<uint8_t> privkey_buf, pgp_curve_t curve);
+    ecdh_kem_private_key_t() = default;
+    std::vector<uint8_t> get_encoded() const
+    {
+        return key;
+    }
 
     std::vector<uint8_t> decapsulate(const uint8_t *ciphertext, size_t ciphertext_len);
-    std::vector<uint8_t>
-    get_encoded()
-    {
-        return key_encoded_;
-    };
 
-  private:
-    // TODOMTG: BETTER USE SECUREVECTOR HERE IN A BOTAN-SPECIFIC IMPLEMENTATIONS. OTHER RNP
-    // OBJECTS DO NOT SUPPORT ANY SECURE-MEMORY TECHNIQUE
-    std::vector<uint8_t> key_encoded_;
-    kyber_parameter_e kyber_mode_;
+private:
+    std::vector<uint8_t>  key;
+    pgp_curve_t curve;
 };
 
-class pgp_kyber_public_key_t {
-  public:
-    pgp_kyber_public_key_t(const uint8_t *key_encoded, size_t key_encoded_len, kyber_parameter_e mode);
-    pgp_kyber_public_key_t(std::vector<uint8_t> const &key_encoded, kyber_parameter_e mode);
-    pgp_kyber_public_key_t() = default;
-    kyber_encap_result_t encapsulate();
-
-    std::vector<uint8_t>
-    get_encoded()
-    {
-        return key_encoded_;
-    };
-
-  private:
-    std::vector<uint8_t> key_encoded_;
-    kyber_parameter_e kyber_mode_;
-};
-// TODOMTG: should provide RNG as parameter. But how to get the Botan rng in this case from the
-// ffi-type rng object? (defined in botan/src/lib/ffi/ffi_rng.h)
-std::pair<pgp_kyber_public_key_t, pgp_kyber_private_key_t> kyber_generate_keypair(
-  /*rnp::RNG *rng,*/ kyber_parameter_e kyber_param);
+typedef struct ecdh_kem_key_t {
+    ecdh_kem_private_key_t priv;
+    ecdh_kem_public_key_t pub;
+} ecdh_kem_key_t;
 
 #endif

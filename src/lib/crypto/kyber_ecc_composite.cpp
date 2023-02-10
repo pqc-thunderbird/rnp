@@ -258,7 +258,7 @@ pgp_kyber_ecc_composite_private_key_t::ecc_key_from_encoded(std::vector<uint8_t>
 
     // make private key from first part of the composite structure
     size_t len = ecdh_curve_privkey_size(pk_alg_to_curve_id(pk_alg_));
-    ecc_key = std::vector<uint8_t>(key_encoded.data(), key_encoded.data() + len);
+    ecc_key = ecdh_kem_private_key_t(key_encoded.data(), len, pk_alg_to_curve_id(pk_alg_));
     is_ecc_initialized_ = true;
 }
 
@@ -285,9 +285,10 @@ std::vector<uint8_t>
 pgp_kyber_ecc_composite_private_key_t::get_encoded() {
     initialized_or_throw();
     std::vector<uint8_t> result;
+    std::vector<uint8_t> ecc_key_encoded = ecc_key.get_encoded();
     std::vector<uint8_t> kyber_key_encoded = kyber_key.get_encoded();
 
-    result.insert(result.end(), std::begin(ecc_key), std::end(ecc_key));
+    result.insert(result.end(), std::begin(ecc_key_encoded), std::end(ecc_key_encoded));
     result.insert(result.end(), std::begin(kyber_key_encoded), std::end(kyber_key_encoded));
     return result;
 };
@@ -326,7 +327,7 @@ pgp_kyber_ecc_composite_public_key_t::kyber_key_from_encoded(std::vector<uint8_t
     // make private key from second part of the composite structure
     size_t offset = ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
     kyber_parameter_e param = pk_alg_to_kyber_id(pk_alg_);
-    kyber_key = pgp_kyber_private_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
+    kyber_key = pgp_kyber_public_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
     is_kyber_initialized_ = true;
 }
 
@@ -340,7 +341,7 @@ pgp_kyber_ecc_composite_public_key_t::ecc_key_from_encoded(std::vector<uint8_t> 
 
     // make private key from first part of the composite structure
     size_t len = ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
-    ecc_key = std::vector<uint8_t>(key_encoded.data(), key_encoded.data() + len);
+    ecc_key = ecdh_kem_public_key_t(key_encoded.data(), len, pk_alg_to_curve_id(pk_alg_));
     is_ecc_initialized_ = true;
 }
 
@@ -367,16 +368,16 @@ std::vector<uint8_t>
 pgp_kyber_ecc_composite_public_key_t::get_encoded() {
     initialized_or_throw();
     std::vector<uint8_t> result;
+    std::vector<uint8_t> ecc_key_encoded = ecc_key.get_encoded();
     std::vector<uint8_t> kyber_key_encoded = kyber_key.get_encoded();
 
-    result.insert(result.end(), std::begin(ecc_key), std::end(ecc_key));
+    result.insert(result.end(), std::begin(ecc_key_encoded), std::end(ecc_key_encoded));
     result.insert(result.end(), std::begin(kyber_key_encoded), std::end(kyber_key_encoded));
     return result;
 };
 
 
-
 rnp_result_t kyber_ecc_validate_key(rnp::RNG *rng, const pgp_kyber_ecc_key_t *key, bool secret) {
-    // TODOMTG: implement
+    // TODOMTG: implement as member of pgp_kyber_ecc_composite_public_key_t and pgp_kyber_ecc_composite_private_key_t
     return RNP_SUCCESS;
 }

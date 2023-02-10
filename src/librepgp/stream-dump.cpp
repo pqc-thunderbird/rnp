@@ -887,6 +887,7 @@ stream_dump_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *dst)
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
         dst_print_pqc_buf(dst, "encoded pubkey", key.material.kyber_ecc.pub.get_encoded().data(), key.material.kyber_ecc.pub.get_encoded().size(), ctx->dump_mpi);
+        break;
     default:
         dst_printf(dst, "unknown public key algorithm\n");
     }

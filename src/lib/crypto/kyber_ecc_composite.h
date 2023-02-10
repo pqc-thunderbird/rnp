@@ -39,12 +39,11 @@
 #include "crypto/kyber.h"
 #include "crypto/kyber_common.h"
 #include "crypto/ecdh.h"
+#include "crypto/ecdh_kem.h"
 #include <memory>
-#include "mem.h"
 
 kyber_parameter_e pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg);
 pgp_curve_t pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg);
-
 
 typedef struct pgp_kyber_ecc_encrypted_t {
     uint8_t ct[PGP_MAX_PQC_CT_SIZE];
@@ -112,7 +111,7 @@ class pgp_kyber_ecc_composite_private_key_t : public pgp_kyber_ecc_composite_key
     pgp_kyber_private_key_t kyber_key;
 
     /* ecc part*/
-    std::vector<uint8_t> ecc_key;
+    ecdh_kem_private_key_t ecc_key;
 };
 
 
@@ -142,12 +141,11 @@ class pgp_kyber_ecc_composite_public_key_t : public pgp_kyber_ecc_composite_key_
     pgp_pubkey_alg_t pk_alg_;
 
     /* kyber part */
-    pgp_kyber_private_key_t kyber_key;
+    pgp_kyber_public_key_t kyber_key;
 
     /* ecc part*/
-    std::vector<uint8_t> ecc_key;
+    ecdh_kem_public_key_t ecc_key;
 };
-
 
 typedef struct pgp_kyber_ecc_key_t {
     pgp_kyber_ecc_composite_private_key_t priv;
