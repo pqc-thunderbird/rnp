@@ -130,6 +130,12 @@ rnp_result_t ecdh_kem_decaps(std::vector<uint8_t>       &plaintext,  /* plaintex
                              const std::vector<uint8_t> &privkey_in,  /* private key */
                              pgp_curve_t curve);
 
+/* used for kyber-ecc composite: generate ec keys with plain sec1 encoding */
+rnp_result_t ecdh_kem_gen_keypair_sec1(rnp::RNG *           rng,
+                                       std::vector<uint8_t> &privkey, 
+                                       std::vector<uint8_t> &pubkey,
+                                       pgp_curve_t          curve);
+
 /* TODOMTG: description -> documentation  */
 /* TODOMTG: this API has to be disabled for OpenSSL backend for now */
 
