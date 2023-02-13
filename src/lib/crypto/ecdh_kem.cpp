@@ -30,7 +30,9 @@
  */
 
 #include "ecdh_kem.h"
+#include "ecdh.h"
 #include "ec.h"
+#include "types.h"
 #include "logging.h"
 #include "string.h"
 
@@ -46,7 +48,10 @@ ecdh_kem_public_key_t::ecdh_kem_public_key_t(std::vector<uint8_t> pubkey_buf, pg
 ecdh_kem_encap_result_t
 ecdh_kem_public_key_t::encapsulate(rnp::RNG *rng) {
     ecdh_kem_encap_result_t ecdh_kem_result;
-
+    rnp_result_t res = ecdh_kem_encaps(rng, ecdh_kem_result.ciphertext, ecdh_kem_result.symmetric_key, key, curve);
+    if(res != RNP_SUCCESS) {
+        throw rnp::rnp_exception(RNP_ERROR_ENCRYPT_FAILED);
+    }
     return ecdh_kem_result;
 }
 
@@ -60,22 +65,35 @@ ecdh_kem_private_key_t::ecdh_kem_private_key_t(std::vector<uint8_t> privkey_buf,
 {}
 
 std::vector<uint8_t>
-ecdh_kem_private_key_t::decapsulate(const uint8_t *ciphertext, size_t ciphertext_len) {
+ecdh_kem_private_key_t::decapsulate(const uint8_t *ciphertext, size_t ciphertext_len) 
+{
+    std::vector<uint8_t> plaintext;
+    std::vector<uint8_t> ciphertext_vec(ciphertext, ciphertext + ciphertext_len);
+    rnp_result_t res = ecdh_kem_decaps(plaintext, ciphertext_vec, key, curve);
 
+    if(res != RNP_SUCCESS) {
+        throw rnp::rnp_exception(RNP_ERROR_DECRYPT_FAILED);
+    }
+    return plaintext;
 }
 
-rnp_result_t generate_ecdh_kem_key_pair(rnp::RNG *rng, ecdh_kem_key_t *out, pgp_curve_t curve) {
+std::vector<uint8_t>
+ecdh_kem_private_key_t::decapsulate(const std::vector<uint8_t> &ciphertext) 
+{
+    return decapsulate(ciphertext.data(), ciphertext.size());
+}
 
-    pgp_ec_key_t tmp_ec;
-    rnp_result_t result = ec_generate(rng, &tmp_ec, PGP_PKA_ECDH, curve);
-    if(result != RNP_SUCCESS)
-    {
+rnp_result_t generate_ecdh_kem_key_pair(rnp::RNG *rng, ecdh_kem_key_t *out, pgp_curve_t curve) 
+{
+    std::vector<uint8_t> pub, priv;
+    rnp_result_t result = ecdh_kem_gen_keypair_sec1(rng, priv, pub, curve);
+    if(result != RNP_SUCCESS) {
         RNP_LOG("error when generating EC key pair");
         return result;
     }
     
-    out->priv = ecdh_kem_private_key_t(tmp_ec.x.mpi, tmp_ec.x.len, curve);
-    out->pub = ecdh_kem_public_key_t(tmp_ec.p.mpi, tmp_ec.p.len, curve);
+    out->priv = ecdh_kem_private_key_t(priv, curve);
+    out->pub = ecdh_kem_public_key_t(pub, curve);
 
     return RNP_SUCCESS;
 }

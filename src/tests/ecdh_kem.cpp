@@ -33,38 +33,15 @@
 #include "crypto/ecdh_kem.h"
 #include "crypto/bn.h"
 
-/* TODOMTG: wrap all this with the ECDH KEM classes and test them instead */
-TEST_F(rnp_tests, test_ecdh_kem_x25519)
+TEST_F(rnp_tests, test_ecdh_kem_direct)
 {
     std::vector<uint8_t> pubkey_buf;
     std::vector<uint8_t> privkey_buf;
-
     std::vector<uint8_t> ciphertext;
     std::vector<uint8_t> plaintext;
     std::vector<uint8_t> plaintext2;
 
-    ecdh_kem_gen_keypair_sec1(&global_ctx.rng, privkey_buf, pubkey_buf, PGP_CURVE_25519);
-
-    /* kem encaps / decaps */
-    assert_rnp_success(ecdh_kem_encaps(&global_ctx.rng, ciphertext, plaintext, pubkey_buf, PGP_CURVE_25519));
-    assert_rnp_success(ecdh_kem_decaps(plaintext2, ciphertext, privkey_buf, PGP_CURVE_25519));
-
-    /* both parties should have the same key share */
-    assert_int_equal(plaintext.size(), plaintext2.size());
-    assert_memory_equal(plaintext.data(), plaintext2.data(), plaintext.size());
-}
-
-
-TEST_F(rnp_tests, test_ecdh_kem_generic)
-{
-    std::vector<uint8_t> pubkey_buf;
-    std::vector<uint8_t> privkey_buf;
-
-    std::vector<uint8_t> ciphertext;
-    std::vector<uint8_t> plaintext;
-    std::vector<uint8_t> plaintext2;
-
-    pgp_curve_t curve_list[] = {PGP_CURVE_NIST_P_256, PGP_CURVE_NIST_P_384, PGP_CURVE_NIST_P_521, PGP_CURVE_BP256, PGP_CURVE_BP384, PGP_CURVE_BP512};
+    pgp_curve_t curve_list[] = {PGP_CURVE_NIST_P_256, PGP_CURVE_NIST_P_384, PGP_CURVE_NIST_P_521, PGP_CURVE_BP256, PGP_CURVE_BP384, PGP_CURVE_BP512, PGP_CURVE_25519};
 
     for (auto curve : curve_list) {
         ecdh_kem_gen_keypair_sec1(&global_ctx.rng, privkey_buf, pubkey_buf, curve);
@@ -76,5 +53,26 @@ TEST_F(rnp_tests, test_ecdh_kem_generic)
         /* both parties should have the same key share */
         assert_int_equal(plaintext.size(), plaintext2.size());
         assert_memory_equal(plaintext.data(), plaintext2.data(), plaintext.size());
+    }
+}
+
+TEST_F(rnp_tests, test_ecdh_kem_class)
+{
+    std::vector<uint8_t> ciphertext;
+    std::vector<uint8_t> plaintext;
+    ecdh_kem_key_t key_pair;
+    pgp_curve_t curve_list[] = {PGP_CURVE_NIST_P_256, PGP_CURVE_NIST_P_384, PGP_CURVE_NIST_P_521, PGP_CURVE_BP256, PGP_CURVE_BP384, PGP_CURVE_BP512, PGP_CURVE_25519};
+
+    for (auto curve : curve_list) {
+        /* keygen */
+        assert_rnp_success(generate_ecdh_kem_key_pair(&global_ctx.rng, &key_pair, curve));
+
+        /* kem encaps / decaps */
+        ecdh_kem_encap_result_t encap = key_pair.pub.encapsulate(&global_ctx.rng);
+        plaintext = key_pair.priv.decapsulate(encap.ciphertext);
+
+        /* both parties should have the same key share */
+        assert_int_equal(plaintext.size(), encap.symmetric_key.size());
+        assert_memory_equal(plaintext.data(), encap.symmetric_key.data(), plaintext.size());
     }
 }
