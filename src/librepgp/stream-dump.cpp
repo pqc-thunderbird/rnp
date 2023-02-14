@@ -330,12 +330,12 @@ dst_print_mpi(pgp_dest_t *dst, const char *name, pgp_mpi_t *mpi, bool dumpbin)
 static void
 dst_print_pqc_buf(pgp_dest_t *dst, const char *name, uint8_t *encoded, size_t encoded_len, bool dumpbin)
 {
-    char hex[(PGP_MAX_PQC_KEY_SIZE > PGP_MAX_PQC_CT_SIZE ? PGP_MAX_PQC_KEY_SIZE : PGP_MAX_PQC_CT_SIZE)];
+    std::vector<char> hex(2*encoded_len);
     if (!dumpbin) {
         dst_printf(dst, "%s\n", name);
     } else {
-        vsnprinthex(hex, sizeof(hex), encoded, encoded_len);
-        dst_printf(dst, "%s, %s\n", name, hex);
+        vsnprinthex(hex.data(), hex.size(), encoded, encoded_len);
+        dst_printf(dst, "%s, %s\n", name, hex.data());
     }
 }
 
@@ -886,7 +886,7 @@ stream_dump_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *dst)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        dst_print_pqc_buf(dst, "encoded pubkey", key.material.kyber_ecc.pub.get_encoded().data(), key.material.kyber_ecc.pub.get_encoded().size(), ctx->dump_mpi);
+        dst_print_pqc_buf(dst, "encoded pubkey", key.material.kyber_ecdh.pub.get_encoded().data(), key.material.kyber_ecdh.pub.get_encoded().size(), ctx->dump_mpi);
         break;
     default:
         dst_printf(dst, "unknown public key algorithm\n");
@@ -1049,7 +1049,8 @@ stream_dump_pk_session_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *d
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        dst_print_pqc_buf(dst, "kyber-ecc m", material.kyber_ecc.ct, material.kyber_ecc.ct_len, ctx->dump_mpi);
+        dst_print_pqc_buf(dst, "kyber-ecdh composite ciphertext", material.kyber_ecdh.composite_ciphertext.data(), material.kyber_ecdh.composite_ciphertext.size(), ctx->dump_mpi);
+        dst_print_pqc_buf(dst, "kyber-ecdh wrapped session key", material.kyber_ecdh.wrapped_sesskey.data(), material.kyber_ecdh.wrapped_sesskey.size(), ctx->dump_mpi);
         break;
     default:
         dst_printf(dst, "unknown public key algorithm\n");

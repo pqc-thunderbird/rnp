@@ -68,8 +68,9 @@ TEST_F(rnp_tests, test_ecdh_kem_class)
         assert_rnp_success(generate_ecdh_kem_key_pair(&global_ctx.rng, &key_pair, curve));
 
         /* kem encaps / decaps */
-        ecdh_kem_encap_result_t encap = key_pair.pub.encapsulate(&global_ctx.rng);
-        plaintext = key_pair.priv.decapsulate(encap.ciphertext);
+        ecdh_kem_encap_result_t encap;
+        assert_rnp_success(key_pair.pub.encapsulate(&global_ctx.rng, &encap));
+        assert_rnp_success(key_pair.priv.decapsulate(encap.ciphertext, plaintext));
 
         /* both parties should have the same key share */
         assert_int_equal(plaintext.size(), encap.symmetric_key.size());

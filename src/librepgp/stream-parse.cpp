@@ -1495,7 +1495,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
         declen = decbuf.size();
-        err = keymaterial->kyber_ecc.priv.decrypt(decbuf.data(), &declen, &encmaterial.kyber_ecc);
+        err = keymaterial->kyber_ecdh.priv.decrypt(decbuf.data(), &declen, &encmaterial.kyber_ecdh);
         if (err != RNP_SUCCESS) {
             RNP_LOG("Kyber ECC decryption failure");
             return false;

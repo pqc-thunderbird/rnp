@@ -591,8 +591,7 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
         /* parse mpis depending on algorithm */
         pgp_packet_body_t body(mpis, len);
 
-        uint8_t tmpbuf[PGP_MAX_PQC_KEY_SIZE];
-        size_t tmpbuf_len;
+        std::vector<uint8_t> tmpbuf;
         
         switch (key.alg) {
         case PGP_PKA_RSA:
@@ -632,12 +631,12 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
         case PGP_PKA_KYBER1024_P384: [[fallthrough]];
         case PGP_PKA_KYBER768_BP256: [[fallthrough]];
         case PGP_PKA_KYBER1024_BP384:
-            tmpbuf_len = pgp_kyber_ecc_composite_private_key_t::encoded_size(key.alg);
-            if (!body.get(tmpbuf, tmpbuf_len)) {
+            tmpbuf.resize(pgp_kyber_ecdh_composite_private_key_t::encoded_size(key.alg));
+            if (!body.get(tmpbuf.data(), tmpbuf.size())) {
                 RNP_LOG("failed to parse kyber-ecc secret key data");
                 return RNP_ERROR_BAD_FORMAT;
             }
-            key.material.kyber_ecc.priv = pgp_kyber_ecc_composite_private_key_t(tmpbuf, tmpbuf_len, key.alg);
+            key.material.kyber_ecdh.priv = pgp_kyber_ecdh_composite_private_key_t(tmpbuf.data(), tmpbuf.size(), key.alg);
             break;
         default:
             RNP_LOG("unknown pk alg : %d", (int) key.alg);
@@ -768,7 +767,7 @@ write_secret_key_mpis(pgp_packet_body_t &body, pgp_key_pkt_t &key)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        body.add(key.material.kyber_ecc.priv.get_encoded().data(), key.material.kyber_ecc.priv.get_encoded().size());
+        body.add(key.material.kyber_ecdh.priv.get_encoded().data(), key.material.kyber_ecdh.priv.get_encoded().size());
         break;
 default:
         RNP_LOG("unknown pk alg : %d", (int) key.alg);
@@ -913,7 +912,7 @@ forget_secret_key_fields(pgp_key_material_t *key)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        key->kyber_ecc.priv.secure_clear();
+        key->kyber_ecdh.priv.secure_clear();
         break;
     default:
         RNP_LOG("unknown key algorithm: %d", (int) key->alg);
@@ -1243,8 +1242,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
         return RNP_ERROR_BAD_FORMAT;
     }
 
-    uint8_t tmpbuf[PGP_MAX_PQC_KEY_SIZE];
-    size_t tmpbuf_len;
+    std::vector<uint8_t> tmpbuf;
 
     pgp_packet_body_t pkt((pgp_pkt_type_t) atag);
     /* Read the packet into memory */
@@ -1334,12 +1332,12 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-            tmpbuf_len = pgp_kyber_ecc_composite_public_key_t::encoded_size(alg);
-            if (!pkt.get(tmpbuf, tmpbuf_len)) {
+            tmpbuf.resize(pgp_kyber_ecdh_composite_public_key_t::encoded_size(alg));
+            if (!pkt.get(tmpbuf.data(), tmpbuf.size())) {
                 RNP_LOG("failed to parse kyber-ecc public key data");
                 return RNP_ERROR_BAD_FORMAT;
             }
-            material.kyber_ecc.pub = pgp_kyber_ecc_composite_public_key_t(tmpbuf, tmpbuf_len, alg);
+            material.kyber_ecdh.pub = pgp_kyber_ecdh_composite_public_key_t(tmpbuf.data(), tmpbuf.size(), alg);
             break;
     default:
         RNP_LOG("unknown key algorithm: %d", (int) alg);
@@ -1471,7 +1469,7 @@ pgp_key_pkt_t::fill_hashed_data()
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        hbody.add(material.kyber_ecc.pub.get_encoded().data(), material.kyber_ecc.pub.get_encoded().size());
+        hbody.add(material.kyber_ecdh.pub.get_encoded().data(), material.kyber_ecdh.pub.get_encoded().size());
         break;
     default:
         RNP_LOG("unknown key algorithm: %d", (int) alg);

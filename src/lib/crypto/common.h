@@ -39,7 +39,7 @@
 #include "ecdsa.h"
 #include "sm2.h"
 #include "eddsa.h"
-#include "kyber_ecc_composite.h"
+#include "kyber_ecdh_composite.h"
 /* symmetric crypto */
 #include "symmetric.h"
 /* hash */

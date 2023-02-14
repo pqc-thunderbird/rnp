@@ -29,8 +29,8 @@
  */
 
 #include "rnp_tests.h"
-#include "crypto/kyber_ecc_composite.h"
+#include "crypto/kyber_ecdh_composite.h"
 
-TEST_F(rnp_tests, test_kyber_ecc_composite_key_function)
+TEST_F(rnp_tests, test_kyber_ecdh_composite_key_function)
 {
 }

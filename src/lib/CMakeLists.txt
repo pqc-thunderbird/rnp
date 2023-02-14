@@ -250,7 +250,7 @@ elseif(CRYPTO_BACKEND_BOTAN)
     crypto/dilithium_common.cpp
     crypto/kyber_common.cpp
     crypto/kyber.cpp
-    crypto/kyber_ecc_composite.cpp
+    crypto/kyber_ecdh_composite.cpp
     crypto/ecdh_kem.cpp
   )
   if(ENABLE_SM2)

@@ -154,7 +154,7 @@ pgp_generate_seckey(const rnp_keygen_crypto_params_t &crypto,
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        if(pgp_kyber_ecc_composite_key_t::gen_keypair(&crypto.ctx->rng, &seckey.material.kyber_ecc, seckey.alg)) {
+        if(pgp_kyber_ecdh_composite_key_t::gen_keypair(&crypto.ctx->rng, &seckey.material.kyber_ecdh, seckey.alg)) {
             RNP_LOG("failed to generate Kyber-ECC-composite key for PK alg %d", seckey.alg);
             return false;
         }
@@ -207,7 +207,7 @@ key_material_equal(const pgp_key_material_t *key1, const pgp_key_material_t *key
     case PGP_PKA_KYBER1024_BP384:
         /* only compare public key part here */
         /* TODOMTG: is the default == operator sufficient? */
-        return (&key1->kyber_ecc.pub == &key2->kyber_ecc.pub);
+        return (&key1->kyber_ecdh.pub == &key2->kyber_ecdh.pub);
     default:
         RNP_LOG("unknown public key algorithm: %d", (int) key1->alg);
         return false;
@@ -261,7 +261,7 @@ validate_pgp_key_material(const pgp_key_material_t *material, rnp::RNG *rng)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        return kyber_ecc_validate_key(rng, &material->kyber_ecc, material->secret);
+        return kyber_ecdh_validate_key(rng, &material->kyber_ecdh, material->secret);
     default:
         RNP_LOG("unknown public key algorithm: %d", (int) material->alg);
     }

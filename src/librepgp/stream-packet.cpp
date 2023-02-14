@@ -1090,6 +1090,7 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
 bool
 pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
 {
+    uint8_t wrapped_key_len = 0;
     pgp_packet_body_t pkt(material_buf.data(), material_buf.size());
     switch (alg) {
     case PGP_PKA_RSA:
@@ -1144,9 +1145,18 @@ pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        material.kyber_ecc.ct_len = pgp_kyber_ecc_encrypted_t::encoded_size(alg);
-        if (!pkt.get(material.kyber_ecc.ct, material.kyber_ecc.ct_len)) {
-            RNP_LOG("failed to get kyber ecc ciphertext");
+        material.kyber_ecdh.composite_ciphertext.resize(pgp_kyber_ecdh_encrypted_t::composite_ciphertext_size(alg));
+        if (!pkt.get(material.kyber_ecdh.composite_ciphertext.data(), material.kyber_ecdh.composite_ciphertext.size())) {
+            RNP_LOG("failed to get kyber-ecdh ciphertext");
+            return false;
+        }
+        if (!pkt.get(wrapped_key_len)) {
+            RNP_LOG("failed to get kyber-ecdh wrapped session key length");
+            return false;
+        }
+        material.kyber_ecdh.wrapped_sesskey.resize(wrapped_key_len);
+        if (!pkt.get(material.kyber_ecdh.wrapped_sesskey.data(), material.kyber_ecdh.wrapped_sesskey.size())) {
+            RNP_LOG("failed to get kyber-ecdh session key");
             return false;
         }
         break;
@@ -1190,7 +1200,9 @@ pgp_pk_sesskey_t::write_material(const pgp_encrypted_material_t &material)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        pktbody.add(material.kyber_ecc.ct, material.kyber_ecc.ct_len);
+        pktbody.add(material.kyber_ecdh.composite_ciphertext.data(), material.kyber_ecdh.composite_ciphertext.size());
+        pktbody.add_byte(static_cast<uint8_t>(material.kyber_ecdh.wrapped_sesskey.size()));
+        pktbody.add(material.kyber_ecdh.wrapped_sesskey.data(), material.kyber_ecdh.wrapped_sesskey.size());
         break;
     default:
         RNP_LOG("Unknown pk alg: %d", (int) alg);

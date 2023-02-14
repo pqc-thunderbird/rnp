@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2023 MTG AG
  * All rights reserved.
@@ -45,14 +44,10 @@ ecdh_kem_public_key_t::ecdh_kem_public_key_t(std::vector<uint8_t> pubkey_buf, pg
       curve(curve)
 {}
 
-ecdh_kem_encap_result_t
-ecdh_kem_public_key_t::encapsulate(rnp::RNG *rng) {
-    ecdh_kem_encap_result_t ecdh_kem_result;
-    rnp_result_t res = ecdh_kem_encaps(rng, ecdh_kem_result.ciphertext, ecdh_kem_result.symmetric_key, key, curve);
-    if(res != RNP_SUCCESS) {
-        throw rnp::rnp_exception(RNP_ERROR_ENCRYPT_FAILED);
-    }
-    return ecdh_kem_result;
+
+rnp_result_t
+ecdh_kem_public_key_t::encapsulate(rnp::RNG *rng, ecdh_kem_encap_result_t *result) {
+    return ecdh_kem_encaps(rng, result->ciphertext, result->symmetric_key, key, curve);
 }
 
 ecdh_kem_private_key_t::ecdh_kem_private_key_t(uint8_t *privkey_buf, size_t privkey_buf_len, pgp_curve_t curve)
@@ -64,23 +59,11 @@ ecdh_kem_private_key_t::ecdh_kem_private_key_t(std::vector<uint8_t> privkey_buf,
       curve(curve)
 {}
 
-std::vector<uint8_t>
-ecdh_kem_private_key_t::decapsulate(const uint8_t *ciphertext, size_t ciphertext_len) 
-{
-    std::vector<uint8_t> plaintext;
-    std::vector<uint8_t> ciphertext_vec(ciphertext, ciphertext + ciphertext_len);
-    rnp_result_t res = ecdh_kem_decaps(plaintext, ciphertext_vec, key, curve);
 
-    if(res != RNP_SUCCESS) {
-        throw rnp::rnp_exception(RNP_ERROR_DECRYPT_FAILED);
-    }
-    return plaintext;
-}
-
-std::vector<uint8_t>
-ecdh_kem_private_key_t::decapsulate(const std::vector<uint8_t> &ciphertext) 
+rnp_result_t
+ecdh_kem_private_key_t::decapsulate(const std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &plaintext) 
 {
-    return decapsulate(ciphertext.data(), ciphertext.size());
+    return ecdh_kem_decaps(plaintext, ciphertext, key, curve);
 }
 
 rnp_result_t generate_ecdh_kem_key_pair(rnp::RNG *rng, ecdh_kem_key_t *out, pgp_curve_t curve) 

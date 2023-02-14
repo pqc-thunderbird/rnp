@@ -37,7 +37,7 @@ size_t kyber_privkey_size(kyber_parameter_e parameter) {
         case kyber_768:
             return 2400;
         case kyber_1024:
-            return 3186;
+            return 3168;
         default:
             RNP_LOG("invalid parameter given");
             throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  

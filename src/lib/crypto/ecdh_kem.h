@@ -59,7 +59,7 @@ public:
         return curve;
     }
     
-    ecdh_kem_encap_result_t encapsulate(rnp::RNG *rng);
+    rnp_result_t encapsulate(rnp::RNG *rng, ecdh_kem_encap_result_t *result);
 
 private:
     std::vector<uint8_t> key; // sec1 encoding
@@ -83,8 +83,7 @@ public:
         return curve;
     }
 
-    std::vector<uint8_t> decapsulate(const uint8_t *ciphertext, size_t ciphertext_len);
-    std::vector<uint8_t> decapsulate(const std::vector<uint8_t> &ciphertext);
+    rnp_result_t decapsulate(const std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &plaintext);
 
 private:
     std::vector<uint8_t> key; // sec1 encoding

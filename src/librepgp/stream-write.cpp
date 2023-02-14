@@ -621,8 +621,8 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        // TODOMTG: pass &handler->ctx->ctx->rng or make it available in class
-        ret = userkey->material().kyber_ecc.pub.encrypt(&material.kyber_ecc,
+        ret = userkey->material().kyber_ecdh.pub.encrypt(&handler->ctx->ctx->rng,
+                                                        &material.kyber_ecdh,
                                                         enckey.data(),
                                                         keylen + 3);
         if (ret) {
