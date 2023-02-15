@@ -200,6 +200,14 @@ pgp_pk_alg_capabilities(pgp_pubkey_alg_t alg)
     case PGP_PKA_ELGAMAL:
         return PGP_KF_ENCRYPT;
 
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        return PGP_KF_ENCRYPT;
+
     default:
         RNP_LOG("unknown pk alg: %d\n", alg);
         return PGP_KF_NONE;

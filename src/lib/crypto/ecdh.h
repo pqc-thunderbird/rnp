@@ -117,20 +117,20 @@ rnp_result_t ecdh_decrypt_pkcs5(uint8_t *                   out,
 
 
 
-/* used for kyber-ecc composite: only do the public operation and no KDF and key wrap*/
+/* used for kyber-ecdh composite: only do the public operation and no KDF and key wrap*/
 rnp_result_t ecdh_kem_encaps(rnp::RNG *                 rng,
                              std::vector<uint8_t>       &ciphertext, /* encrypted shared secret */
                              std::vector<uint8_t>       &plaintext,  /* plaintext shared secret */
                              const std::vector<uint8_t> &pubkey_in,  /* public key */
                              pgp_curve_t curve);
 
-/* used for kyber-ecc composite: only do the private operation and no KDF and key wrap*/
+/* used for kyber-ecdh composite: only do the private operation and no KDF and key wrap*/
 rnp_result_t ecdh_kem_decaps(std::vector<uint8_t>       &plaintext,  /* plaintext shared secret */
                              const std::vector<uint8_t> &ciphertext, /* encrypted shared secret */
                              const std::vector<uint8_t> &privkey_in,  /* private key */
                              pgp_curve_t curve);
 
-/* used for kyber-ecc composite: generate ec keys with plain sec1 encoding */
+/* used for kyber-ecdh composite: generate ec keys with plain sec1 encoding */
 rnp_result_t ecdh_kem_gen_keypair_sec1(rnp::RNG *           rng,
                                        std::vector<uint8_t> &privkey, 
                                        std::vector<uint8_t> &pubkey,

@@ -52,7 +52,7 @@ class pgp_kyber_private_key_t {
 
     std::vector<uint8_t> decapsulate(const uint8_t *ciphertext, size_t ciphertext_len);
     std::vector<uint8_t>
-    get_encoded()
+    get_encoded() const
     {
         return key_encoded_;
     };
@@ -72,7 +72,7 @@ class pgp_kyber_public_key_t {
     kyber_encap_result_t encapsulate();
 
     std::vector<uint8_t>
-    get_encoded()
+    get_encoded() const
     {
         return key_encoded_;
     };

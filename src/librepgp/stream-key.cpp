@@ -633,7 +633,7 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
         case PGP_PKA_KYBER1024_BP384:
             tmpbuf.resize(pgp_kyber_ecdh_composite_private_key_t::encoded_size(key.alg));
             if (!body.get(tmpbuf.data(), tmpbuf.size())) {
-                RNP_LOG("failed to parse kyber-ecc secret key data");
+                RNP_LOG("failed to parse kyber-ecdh secret key data");
                 return RNP_ERROR_BAD_FORMAT;
             }
             key.material.kyber_ecdh.priv = pgp_kyber_ecdh_composite_private_key_t(tmpbuf.data(), tmpbuf.size(), key.alg);
@@ -1334,7 +1334,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     case PGP_PKA_KYBER1024_BP384:
             tmpbuf.resize(pgp_kyber_ecdh_composite_public_key_t::encoded_size(alg));
             if (!pkt.get(tmpbuf.data(), tmpbuf.size())) {
-                RNP_LOG("failed to parse kyber-ecc public key data");
+                RNP_LOG("failed to parse kyber-ecdh public key data");
                 return RNP_ERROR_BAD_FORMAT;
             }
             material.kyber_ecdh.pub = pgp_kyber_ecdh_composite_public_key_t(tmpbuf.data(), tmpbuf.size(), alg);

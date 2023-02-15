@@ -150,7 +150,6 @@ adjust_hash_alg(rnp_keygen_crypto_params_t &crypto)
 static void
 keygen_merge_crypto_defaults(rnp_keygen_crypto_params_t &crypto)
 {
-    // TODOMTG: default to kyber-ecc for our version...?
     // default to RSA
     if (!crypto.key_alg) {
         crypto.key_alg = PGP_PKA_RSA;

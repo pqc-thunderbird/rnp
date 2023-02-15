@@ -31,14 +31,15 @@
 #include "kyber_ecdh_composite.h"
 #include "logging.h"
 #include "types.h"
+#include "ecdh_utils.h"
 #include <botan/ffi.h>
 
 pgp_kyber_ecdh_composite_key_t::~pgp_kyber_ecdh_composite_key_t() {}
 
 void
-pgp_kyber_ecdh_composite_key_t::initialized_or_throw() {
+pgp_kyber_ecdh_composite_key_t::initialized_or_throw() const {
     if(!is_initialized()) {
-        RNP_LOG("Trying to use uninitialized kyber-ecc key");
+        RNP_LOG("Trying to use uninitialized kyber-ecdh key");
         throw rnp::rnp_exception(RNP_ERROR_GENERIC);  /* TODO better return error */
     }
 }
@@ -310,6 +311,8 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
     rnp_result_t res;
     std::vector<uint8_t> ecdh_keyshare;
     std::vector<uint8_t> kyber_keyshare;
+    size_t padded_session_key_len = MAX_SESSION_KEY_SIZE;
+    std::vector<uint8_t> padded_session_key(padded_session_key_len);
 
     // Compute (eccKeyShare) := eccKem.decap(eccCipherText, eccPrivateKey)
     pgp_curve_t curve = pk_alg_to_curve_id(pk_alg_);
@@ -321,7 +324,6 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
     }
     
     // Compute (kyberKeyShare) := kyberKem.decap(kyberCipherText, kyberPrivateKey)
-    kyber_parameter_e kyber_id = pk_alg_to_kyber_id(pk_alg_);
     std::vector<uint8_t> kyber_encapsulated_keyshare = std::vector<uint8_t>(enc->composite_ciphertext.begin() + ecdh_curve_ephemeral_size(curve), enc->composite_ciphertext.end());
     kyber_keyshare = kyber_key.decapsulate(kyber_encapsulated_keyshare.data(), kyber_encapsulated_keyshare.size());
     if(res) {
@@ -333,10 +335,16 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
     std::vector<uint8_t> kek = dummy_kmac_kdf(ecdh_keyshare, kyber_keyshare); 
 
     // Compute sessionKey := AESKeyUnwrap(KEK, C) with AES-256 as per [RFC3394], aborting if the 64 bit integrity check fails
-    if(botan_key_unwrap3394(enc->wrapped_sesskey.data(), enc->wrapped_sesskey.size(), kek.data(), kek.size(), out, out_len)) {
+    if(botan_key_unwrap3394(enc->wrapped_sesskey.data(), enc->wrapped_sesskey.size(), kek.data(), kek.size(), padded_session_key.data(), &padded_session_key_len)) {
         RNP_LOG("error when unwrapping encrypted session key");
-        return res;  
+        return RNP_ERROR_DECRYPT_FAILED;
     }
+    if (!unpad_pkcs7(padded_session_key.data(), padded_session_key_len, &padded_session_key_len)) {
+        RNP_LOG("Failed to unpad key after unwrapping");
+        return RNP_ERROR_DECRYPT_FAILED;
+    }
+    memcpy(out, padded_session_key.data(), padded_session_key_len);
+    *out_len = padded_session_key_len;
 
     return RNP_SUCCESS;
 }
@@ -349,7 +357,7 @@ pgp_kyber_ecdh_composite_private_key_t::secure_clear() {
 }
 
 std::vector<uint8_t>
-pgp_kyber_ecdh_composite_private_key_t::get_encoded() {
+pgp_kyber_ecdh_composite_private_key_t::get_encoded() const {
     initialized_or_throw();
     std::vector<uint8_t> result;
     std::vector<uint8_t> ecdh_key_encoded = ecdh_key.get_encoded();
@@ -435,6 +443,9 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     rnp_result_t res;
     ecdh_kem_encap_result_t ecdh_encap;
 
+    const size_t padded_session_key_len = (session_key_len / 8 + 1) * 8;
+    std::vector<uint8_t> padded_session_key(padded_session_key_len);
+	
     // Compute (eccCipherText, eccKeyShare) := eccKem.encap(eccPublicKey)
     res = ecdh_key.encapsulate(rng, &ecdh_encap);
     if(res) {
@@ -449,20 +460,26 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     std::vector<uint8_t> kek = dummy_kmac_kdf(ecdh_encap.symmetric_key, kyber_encap.symmetric_key); 
 
     // Compute C := AESKeyWrap(KEK, sessionKey) with AES-256 as per [RFC3394] that includes a 64 bit integrity check
-    size_t c_len = ((session_key_len + 7)/8 + 1) * 8; // RFC3394 "Outputs:     Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}."
-    out->wrapped_sesskey.resize(c_len); 
-        
-    if (botan_key_wrap3394(session_key, session_key_len, kek.data(), kek.size(), out->wrapped_sesskey.data(), &c_len)) {
-        RNP_LOG("error when doing AES key wrap");
-        return res;
+    size_t c_len = ((padded_session_key_len + 7)/8 + 1) * 8; // RFC3394 "Outputs:     Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}."
+    out->wrapped_sesskey.resize(c_len);
+
+    memcpy(padded_session_key.data(), session_key, session_key_len);
+    if (!pad_pkcs7(padded_session_key.data(), padded_session_key_len, session_key_len)) {
+        RNP_LOG("error when doing padding session key for key wrap");
+        return RNP_ERROR_ENCRYPT_FAILED;
     }
+    if (botan_key_wrap3394(padded_session_key.data(), padded_session_key_len, kek.data(), kek.size(), out->wrapped_sesskey.data(), &c_len)) {
+        RNP_LOG("error when doing AES key wrap");
+        return RNP_ERROR_ENCRYPT_FAILED;
+    }
+    
     out->composite_ciphertext.assign(ecdh_encap.ciphertext.data(), ecdh_encap.ciphertext.data() + ecdh_encap.ciphertext.size());
     out->composite_ciphertext.insert(out->composite_ciphertext.end(), kyber_encap.ciphertext.begin(), kyber_encap.ciphertext.end());
     return RNP_SUCCESS;
 }
 
 std::vector<uint8_t>
-pgp_kyber_ecdh_composite_public_key_t::get_encoded() {
+pgp_kyber_ecdh_composite_public_key_t::get_encoded() const {
     initialized_or_throw();
     std::vector<uint8_t> result;
     std::vector<uint8_t> ecdh_key_encoded = ecdh_key.get_encoded();
@@ -472,7 +489,6 @@ pgp_kyber_ecdh_composite_public_key_t::get_encoded() {
     result.insert(result.end(), std::begin(kyber_key_encoded), std::end(kyber_key_encoded));
     return result;
 };
-
 
 rnp_result_t kyber_ecdh_validate_key(rnp::RNG *rng, const pgp_kyber_ecdh_key_t *key, bool secret) {
     // TODOMTG: implement as member of pgp_kyber_ecdh_composite_public_key_t and pgp_kyber_ecdh_composite_private_key_t

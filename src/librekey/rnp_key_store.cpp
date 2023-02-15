@@ -709,6 +709,14 @@ grip_hash_ec(rnp::Hash &hash, const pgp_ec_key_t &key)
     }
 }
 
+static void grip_hash_pqc_composite(rnp::Hash &hash, const pgp_kyber_ecdh_key_t &key) 
+{
+    /* simply hash the encoded pubkey */
+    /* TODOMTG: is this a good solution? */
+    std::vector<uint8_t> pubkey_enc = key.pub.get_encoded();
+    hash.add(pubkey_enc.data(), pubkey_enc.size());
+}
+
 /* keygrip is subjectKeyHash from pkcs#15 for RSA. */
 bool
 rnp_key_store_get_key_grip(const pgp_key_material_t *key, pgp_key_grip_t &grip)
@@ -745,7 +753,8 @@ rnp_key_store_get_key_grip(const pgp_key_material_t *key, pgp_key_grip_t &grip)
         case PGP_PKA_KYBER1024_P384: [[fallthrough]];
         case PGP_PKA_KYBER768_BP256: [[fallthrough]];
         case PGP_PKA_KYBER1024_BP384:
-            /* TODOMTG: grip_hash_pqc_composite */
+            grip_hash_pqc_composite(*hash, key->kyber_ecdh);
+            break;
         default:
             RNP_LOG("unsupported public-key algorithm %d", (int) key->alg);
             return false;
