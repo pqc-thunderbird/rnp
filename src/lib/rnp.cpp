@@ -726,6 +726,8 @@ rnp_result_to_string(rnp_result_t result)
         return "No suitable key";
     case RNP_ERROR_DECRYPT_FAILED:
         return "Decryption failed";
+    case RNP_ERROR_ENCRYPT_FAILED:
+        return "Encryption failed";
     case RNP_ERROR_RNG:
         return "Failure of random number generator";
     case RNP_ERROR_SIGNING_FAILED:
