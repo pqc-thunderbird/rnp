@@ -290,7 +290,7 @@ static rnp_result_t ec_generate_generic_sec1(rnp::RNG *           rng,
     if (botan_privkey_create(&botan_priv, ec_algo, ec_desc->botan_name, rng->handle()) 
         || botan_privkey_export_pubkey(&botan_pub, botan_priv))
     {
-        RNP_LOG("error when generating ECDH key");
+        RNP_LOG("error when generating EC key");
         res = RNP_ERROR_GENERIC;
         goto end;
     }
@@ -302,7 +302,7 @@ static rnp_result_t ec_generate_generic_sec1(rnp::RNG *           rng,
         || botan_pubkey_get_field(BN_HANDLE_PTR(py), botan_pub, "public_y")
         || botan_privkey_get_field(BN_HANDLE_PTR(x), botan_priv, "x"))
     {
-        RNP_LOG("error when generating ECDH key");
+        RNP_LOG("error when generating EC key");
         res = RNP_ERROR_GENERIC;
         goto end;
     }
@@ -345,13 +345,13 @@ rnp_result_t ec_generate_sec1(rnp::RNG *           rng,
 {
     if(is_edwards_curve(curve)) {
         /* TODOMTG: check that alg matches curve */
-        ec_generate_edwards_sec1(rng, privkey, pubkey, curve);
+        return ec_generate_edwards_sec1(rng, privkey, pubkey, curve);
     }
     else if(is_generic_prime_curve(curve)) {
         if(alg != PGP_PKA_ECDH && alg != PGP_PKA_ECDSA) {
             RNP_LOG("alg and curve mismatch");
             return RNP_ERROR_BAD_PARAMETERS;
         }
-        ec_generate_generic_sec1(rng, privkey, pubkey, curve, alg);
+        return ec_generate_generic_sec1(rng, privkey, pubkey, curve, alg);
     }
 }

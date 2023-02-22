@@ -28,14 +28,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RNP_KYBER_COMMON_H_
-#define RNP_KYBER_COMMON_H_
+#ifndef RNP_DILITHIUM_COMMON_H_
+#define RNP_DILITHIUM_COMMON_H_
 
-#include "kyber.h"
+#include "dilithium.h"
 
-size_t kyber_privkey_size(kyber_parameter_e parameter);
-size_t kyber_pubkey_size(kyber_parameter_e parameter);
-size_t kyber_keyshare_size(kyber_parameter_e parameter);
-size_t kyber_ciphertext_size(kyber_parameter_e parameter);
+
+size_t dilithium_privkey_size(dilithium_parameter_e parameter);
+size_t dilithium_pubkey_size(dilithium_parameter_e parameter);
+size_t dilithium_signature_size(dilithium_parameter_e parameter);
 
 #endif

@@ -53,7 +53,7 @@ pgp_kyber_ecdh_composite_key_t::gen_keypair(rnp::RNG *rng, pgp_kyber_ecdh_key_t 
 
     ecdh_kem_key_t ecdh_key_pair;
 
-    res = generate_ecdh_kem_key_pair(rng, &ecdh_key_pair, curve);
+    res = ec_key_t::generate_ecdh_kem_key_pair(rng, &ecdh_key_pair, curve);
     if(res != RNP_SUCCESS) {
         RNP_LOG("generating kyber ecdh composite key failed when generating ecdh key");
         return res;

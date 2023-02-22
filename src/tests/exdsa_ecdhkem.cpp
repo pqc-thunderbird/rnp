@@ -30,7 +30,7 @@
 
 
 #include "rnp_tests.h"
-#include "crypto/ecdh_kem.h"
+#include "crypto/exdsa_ecdhkem.h"
 #include "crypto/bn.h"
 
 TEST_F(rnp_tests, test_ecdh_kem_direct)
@@ -65,7 +65,7 @@ TEST_F(rnp_tests, test_ecdh_kem_class)
 
     for (auto curve : curve_list) {
         /* keygen */
-        assert_rnp_success(generate_ecdh_kem_key_pair(&global_ctx.rng, &key_pair, curve));
+        assert_rnp_success(ec_key_t::generate_ecdh_kem_key_pair(&global_ctx.rng, &key_pair, curve));
 
         /* kem encaps / decaps */
         ecdh_kem_encap_result_t encap;

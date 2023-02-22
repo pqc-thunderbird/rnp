@@ -29,6 +29,8 @@
  */
 
 #include "dilithium.h"
+#include "types.h"
+#include "logging.h"
 
 pgp_dilithium_public_key_t::pgp_dilithium_public_key_t(const uint8_t *       key_encoded,
                                                        size_t                key_encoded_len,
@@ -54,4 +56,40 @@ pgp_dilithium_private_key_t::pgp_dilithium_private_key_t(
   std::vector<uint8_t> const &key_encoded, dilithium_parameter_e param)
     : key_encoded_(key_encoded), dilithium_param_(param)
 {
+}
+
+size_t dilithium_privkey_size(dilithium_parameter_e parameter) {
+    switch(parameter) {
+        case dilithium_L3:
+            return 4000;
+        case dilithium_L5:
+            return 4864;
+        default:
+            RNP_LOG("invalid parameter given");
+            throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
+    }
+}
+
+size_t dilithium_pubkey_size(dilithium_parameter_e parameter) {
+    switch(parameter) {
+        case dilithium_L3:
+            return 1952;
+        case dilithium_L5:
+            return 2592;
+        default:
+            RNP_LOG("invalid parameter given");
+            throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
+    }
+}
+
+size_t dilithium_signature_size(dilithium_parameter_e parameter) {
+    switch(parameter) {
+        case dilithium_L3:
+            return 3293;
+        case dilithium_L5:
+            return 4595;
+        default: 
+            RNP_LOG("invalid parameter given");
+            throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS); 
+    }
 }

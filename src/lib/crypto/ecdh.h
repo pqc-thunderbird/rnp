@@ -136,6 +136,12 @@ rnp_result_t ecdh_kem_gen_keypair_sec1(rnp::RNG *           rng,
                                        std::vector<uint8_t> &pubkey,
                                        pgp_curve_t          curve);
 
+
+rnp_result_t exdsa_gen_keypair_sec1(rnp::RNG *           rng,
+                                    std::vector<uint8_t> &privkey, 
+                                    std::vector<uint8_t> &pubkey,
+                                    pgp_curve_t          curve);
+
 /* TODOMTG: description -> documentation  */
 /* TODOMTG: this API has to be disabled for OpenSSL backend for now */
 

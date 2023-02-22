@@ -28,8 +28,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef KYBER_ECDH_COMPOSITE_H_
-#define KYBER_ECDH_COMPOSITE_H_
+#ifndef RNP_KYBER_ECDH_COMPOSITE_H_
+#define RNP_KYBER_ECDH_COMPOSITE_H_
 
 #include "config.h"
 #include <rnp/rnp_def.h>
@@ -39,7 +39,7 @@
 #include "crypto/kyber.h"
 #include "crypto/kyber_common.h"
 #include "crypto/ecdh.h"
-#include "crypto/ecdh_kem.h"
+#include "crypto/exdsa_ecdhkem.h"
 #include <memory>
 
 struct pgp_kyber_ecdh_key_t; /* forward declaration */

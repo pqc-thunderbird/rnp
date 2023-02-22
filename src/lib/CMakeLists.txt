@@ -251,7 +251,8 @@ elseif(CRYPTO_BACKEND_BOTAN)
     crypto/kyber_common.cpp
     crypto/kyber.cpp
     crypto/kyber_ecdh_composite.cpp
-    crypto/ecdh_kem.cpp
+    crypto/dilithium_exdsa_composite.cpp
+    crypto/exdsa_ecdhkem.cpp
   )
   if(ENABLE_SM2)
     list(APPEND CRYPTO_SOURCES crypto/sm2.cpp)
