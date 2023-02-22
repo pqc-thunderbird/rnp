@@ -28,6 +28,7 @@
 #include <botan/ffi.h>
 #include "hash_botan.hpp"
 #include "ecdh.h"
+#include "ec.h"
 #include "ecdh_utils.h"
 #include "symmetric.h"
 #include "types.h"
@@ -376,133 +377,12 @@ end:
     return ret;
 }
 
-
-static rnp_result_t ecdh_kem_gen_keypair_sec1_x25519(rnp::RNG *           rng,
-                                                     std::vector<uint8_t> &privkey, 
-                                                     std::vector<uint8_t> &pubkey)
-{
-    const ec_curve_desc_t *ec_desc = get_curve_desc(PGP_CURVE_25519);
-    const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
-    botan_privkey_t botan_priv = NULL;
-    botan_pubkey_t  botan_pub = NULL;
-    rnp_result_t res = RNP_SUCCESS;
-
-    privkey.resize(curve_order);
-    pubkey.resize(curve_order);
-
-    if(botan_privkey_create(&botan_priv, "Curve25519", "", rng->handle())
-        || botan_privkey_export_pubkey(&botan_pub, botan_priv) 
-        || botan_privkey_x25519_get_privkey(botan_priv, privkey.data())
-        || botan_pubkey_x25519_get_pubkey(botan_pub, pubkey.data())) 
-    {
-        RNP_LOG("error when generating x25519 key");
-        res = RNP_ERROR_GENERIC;
-    }
-
-    botan_privkey_destroy(botan_priv);
-    botan_pubkey_destroy(botan_pub);
-
-    return res;
-}
-
-static bool is_generic_prime_curve(pgp_curve_t curve) {
-    switch(curve) {
-        case PGP_CURVE_NIST_P_256: [[fallthrough]];
-        case PGP_CURVE_NIST_P_384: [[fallthrough]];
-        case PGP_CURVE_NIST_P_521: [[fallthrough]];
-        case PGP_CURVE_BP256: [[fallthrough]];
-        case PGP_CURVE_BP384: [[fallthrough]];
-        case PGP_CURVE_BP512:
-            return true;
-        default: 
-            return false;
-    }
-}
-static rnp_result_t ecdh_kem_gen_keypair_sec1_generic(rnp::RNG *           rng,
-                                                      std::vector<uint8_t> &privkey, 
-                                                      std::vector<uint8_t> &pubkey,
-                                                      pgp_curve_t          curve)
-{
-    if(!is_generic_prime_curve(curve)) {
-        RNP_LOG("expected generic prime curve");
-        return RNP_ERROR_GENERIC;
-    }
-
-    rnp_result_t res = RNP_SUCCESS;
-
-    botan_privkey_t botan_priv = NULL;
-    botan_pubkey_t  botan_pub = NULL;
-
-    bignum_t *      px = NULL;
-    bignum_t *      py = NULL;
-    bignum_t *      x = NULL;
-    size_t offset;
-
-    const ec_curve_desc_t *ec_desc = get_curve_desc(curve);
-    const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
-
-    pubkey.resize(2 * curve_order + 1);
-    privkey.resize(curve_order);
-
-    if (botan_privkey_create(&botan_priv, "ECDH", ec_desc->botan_name, rng->handle()) 
-        || botan_privkey_export_pubkey(&botan_pub, botan_priv))
-    {
-        RNP_LOG("error when generating ECDH key");
-        res = RNP_ERROR_GENERIC;
-        goto end;
-    }
-
-    px = bn_new();
-    py = bn_new();
-    x = bn_new();
-    if (botan_pubkey_get_field(BN_HANDLE_PTR(px), botan_pub, "public_x")
-        || botan_pubkey_get_field(BN_HANDLE_PTR(py), botan_pub, "public_y")
-        || botan_privkey_get_field(BN_HANDLE_PTR(x), botan_priv, "x"))
-    {
-        RNP_LOG("error when generating ECDH key");
-        res = RNP_ERROR_GENERIC;
-        goto end;
-    }
-
-    pubkey.data()[0] = 0x04;
-
-    /* if the px/py/x elements are less than curve order, we have to zero-pad them */
-    offset =  curve_order - bn_num_bytes(*px);
-    if (offset) {
-        memset(&pubkey.data()[1], 0, offset);
-    }
-    bn_bn2bin(px, &pubkey.data()[1 + offset]);
-    offset =  curve_order - bn_num_bytes(*py);
-    if (offset) {
-        memset(&pubkey.data()[1 + curve_order], 0, offset);
-    }
-    bn_bn2bin(py, &pubkey.data()[1 + curve_order + offset]);
-
-    offset =  curve_order - bn_num_bytes(*x);
-    if (offset) {
-        memset(privkey.data(), 0, offset);
-    }
-    bn_bn2bin(x, privkey.data() + offset);
-
-end:
-        botan_privkey_destroy(botan_priv);
-        botan_pubkey_destroy(botan_pub);
-        bn_free(px);
-        bn_free(py);
-        bn_free(x);
-
-        return res;
-}
-
 rnp_result_t ecdh_kem_gen_keypair_sec1(rnp::RNG *           rng,
                                        std::vector<uint8_t> &privkey, 
                                        std::vector<uint8_t> &pubkey,
                                        pgp_curve_t          curve)
 {
-    if(curve == PGP_CURVE_25519) {
-        return ecdh_kem_gen_keypair_sec1_x25519(rng, privkey, pubkey);
-    }
-    return ecdh_kem_gen_keypair_sec1_generic(rng, privkey, pubkey, curve);
+    return ec_generate_sec1(rng, privkey, pubkey, curve, PGP_PKA_ECDH);
 }
 
 rnp_result_t ecdh_kem_encaps(rnp::RNG *                 rng,

@@ -217,8 +217,8 @@ pgp_kyber_ecdh_composite_private_key_t& pgp_kyber_ecdh_composite_private_key_t::
 {
     pgp_kyber_ecdh_composite_key_t::operator=(other);
     pk_alg_ = other.pk_alg_,
-    kyber_key = other.kyber_key;
-    ecdh_key = other.ecdh_key;
+    kyber_key_ = other.kyber_key_;
+    ecdh_key_ = other.ecdh_key_;
     
     return *this;
 }
@@ -228,8 +228,8 @@ pgp_kyber_ecdh_composite_public_key_t& pgp_kyber_ecdh_composite_public_key_t::op
 {
     pgp_kyber_ecdh_composite_key_t::operator=(other);
     pk_alg_ = other.pk_alg_,
-    kyber_key = other.kyber_key;
-    ecdh_key = other.ecdh_key;
+    kyber_key_ = other.kyber_key_;
+    ecdh_key_ = other.ecdh_key_;
     
     return *this;
 }
@@ -251,8 +251,8 @@ pgp_kyber_ecdh_composite_private_key_t::pgp_kyber_ecdh_composite_private_key_t(s
 
 pgp_kyber_ecdh_composite_private_key_t::pgp_kyber_ecdh_composite_private_key_t(std::vector<uint8_t> const &ecdh_key_encoded, std::vector<uint8_t> const &kyber_key_encoded, pgp_pubkey_alg_t pk_alg)
     : pk_alg_(pk_alg),
-      kyber_key(kyber_key_encoded, pk_alg_to_kyber_id(pk_alg)),
-      ecdh_key(ecdh_key_encoded, pk_alg_to_curve_id(pk_alg))
+      kyber_key_(kyber_key_encoded, pk_alg_to_kyber_id(pk_alg)),
+      ecdh_key_(ecdh_key_encoded, pk_alg_to_curve_id(pk_alg))
 {
     if(ecdh_curve_privkey_size(pk_alg_to_curve_id(pk_alg)) != ecdh_key_encoded.size()
         || kyber_privkey_size(pk_alg_to_kyber_id(pk_alg)) != kyber_key_encoded.size())
@@ -261,7 +261,7 @@ pgp_kyber_ecdh_composite_private_key_t::pgp_kyber_ecdh_composite_private_key_t(s
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
     is_kyber_initialized_ = true;
-    is_ecc_initialized_ = true;
+    ecdh_initialized_ = true;
 }
 
 
@@ -285,7 +285,7 @@ pgp_kyber_ecdh_composite_private_key_t::kyber_key_from_encoded(std::vector<uint8
     size_t offset = ecdh_curve_privkey_size(pk_alg_to_curve_id(pk_alg_));
     kyber_parameter_e param = pk_alg_to_kyber_id(pk_alg_);
     
-    kyber_key = pgp_kyber_private_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
+    kyber_key_ = pgp_kyber_private_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
     is_kyber_initialized_ = true;
 }
 
@@ -299,8 +299,8 @@ pgp_kyber_ecdh_composite_private_key_t::ecdh_key_from_encoded(std::vector<uint8_
 
     // make private key from first part of the composite structure
     size_t len = ecdh_curve_privkey_size(pk_alg_to_curve_id(pk_alg_));
-    ecdh_key = ecdh_kem_private_key_t(key_encoded.data(), len, pk_alg_to_curve_id(pk_alg_));
-    is_ecc_initialized_ = true;
+    ecdh_key_ = ecdh_kem_private_key_t(key_encoded.data(), len, pk_alg_to_curve_id(pk_alg_));
+    ecdh_initialized_ = true;
 }
 
 
@@ -317,7 +317,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
     // Compute (eccKeyShare) := eccKem.decap(eccCipherText, eccPrivateKey)
     pgp_curve_t curve = pk_alg_to_curve_id(pk_alg_);
     std::vector<uint8_t> ecdh_encapsulated_keyshare = std::vector<uint8_t>(enc->composite_ciphertext.data(), enc->composite_ciphertext.data() + ecdh_curve_ephemeral_size(curve));
-    res = ecdh_key.decapsulate(ecdh_encapsulated_keyshare, ecdh_keyshare);
+    res = ecdh_key_.decapsulate(ecdh_encapsulated_keyshare, ecdh_keyshare);
     if(res) {
         RNP_LOG("error when decrypting kyber-ecdh encrypted session key");
         return res;
@@ -325,7 +325,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
     
     // Compute (kyberKeyShare) := kyberKem.decap(kyberCipherText, kyberPrivateKey)
     std::vector<uint8_t> kyber_encapsulated_keyshare = std::vector<uint8_t>(enc->composite_ciphertext.begin() + ecdh_curve_ephemeral_size(curve), enc->composite_ciphertext.end());
-    kyber_keyshare = kyber_key.decapsulate(kyber_encapsulated_keyshare.data(), kyber_encapsulated_keyshare.size());
+    kyber_keyshare = kyber_key_.decapsulate(kyber_encapsulated_keyshare.data(), kyber_encapsulated_keyshare.size());
     if(res) {
         RNP_LOG("error when decrypting kyber-ecdh encrypted session key");
         return res;
@@ -352,7 +352,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
 void
 pgp_kyber_ecdh_composite_private_key_t::secure_clear() {
     // TODOMTG: securely erase the data
-    is_ecc_initialized_ = false;
+    ecdh_initialized_ = false;
     is_kyber_initialized_ = false;
 }
 
@@ -360,8 +360,8 @@ std::vector<uint8_t>
 pgp_kyber_ecdh_composite_private_key_t::get_encoded() const {
     initialized_or_throw();
     std::vector<uint8_t> result;
-    std::vector<uint8_t> ecdh_key_encoded = ecdh_key.get_encoded();
-    std::vector<uint8_t> kyber_key_encoded = kyber_key.get_encoded();
+    std::vector<uint8_t> ecdh_key_encoded = ecdh_key_.get_encoded();
+    std::vector<uint8_t> kyber_key_encoded = kyber_key_.get_encoded();
 
     result.insert(result.end(), std::begin(ecdh_key_encoded), std::end(ecdh_key_encoded));
     result.insert(result.end(), std::begin(kyber_key_encoded), std::end(kyber_key_encoded));
@@ -385,8 +385,8 @@ pgp_kyber_ecdh_composite_public_key_t::pgp_kyber_ecdh_composite_public_key_t(std
 
 pgp_kyber_ecdh_composite_public_key_t::pgp_kyber_ecdh_composite_public_key_t(std::vector<uint8_t> const &ecdh_key_encoded, std::vector<uint8_t> const &kyber_key_encoded, pgp_pubkey_alg_t pk_alg)
     : pk_alg_(pk_alg),
-      kyber_key(kyber_key_encoded, pk_alg_to_kyber_id(pk_alg)),
-      ecdh_key(ecdh_key_encoded, pk_alg_to_curve_id(pk_alg))
+      kyber_key_(kyber_key_encoded, pk_alg_to_kyber_id(pk_alg)),
+      ecdh_key_(ecdh_key_encoded, pk_alg_to_curve_id(pk_alg))
 {
     if(ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg)) != ecdh_key_encoded.size()
         || kyber_pubkey_size(pk_alg_to_kyber_id(pk_alg)) != kyber_key_encoded.size())
@@ -395,7 +395,7 @@ pgp_kyber_ecdh_composite_public_key_t::pgp_kyber_ecdh_composite_public_key_t(std
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
     is_kyber_initialized_ = true;
-    is_ecc_initialized_ = true;
+    ecdh_initialized_ = true;
 }
 
 size_t
@@ -417,7 +417,7 @@ pgp_kyber_ecdh_composite_public_key_t::kyber_key_from_encoded(std::vector<uint8_
     // make private key from second part of the composite structure
     size_t offset = ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
     kyber_parameter_e param = pk_alg_to_kyber_id(pk_alg_);
-    kyber_key = pgp_kyber_public_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
+    kyber_key_ = pgp_kyber_public_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
     is_kyber_initialized_ = true;
 }
 
@@ -431,8 +431,8 @@ pgp_kyber_ecdh_composite_public_key_t::ecdh_key_from_encoded(std::vector<uint8_t
 
     // make private key from first part of the composite structure
     size_t len = ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
-    ecdh_key = ecdh_kem_public_key_t(key_encoded.data(), len, pk_alg_to_curve_id(pk_alg_));
-    is_ecc_initialized_ = true;
+    ecdh_key_ = ecdh_kem_public_key_t(key_encoded.data(), len, pk_alg_to_curve_id(pk_alg_));
+    ecdh_initialized_ = true;
 }
 
 rnp_result_t
@@ -447,14 +447,14 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     std::vector<uint8_t> padded_session_key(padded_session_key_len);
 	
     // Compute (eccCipherText, eccKeyShare) := eccKem.encap(eccPublicKey)
-    res = ecdh_key.encapsulate(rng, &ecdh_encap);
+    res = ecdh_key_.encapsulate(rng, &ecdh_encap);
     if(res) {
         RNP_LOG("error when encapsulating with ECDH");
         return res;
     }
 
     // Compute (kyberCipherText, kyberKeyShare) := kyberKem.encap(kyberPublicKey)
-    kyber_encap_result_t kyber_encap = kyber_key.encapsulate();
+    kyber_encap_result_t kyber_encap = kyber_key_.encapsulate();
 
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
     std::vector<uint8_t> kek = dummy_kmac_kdf(ecdh_encap.symmetric_key, kyber_encap.symmetric_key); 
@@ -482,8 +482,8 @@ std::vector<uint8_t>
 pgp_kyber_ecdh_composite_public_key_t::get_encoded() const {
     initialized_or_throw();
     std::vector<uint8_t> result;
-    std::vector<uint8_t> ecdh_key_encoded = ecdh_key.get_encoded();
-    std::vector<uint8_t> kyber_key_encoded = kyber_key.get_encoded();
+    std::vector<uint8_t> ecdh_key_encoded = ecdh_key_.get_encoded();
+    std::vector<uint8_t> kyber_key_encoded = kyber_key_.get_encoded();
 
     result.insert(result.end(), std::begin(ecdh_key_encoded), std::end(ecdh_key_encoded));
     result.insert(result.end(), std::begin(kyber_key_encoded), std::end(kyber_key_encoded));

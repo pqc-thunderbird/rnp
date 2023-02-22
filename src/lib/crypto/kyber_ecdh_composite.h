@@ -42,10 +42,6 @@
 #include "crypto/ecdh_kem.h"
 #include <memory>
 
-kyber_parameter_e pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg);
-pgp_curve_t pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg);
-
-
 struct pgp_kyber_ecdh_key_t; /* forward declaration */
 
 class pgp_kyber_ecdh_composite_key_t {
@@ -63,10 +59,11 @@ public:
   static kyber_parameter_e pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg);
 
   bool is_initialized() const {
-    return is_ecc_initialized_ && is_kyber_initialized_;
+    return ecdh_initialized_ && is_kyber_initialized_;
   }
+  
 protected: 
-  bool is_ecc_initialized_ = false;
+  bool ecdh_initialized_ = false;
   bool is_kyber_initialized_ = false;
   void initialized_or_throw() const;
 };
@@ -111,10 +108,10 @@ class pgp_kyber_ecdh_composite_private_key_t : public pgp_kyber_ecdh_composite_k
     pgp_pubkey_alg_t pk_alg_;
 
     /* kyber part */
-    pgp_kyber_private_key_t kyber_key;
+    pgp_kyber_private_key_t kyber_key_;
 
     /* ecc part*/
-    ecdh_kem_private_key_t ecdh_key;
+    ecdh_kem_private_key_t ecdh_key_;
 };
 
 
@@ -145,10 +142,10 @@ class pgp_kyber_ecdh_composite_public_key_t : public pgp_kyber_ecdh_composite_ke
     pgp_pubkey_alg_t pk_alg_;
 
     /* kyber part */
-    pgp_kyber_public_key_t kyber_key;
+    pgp_kyber_public_key_t kyber_key_;
 
     /* ecc part*/
-    ecdh_kem_public_key_t ecdh_key;
+    ecdh_kem_public_key_t ecdh_key_;
 };
 
 typedef struct pgp_kyber_ecdh_key_t {

@@ -35,6 +35,7 @@
 #include <repgp/repgp_def.h>
 #include "crypto/rng.h"
 #include "crypto/mpi.h"
+#include <vector>
 
 #define MAX_CURVE_BIT_SIZE 521 // secp521r1
 /* Maximal byte size of elliptic curve order (NIST P-521) */
@@ -169,5 +170,13 @@ bool x25519_tweak_bits(pgp_ec_key_t &key);
  * @return true if bits are set correctly, and false otherwise.
  */
 bool x25519_bits_tweaked(const pgp_ec_key_t &key);
+
+
+/* TODOMTG: API description */
+rnp_result_t ec_generate_sec1(rnp::RNG *           rng,
+                              std::vector<uint8_t> &privkey, 
+                              std::vector<uint8_t> &pubkey,
+                              pgp_curve_t          curve,
+                              pgp_pubkey_alg_t     alg);
 
 #endif
