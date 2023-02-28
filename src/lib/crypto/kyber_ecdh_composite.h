@@ -59,12 +59,12 @@ public:
   static kyber_parameter_e pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg);
 
   bool is_initialized() const {
-    return ecdh_initialized_ && is_kyber_initialized_;
+    return ecdh_initialized_ && kyber_initialized_;
   }
   
 protected: 
   bool ecdh_initialized_ = false;
-  bool is_kyber_initialized_ = false;
+  bool kyber_initialized_ = false;
   void initialized_or_throw() const;
 };
 

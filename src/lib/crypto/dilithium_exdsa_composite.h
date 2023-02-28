@@ -38,8 +38,7 @@
 #include "crypto/rng.h"
 #include "crypto/dilithium.h"
 #include "crypto/dilithium_common.h"
-#include "crypto/ecdsa.h"
-#include "crypto/eddsa.h"
+#include "crypto/exdsa_ecdhkem.h"
 #include <memory>
 
 
@@ -69,8 +68,7 @@ protected:
 };
 
 typedef struct pgp_dilithium_exdsa_signature_t {
-    std::vector<uint8_t> composite_ciphertext;
-    std::vector<uint8_t> wrapped_sesskey;
+    std::vector<uint8_t> sig;
 
     static size_t composite_signature_size(pgp_pubkey_alg_t pk_alg) {
       return dilithium_signature_size(pgp_dilithium_exdsa_composite_key_t::pk_alg_to_dilithium_id(pk_alg)) 
@@ -88,7 +86,7 @@ class pgp_dilithium_exdsa_composite_private_key_t : public pgp_dilithium_exdsa_c
     pgp_dilithium_exdsa_composite_private_key_t() = default;
 
 
-    rnp_result_t sign(pgp_dilithium_exdsa_signature_t *sig, const uint8_t *msg, size_t msg_len);
+    rnp_result_t sign(pgp_dilithium_exdsa_signature_t *sig, pgp_hash_alg_t hash_alg, const uint8_t *msg, size_t msg_len);
 
     std::vector<uint8_t> get_encoded() const;
 
@@ -124,7 +122,7 @@ class pgp_dilithium_exdsa_composite_public_key_t : public pgp_dilithium_exdsa_co
     pgp_dilithium_exdsa_composite_public_key_t& operator=(const pgp_dilithium_exdsa_composite_public_key_t &other);
     pgp_dilithium_exdsa_composite_public_key_t() = default;
 
-    rnp_result_t verify(rnp::RNG *rng, pgp_dilithium_exdsa_signature_t sig);
+    rnp_result_t verify(const pgp_dilithium_exdsa_signature_t *sig, pgp_hash_alg_t hash_alg,  const uint8_t *hash, size_t hash_len) const;
 
     std::vector<uint8_t> get_encoded() const;
 

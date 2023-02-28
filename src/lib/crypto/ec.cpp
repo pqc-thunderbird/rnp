@@ -218,7 +218,7 @@ static bool is_edwards_curve(pgp_curve_t curve) {
     }
 }
 
-static rnp_result_t ec_generate_edwards_sec1(rnp::RNG *           rng,
+static rnp_result_t ec_generate_edwards(rnp::RNG *           rng,
                                              std::vector<uint8_t> &privkey, 
                                              std::vector<uint8_t> &pubkey,
                                              pgp_curve_t          curve)
@@ -345,7 +345,7 @@ rnp_result_t ec_generate_sec1(rnp::RNG *           rng,
 {
     if(is_edwards_curve(curve)) {
         /* TODOMTG: check that alg matches curve */
-        return ec_generate_edwards_sec1(rng, privkey, pubkey, curve);
+        return ec_generate_edwards(rng, privkey, pubkey, curve);
     }
     else if(is_generic_prime_curve(curve)) {
         if(alg != PGP_PKA_ECDH && alg != PGP_PKA_ECDSA) {
@@ -353,5 +353,9 @@ rnp_result_t ec_generate_sec1(rnp::RNG *           rng,
             return RNP_ERROR_BAD_PARAMETERS;
         }
         return ec_generate_generic_sec1(rng, privkey, pubkey, curve, alg);
+    }
+    else {
+        RNP_LOG("invalid curve");
+        return RNP_ERROR_BAD_PARAMETERS;     
     }
 }

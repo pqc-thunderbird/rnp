@@ -188,6 +188,7 @@ typedef struct pgp_key_material_t {
         pgp_ec_key_t  ec;
     };
     pgp_kyber_ecdh_key_t kyber_ecdh; /* non-trivial type, cannot be in a union */
+    pgp_dilithium_exdsa_key_t dilithium_exdsa; /* non-trivial type, cannot be in a union */
     
     size_t bits() const;
     size_t qbits() const;
@@ -205,6 +206,7 @@ typedef struct pgp_signature_material_t {
         pgp_ec_signature_t  ecc;
         pgp_eg_signature_t  eg;
     };
+    pgp_dilithium_exdsa_signature_t dilithium_exdsa; // non-trivial type cannot be member in union
 } pgp_signature_material_t;
 
 /**

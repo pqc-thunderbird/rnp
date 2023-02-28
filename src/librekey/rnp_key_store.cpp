@@ -709,14 +709,6 @@ grip_hash_ec(rnp::Hash &hash, const pgp_ec_key_t &key)
     }
 }
 
-static void grip_hash_pqc_composite(rnp::Hash &hash, const pgp_kyber_ecdh_key_t &key) 
-{
-    /* simply hash the encoded pubkey */
-    /* TODOMTG: is this a good solution? */
-    std::vector<uint8_t> pubkey_enc = key.pub.get_encoded();
-    hash.add(pubkey_enc.data(), pubkey_enc.size());
-}
-
 /* keygrip is subjectKeyHash from pkcs#15 for RSA. */
 bool
 rnp_key_store_get_key_grip(const pgp_key_material_t *key, pgp_key_grip_t &grip)
@@ -753,7 +745,15 @@ rnp_key_store_get_key_grip(const pgp_key_material_t *key, pgp_key_grip_t &grip)
         case PGP_PKA_KYBER1024_P384: [[fallthrough]];
         case PGP_PKA_KYBER768_BP256: [[fallthrough]];
         case PGP_PKA_KYBER1024_BP384:
-            grip_hash_pqc_composite(*hash, key->kyber_ecdh);
+            hash->add(key->kyber_ecdh.pub.get_encoded().data(), key->kyber_ecdh.pub.get_encoded().size());
+            break;
+        case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+        case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+        case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+        case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+        case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+        case PGP_PKA_DILITHIUM5_BP384:
+            hash->add(key->dilithium_exdsa.pub.get_encoded().data(), key->dilithium_exdsa.pub.get_encoded().size());
             break;
         default:
             RNP_LOG("unsupported public-key algorithm %d", (int) key->alg);

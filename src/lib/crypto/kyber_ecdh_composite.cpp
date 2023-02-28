@@ -260,7 +260,7 @@ pgp_kyber_ecdh_composite_private_key_t::pgp_kyber_ecdh_composite_private_key_t(s
         RNP_LOG("ecdh or kyber key length mismatch");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
-    is_kyber_initialized_ = true;
+    kyber_initialized_ = true;
     ecdh_initialized_ = true;
 }
 
@@ -286,7 +286,7 @@ pgp_kyber_ecdh_composite_private_key_t::kyber_key_from_encoded(std::vector<uint8
     kyber_parameter_e param = pk_alg_to_kyber_id(pk_alg_);
     
     kyber_key_ = pgp_kyber_private_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
-    is_kyber_initialized_ = true;
+    kyber_initialized_ = true;
 }
 
 void
@@ -353,7 +353,7 @@ void
 pgp_kyber_ecdh_composite_private_key_t::secure_clear() {
     // TODOMTG: securely erase the data
     ecdh_initialized_ = false;
-    is_kyber_initialized_ = false;
+    kyber_initialized_ = false;
 }
 
 std::vector<uint8_t>
@@ -394,7 +394,7 @@ pgp_kyber_ecdh_composite_public_key_t::pgp_kyber_ecdh_composite_public_key_t(std
         RNP_LOG("ecdh or kyber key length mismatch");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
-    is_kyber_initialized_ = true;
+    kyber_initialized_ = true;
     ecdh_initialized_ = true;
 }
 
@@ -418,7 +418,7 @@ pgp_kyber_ecdh_composite_public_key_t::kyber_key_from_encoded(std::vector<uint8_
     size_t offset = ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
     kyber_parameter_e param = pk_alg_to_kyber_id(pk_alg_);
     kyber_key_ = pgp_kyber_public_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
-    is_kyber_initialized_ = true;
+    kyber_initialized_ = true;
 }
 
 void

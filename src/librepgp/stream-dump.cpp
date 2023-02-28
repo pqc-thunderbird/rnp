@@ -149,6 +149,12 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_KYBER1024_P384, "Kyber1024 + NIST P-384"},
   {PGP_PKA_KYBER768_BP256, "Kyber768 + Brainpool256"},
   {PGP_PKA_KYBER1024_BP384, "Kyber1024 + Brainpool384"},
+  {PGP_PKA_DILITHIUM3_ED25519, "Dilithium3 + X25519"},
+  {PGP_PKA_DILITHIUM5_ED448, "Dilithium + X448"},
+  {PGP_PKA_DILITHIUM3_P256, "Dilithium3 + NIST P-256"},
+  {PGP_PKA_DILITHIUM5_P384, "Dilithium5 + NIST P-384"},
+  {PGP_PKA_DILITHIUM3_BP256, "Dilithium3 + Brainpool256"},
+  {PGP_PKA_DILITHIUM5_BP384, "Dilithium5 + Brainpool384"},
   {0x00, NULL},
 };
 
@@ -786,6 +792,14 @@ stream_dump_signature_pkt(rnp_dump_ctx_t *ctx, pgp_signature_t *sig, pgp_dest_t 
         dst_print_mpi(dst, "eg r", &material.eg.r, ctx->dump_mpi);
         dst_print_mpi(dst, "eg s", &material.eg.s, ctx->dump_mpi);
         break;
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        dst_print_pqc_buf(dst, "dilithium-exdsa sig", material.dilithium_exdsa.sig.data(), material.dilithium_exdsa.sig.size(), ctx->dump_mpi);
+        break;
     default:
         dst_printf(dst, "unknown algorithm\n");
     }
@@ -886,7 +900,15 @@ stream_dump_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *dst)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        dst_print_pqc_buf(dst, "encoded pubkey", key.material.kyber_ecdh.pub.get_encoded().data(), key.material.kyber_ecdh.pub.get_encoded().size(), ctx->dump_mpi);
+        dst_print_pqc_buf(dst, "kyber-ecdh encoded pubkey", key.material.kyber_ecdh.pub.get_encoded().data(), key.material.kyber_ecdh.pub.get_encoded().size(), ctx->dump_mpi);
+        break;
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        dst_print_pqc_buf(dst, "dilithium-exdsa encodced pubkey", key.material.dilithium_exdsa.pub.get_encoded().data(), key.material.dilithium_exdsa.pub.get_encoded().size(), ctx->dump_mpi);
         break;
     default:
         dst_printf(dst, "unknown public key algorithm\n");
@@ -1906,6 +1928,14 @@ stream_dump_signature_pkt_json(rnp_dump_ctx_t *       ctx,
             goto done;
         }
         break;
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        /* TODOMTG */
+        break;
     default:
         break;
     }
@@ -2037,6 +2067,14 @@ stream_dump_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_object *pkt)
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
         // TODOMTG
+        break;
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        /* TODOMTG */
         break;
     default:
         break;
