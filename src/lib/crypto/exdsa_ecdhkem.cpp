@@ -238,6 +238,7 @@ end:
     botan_pk_op_sign_destroy(sign_op);
     botan_privkey_destroy(privkey);
     botan_mp_destroy(x);
+    botan_rng_destroy(rng);
 
     return res;
     // return RNP_SUCCESS;

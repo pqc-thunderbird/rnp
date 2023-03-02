@@ -633,14 +633,14 @@ TEST_F(rnp_tests, kyber_ecdh_roundtrip)
         key_desc.hash_alg = PGP_HASH_SHA512;
         key_desc.ctx = &global_ctx;
 
-        pgp_key_pkt_t kyber_ecdh_key1;
-        assert_true(pgp_generate_seckey(key_desc, kyber_ecdh_key1, true));
+        pgp_key_pkt_t key;
+        assert_true(pgp_generate_seckey(key_desc, key, true));
 
-        pgp_fingerprint_t kyber_ecdh_key1_fpr = {};
-        assert_rnp_success(pgp_fingerprint(kyber_ecdh_key1_fpr, kyber_ecdh_key1));
+        pgp_fingerprint_t key_fpr = {};
+        assert_rnp_success(pgp_fingerprint(key_fpr, key));
 
-        assert_rnp_success(kyber_ecdh_key1.material.kyber_ecdh.pub.encrypt(&global_ctx.rng, &enc, plaintext, plaintext_len));
-        assert_rnp_success(kyber_ecdh_key1.material.kyber_ecdh.priv.decrypt(result, &result_len, &enc));
+        assert_rnp_success(key.material.kyber_ecdh.pub.encrypt(&global_ctx.rng, &enc, plaintext, plaintext_len));
+        assert_rnp_success(key.material.kyber_ecdh.priv.decrypt(result, &result_len, &enc));
 
         assert_int_equal(plaintext_len, result_len);
         assert_int_equal(memcmp(plaintext, result, result_len), 0);
@@ -652,8 +652,7 @@ TEST_F(rnp_tests, dilithium_exdsa_signverify_success)
     uint8_t              message[64];
     const pgp_hash_alg_t hash_alg = PGP_HASH_SHA512;
 
-    //pgp_pubkey_alg_t algs[] = {PGP_PKA_DILITHIUM3_ED25519, /* PGP_PKA_DILITHIUM5_ED448,*/ PGP_PKA_DILITHIUM3_P256, PGP_PKA_DILITHIUM5_P384, PGP_PKA_DILITHIUM3_BP256, PGP_PKA_DILITHIUM5_BP384};
-    pgp_pubkey_alg_t algs[] = {PGP_PKA_DILITHIUM3_ED25519};
+    pgp_pubkey_alg_t algs[] = {PGP_PKA_DILITHIUM3_ED25519, /* PGP_PKA_DILITHIUM5_ED448,*/ PGP_PKA_DILITHIUM3_P256, PGP_PKA_DILITHIUM5_P384, PGP_PKA_DILITHIUM3_BP256, PGP_PKA_DILITHIUM5_BP384};
     
     for (size_t i = 0; i < ARRAY_SIZE(algs); i++) {
         // Generate test data. Mainly to make valgrind not to complain about uninitialized data
