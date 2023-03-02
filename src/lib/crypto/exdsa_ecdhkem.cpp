@@ -183,7 +183,7 @@ ecdsa_padding_str_for(pgp_hash_alg_t hash_alg)
 
 /* NOTE hash_alg unused for edwards curves */
 rnp_result_t
-exdsa_private_key_t::sign(exdsa_signature_t *sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg)
+exdsa_private_key_t::sign(std::vector<uint8_t> &sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const
 {
     //Botan::System_RNG rng;
     //Botan::Null_RNG null_rng;
@@ -196,13 +196,13 @@ exdsa_private_key_t::sign(exdsa_signature_t *sig_out, const uint8_t *hash, size_
 
     // std::unique_ptr<Botan::PK_Signer> signer;
     if(is_edwards_curve(curve_)) {
-        sig_out->signature.resize(64);
+        sig_out.resize(64);
         size_t sig_size = 64;
         res = RNP_ERROR_SIGNING_FAILED;
         if (botan_privkey_load_ed25519(&privkey, key_.data()) != 0) { goto end; }
         if (botan_pk_op_sign_create(&sign_op, privkey, "Pure", 0) != 0) { goto end; }
         if (botan_pk_op_sign_update(sign_op, hash, hash_len) != 0) { goto end; }
-        if (botan_pk_op_sign_finish(sign_op, rng, sig_out->signature.data(), &sig_size) != 0) { goto end; }
+        if (botan_pk_op_sign_finish(sign_op, rng, sig_out.data(), &sig_size) != 0) { goto end; }
         res = RNP_SUCCESS;
 
         //Botan::secure_vector<uint8_t> sv_key(key_.data(), key_.data() + key_.size());
@@ -214,14 +214,14 @@ exdsa_private_key_t::sign(exdsa_signature_t *sig_out, const uint8_t *hash, size_
         res = RNP_ERROR_SIGNING_FAILED;
         const ec_curve_desc_t *ec_desc = get_curve_desc(curve_);
         const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
-        sig_out->signature.resize(2*curve_order);
+        sig_out.resize(2*curve_order);
         size_t sig_len = 2*curve_order;
         if (botan_mp_init(&x)) { goto end; } 
         if (botan_mp_from_bin(x, key_.data(), key_.size())) { goto end; }
         if (botan_privkey_load_ecdsa(&privkey, x, ec_desc->botan_name)) { goto end; }
         if (botan_pk_op_sign_create(&sign_op, privkey, ecdsa_padding_str_for(hash_alg), 0)) { goto end; }
         if (botan_pk_op_sign_update(sign_op, hash, hash_len)) { goto end; }
-        if (botan_pk_op_sign_finish(sign_op, rng, sig_out->signature.data(), &sig_len)) { goto end; }
+        if (botan_pk_op_sign_finish(sign_op, rng, sig_out.data(), &sig_len)) { goto end; }
 
         res = RNP_SUCCESS;
 
@@ -244,7 +244,7 @@ end:
 }
 
 rnp_result_t
-exdsa_public_key_t::verify(const exdsa_signature_t *sig, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg)
+exdsa_public_key_t::verify(const std::vector<uint8_t> &sig, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const
 {
     rnp_result_t res = RNP_SUCCESS;
     botan_pk_op_verify_t verify_op = NULL;
@@ -252,14 +252,13 @@ exdsa_public_key_t::verify(const exdsa_signature_t *sig, const uint8_t *hash, si
     botan_mp_t px = NULL;
     botan_mp_t py = NULL;
 
-
     std::unique_ptr<Botan::PK_Verifier> verifier;
     if(is_edwards_curve(curve_)) {
         res = RNP_ERROR_VERIFICATION_FAILED; 
         if (botan_pubkey_load_ed25519(&pubkey, key_.data())) { goto end; }
-        if (botan_pk_op_verify_create(&verify_op, pubkey, "Pure", 0) != 0) { goto end; }
-        if (botan_pk_op_verify_update(verify_op, hash, hash_len) != 0) { goto end; }
-        if (botan_pk_op_verify_finish(verify_op, sig->signature.data(), sig->signature.size()) != 0) { goto end; }
+        if (botan_pk_op_verify_create(&verify_op, pubkey, "Pure", 0)) { goto end; }
+        if (botan_pk_op_verify_update(verify_op, hash, hash_len)) { goto end; }
+        if (botan_pk_op_verify_finish(verify_op, sig.data(), sig.size())) { goto end; }
         res = RNP_SUCCESS;
 
         //Botan::Ed25519_PublicKey pub_key(key_);
@@ -279,8 +278,8 @@ exdsa_public_key_t::verify(const exdsa_signature_t *sig, const uint8_t *hash, si
         if (botan_mp_from_bin(py, key_.data() + 1 + curve_order, curve_order)) { goto end; }
         if (botan_pubkey_load_ecdsa(&pubkey, px, py, ec_desc->botan_name)) { goto end; }
         if (botan_pk_op_verify_create(&verify_op, pubkey, ecdsa_padding_str_for(hash_alg), 0)) { goto end; }
-        if (botan_pk_op_verify_update(verify_op, hash, hash_len) != 0) { goto end; }
-        if (botan_pk_op_verify_finish(verify_op, sig->signature.data(), sig->signature.size())) { goto end; }
+        if (botan_pk_op_verify_update(verify_op, hash, hash_len)) { goto end; }
+        if (botan_pk_op_verify_finish(verify_op, sig.data(), sig.size())) { goto end; }
         res = RNP_SUCCESS;
 
         // // format: 04 | X | Y

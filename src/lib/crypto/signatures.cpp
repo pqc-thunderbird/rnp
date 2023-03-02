@@ -181,7 +181,7 @@ signature_calculate(pgp_signature_t &     sig,
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        ret = seckey.dilithium_exdsa.priv.sign(&material.dilithium_exdsa, hash_alg, hval, hlen);
+        ret = seckey.dilithium_exdsa.priv.sign(&ctx.rng, &material.dilithium_exdsa, hash_alg, hval, hlen);
         break;
     default:
         RNP_LOG("Unsupported algorithm %d", sig.palg);

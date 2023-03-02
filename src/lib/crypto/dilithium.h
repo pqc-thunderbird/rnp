@@ -48,7 +48,7 @@ class pgp_dilithium_private_key_t {
                                 dilithium_parameter_e       param);
     pgp_dilithium_private_key_t() = default;
 
-    std::vector<uint8_t> sign(const uint8_t *msg, size_t msg_len);
+    std::vector<uint8_t> sign(const uint8_t *msg, size_t msg_len) const;
     std::vector<uint8_t>
     get_encoded() const
     {
@@ -73,7 +73,7 @@ class pgp_dilithium_public_key_t {
     bool verify_signature(const uint8_t *msg,
                           size_t         msg_len,
                           const uint8_t *signature,
-                          size_t         signature_len);
+                          size_t         signature_len) const;
 
     std::vector<uint8_t>
     get_encoded() const

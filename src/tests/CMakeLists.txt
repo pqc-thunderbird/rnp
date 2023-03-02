@@ -123,8 +123,7 @@ add_executable(rnp_tests
   user-prefs.cpp
   utils-hex2bin.cpp
   utils-rnpcfg.cpp
-  dilithium.cpp
-  kyber.cpp
+  pqc.cpp
   exdsa_ecdhkem.cpp
   issues/1030.cpp
   issues/1115.cpp

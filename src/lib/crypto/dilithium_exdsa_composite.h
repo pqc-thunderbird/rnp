@@ -86,7 +86,7 @@ class pgp_dilithium_exdsa_composite_private_key_t : public pgp_dilithium_exdsa_c
     pgp_dilithium_exdsa_composite_private_key_t() = default;
 
 
-    rnp_result_t sign(pgp_dilithium_exdsa_signature_t *sig, pgp_hash_alg_t hash_alg, const uint8_t *msg, size_t msg_len);
+    rnp_result_t sign(rnp::RNG *rng, pgp_dilithium_exdsa_signature_t *sig, pgp_hash_alg_t hash_alg, const uint8_t *msg, size_t msg_len) const;
 
     std::vector<uint8_t> get_encoded() const;
 

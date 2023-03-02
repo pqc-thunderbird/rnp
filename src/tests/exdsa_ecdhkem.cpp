@@ -91,17 +91,17 @@ TEST_F(rnp_tests, test_exdsa)
         assert_rnp_success(ec_key_t::generate_exdsa_key_pair(&global_ctx.rng, &key_pair, curve));
         
         /* sign and verify */
-        exdsa_signature_t sig;
-        assert_rnp_success(key_pair.priv.sign(&sig, msg.data(), msg.size(), hash_alg));
-        assert_rnp_success(key_pair.pub.verify(&sig, msg.data(), msg.size(), hash_alg));
+        std::vector<uint8_t> sig;
+        assert_rnp_success(key_pair.priv.sign(sig, msg.data(), msg.size(), hash_alg));
+        assert_rnp_success(key_pair.pub.verify(sig, msg.data(), msg.size(), hash_alg));
 
         /* test invalid msg / hash */
         msg.data()[4] -= 1;
-        assert_rnp_failure(key_pair.pub.verify(&sig, msg.data(), msg.size(), hash_alg));
+        assert_rnp_failure(key_pair.pub.verify(sig, msg.data(), msg.size(), hash_alg));
 
         /* test invalid sig */
         msg.data()[4] += 1;
-        sig.signature.data()[4] -= 1;
-        assert_rnp_failure(key_pair.pub.verify(&sig, msg.data(), msg.size(), hash_alg));
+        sig.data()[4] -= 1;
+        assert_rnp_failure(key_pair.pub.verify(sig, msg.data(), msg.size(), hash_alg));
     }
 }

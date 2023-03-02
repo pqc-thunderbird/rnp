@@ -308,9 +308,30 @@ pgp_dilithium_exdsa_composite_private_key_t::get_encoded() const {
 
 
 rnp_result_t
-pgp_dilithium_exdsa_composite_private_key_t::sign(pgp_dilithium_exdsa_signature_t *sig, pgp_hash_alg_t hash_alg, const uint8_t *msg, size_t msg_len)
+pgp_dilithium_exdsa_composite_private_key_t::sign(rnp::RNG *rng, pgp_dilithium_exdsa_signature_t *sig, pgp_hash_alg_t hash_alg, const uint8_t *msg, size_t msg_len) const
 {
-    return RNP_SUCCESS; /* TODOMTG */
+    initialized_or_throw();    
+    std::vector<uint8_t> dilithium_sig;
+    std::vector<uint8_t> exdsa_sig;
+    rnp_result_t ret;
+    
+    try {
+        dilithium_sig = dilithium_key_.sign(msg, msg_len);
+    }
+    catch (const std::exception &e) {
+        RNP_LOG("%s", e.what());
+        return RNP_ERROR_SIGNING_FAILED;
+    }
+    ret = exdsa_key_.sign(exdsa_sig, msg, msg_len, hash_alg);
+    if(ret != RNP_SUCCESS) {
+        RNP_LOG("exdsa sign failed");
+        return RNP_ERROR_SIGNING_FAILED;
+    }
+
+    sig->sig.assign(exdsa_sig.data(), exdsa_sig.data() + exdsa_sig.size());
+    sig->sig.insert(sig->sig.end(), dilithium_sig.begin(), dilithium_sig.end());
+
+    return RNP_SUCCESS;
 }
 
 void
@@ -372,7 +393,30 @@ pgp_dilithium_exdsa_composite_public_key_t::get_encoded() const {
 rnp_result_t
 pgp_dilithium_exdsa_composite_public_key_t::verify(const pgp_dilithium_exdsa_signature_t *sig, pgp_hash_alg_t hash_alg,  const uint8_t *hash, size_t hash_len) const
 {
-    /* TODOMTG */
+    initialized_or_throw();    
+    std::vector<uint8_t> dilithium_sig;
+    std::vector<uint8_t> exdsa_sig;
+
+    if(sig->sig.size() != sig->composite_signature_size(pk_alg_)) {
+        RNP_LOG("invalid signature size for dilithium exdsa composite algorithm %d", pk_alg_);
+        return RNP_ERROR_VERIFICATION_FAILED;
+    }
+    
+    size_t split_at = exdsa_curve_signature_size(pk_alg_to_curve_id(pk_alg_));
+    exdsa_sig = std::vector<uint8_t>(
+        sig->sig.data(),
+        sig->sig.data() + split_at
+    );
+    dilithium_sig = std::vector<uint8_t>(
+        sig->sig.data() + split_at,
+        sig->sig.data() + sig->sig.size());
+
+    if(exdsa_key_.verify(exdsa_sig, hash, hash_len, hash_alg) != RNP_SUCCESS
+        || !dilithium_key_.verify_signature(hash, hash_len, dilithium_sig.data(), dilithium_sig.size())) {
+        RNP_LOG("could not verify composite signature");
+        return RNP_ERROR_VERIFICATION_FAILED;
+    }
+
     return RNP_SUCCESS;
 }
 

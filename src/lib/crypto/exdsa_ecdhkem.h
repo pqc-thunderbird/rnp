@@ -71,10 +71,6 @@ typedef struct ecdh_kem_encap_result_t {
     std::vector<uint8_t> symmetric_key;
 } ecdh_kem_encap_result_t;
 
-typedef struct exdsa_signature_t {
-    std::vector<uint8_t> signature;
-} exdsa_signature_t;
-
 class ecdh_kem_public_key_t : public ec_key_t {
 
 public:
@@ -109,7 +105,7 @@ public:
     exdsa_public_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
     exdsa_public_key_t() = default;
 
-    rnp_result_t verify(const exdsa_signature_t *sig, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg);
+    rnp_result_t verify(const std::vector<uint8_t> &sig, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const;
 };
 
 class exdsa_private_key_t : public ec_key_t {
@@ -119,7 +115,7 @@ public:
     exdsa_private_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
     exdsa_private_key_t() = default;
 
-    rnp_result_t sign(exdsa_signature_t *sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg);
+    rnp_result_t sign(std::vector<uint8_t> &sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const;
 };
 
 typedef struct exdsa_key_t {

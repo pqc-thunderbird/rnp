@@ -52,7 +52,7 @@ rnp_dilithium_param_to_botan_dimension(dilithium_parameter_e mode)
 } // namespace
 
 std::vector<uint8_t>
-pgp_dilithium_private_key_t::sign(const uint8_t *msg, size_t msg_len)
+pgp_dilithium_private_key_t::sign(const uint8_t *msg, size_t msg_len) const
 {
     secure_vector<uint8_t> priv_sv(key_encoded_.data(),
                                    key_encoded_.data() + key_encoded_.size());
@@ -74,7 +74,7 @@ bool
 pgp_dilithium_public_key_t::verify_signature(const uint8_t *msg,
                                              size_t         msg_len,
                                              const uint8_t *signature,
-                                             size_t         signature_len)
+                                             size_t         signature_len) const
 {
     Dilithium_PublicKey pub_key(key_encoded_,
                                 rnp_dilithium_param_to_botan_dimension(dilithium_param_),
