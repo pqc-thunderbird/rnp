@@ -210,3 +210,49 @@ done:
     botan_privkey_destroy(eddsa);
     return ret;
 }
+
+
+
+/* encoded as fixed octet string in native format as required in draft-wussler-openpgp-pqc-00 */
+rnp_result_t
+eddsa_verify_native(const std::vector<uint8_t> sig,
+                    const std::vector<uint8_t> hash,
+                    const std::vector<uint8_t> key_data,
+                    pgp_curve_t                curve)
+{
+    botan_pubkey_t       eddsa_key = NULL;
+    botan_pk_op_verify_t verify_op = NULL;
+    rnp_result_t         ret = RNP_ERROR_SIGNATURE_INVALID;
+
+    /* for now only ED25519 is implemented */
+    if(curve != PGP_CURVE_ED25519)
+    {
+        RNP_LOG("invalid / unsupported curve");
+        ret = RNP_ERROR_BAD_PARAMETERS;
+        goto done;
+    }
+    /* TODOMTG: check key and sig size */
+
+    if (botan_pubkey_load_ed25519(&eddsa_key, key_data.data())) {
+        RNP_LOG("error when loading ED25519 key");
+        goto done;
+    }
+
+    if (botan_pk_op_verify_create(&verify_op, eddsa_key, "Pure", 0) != 0) {
+        RNP_LOG("error when creating pk verify op");
+        goto done;
+    }
+
+    if (botan_pk_op_verify_update(verify_op, hash.data(), hash.size()) != 0) {
+        RNP_LOG("error when updating pk verify op");
+        goto done;
+    }
+
+    if (botan_pk_op_verify_finish(verify_op, sig.data(), sig.size()) == 0) {
+        ret = RNP_SUCCESS;
+    }
+done:
+    botan_pk_op_verify_destroy(verify_op);
+    botan_pubkey_destroy(eddsa_key);
+    return ret;
+}

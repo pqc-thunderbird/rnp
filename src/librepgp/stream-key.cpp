@@ -942,6 +942,7 @@ forget_secret_key_fields(pgp_key_material_t *key)
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
         key->dilithium_exdsa.priv.secure_clear();
+        break;
     default:
         RNP_LOG("unknown key algorithm: %d", (int) key->alg);
     }

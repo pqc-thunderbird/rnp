@@ -130,14 +130,14 @@ rnp_result_t ecdh_kem_decaps(std::vector<uint8_t>       &plaintext,  /* plaintex
                              const std::vector<uint8_t> &privkey_in,  /* private key */
                              pgp_curve_t curve);
 
-/* used for kyber-ecdh composite: generate ec keys with plain sec1 encoding */
-rnp_result_t ecdh_kem_gen_keypair_sec1(rnp::RNG *           rng,
+/* used for kyber-ecdh composite: generate ec keys with plain sec1 / native encoding */
+rnp_result_t ecdh_kem_gen_keypair_native(rnp::RNG *           rng,
                                        std::vector<uint8_t> &privkey, 
                                        std::vector<uint8_t> &pubkey,
                                        pgp_curve_t          curve);
 
 
-rnp_result_t exdsa_gen_keypair_sec1(rnp::RNG *           rng,
+rnp_result_t exdsa_gen_keypair_native(rnp::RNG *           rng,
                                     std::vector<uint8_t> &privkey, 
                                     std::vector<uint8_t> &pubkey,
                                     pgp_curve_t          curve);

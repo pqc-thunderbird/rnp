@@ -44,7 +44,7 @@ TEST_F(rnp_tests, test_ecdh_kem_direct)
     pgp_curve_t curve_list[] = {PGP_CURVE_NIST_P_256, PGP_CURVE_NIST_P_384, PGP_CURVE_NIST_P_521, PGP_CURVE_BP256, PGP_CURVE_BP384, PGP_CURVE_BP512, PGP_CURVE_25519};
 
     for (auto curve : curve_list) {
-        ecdh_kem_gen_keypair_sec1(&global_ctx.rng, privkey_buf, pubkey_buf, curve);
+        ecdh_kem_gen_keypair_native(&global_ctx.rng, privkey_buf, pubkey_buf, curve);
 
         /* kem encaps / decaps */
         assert_rnp_success(ecdh_kem_encaps(&global_ctx.rng, ciphertext, plaintext, pubkey_buf, curve));
@@ -75,5 +75,33 @@ TEST_F(rnp_tests, test_ecdh_kem_class)
         /* both parties should have the same key share */
         assert_int_equal(plaintext.size(), encap.symmetric_key.size());
         assert_memory_equal(plaintext.data(), encap.symmetric_key.data(), plaintext.size());
+    }
+}
+
+TEST_F(rnp_tests, test_exdsa)
+{
+    pgp_hash_alg_t hash_alg = PGP_HASH_SHA256;
+    std::vector<uint8_t> msg(32);
+    exdsa_key_t key_pair;
+    pgp_curve_t curve_list[] = {PGP_CURVE_NIST_P_256, PGP_CURVE_NIST_P_384, PGP_CURVE_NIST_P_521, PGP_CURVE_BP256, PGP_CURVE_BP384, PGP_CURVE_BP512, PGP_CURVE_ED25519};
+    //pgp_curve_t curve_list[] = {PGP_CURVE_ED25519};
+
+    for (auto curve : curve_list) {
+        /* keygen */
+        assert_rnp_success(ec_key_t::generate_exdsa_key_pair(&global_ctx.rng, &key_pair, curve));
+        
+        /* sign and verify */
+        exdsa_signature_t sig;
+        assert_rnp_success(key_pair.priv.sign(&sig, msg.data(), msg.size(), hash_alg));
+        assert_rnp_success(key_pair.pub.verify(&sig, msg.data(), msg.size(), hash_alg));
+
+        /* test invalid msg / hash */
+        msg.data()[4] -= 1;
+        assert_rnp_failure(key_pair.pub.verify(&sig, msg.data(), msg.size(), hash_alg));
+
+        /* test invalid sig */
+        msg.data()[4] += 1;
+        sig.signature.data()[4] -= 1;
+        assert_rnp_failure(key_pair.pub.verify(&sig, msg.data(), msg.size(), hash_alg));
     }
 }

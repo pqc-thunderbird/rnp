@@ -235,20 +235,45 @@ static rnp_result_t ec_generate_edwards(rnp::RNG *           rng,
     const ec_curve_desc_t *ec_desc = get_curve_desc(curve);
     const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
     botan_privkey_t botan_priv = NULL;
-    botan_pubkey_t  botan_pub = NULL;
+    botan_pubkey_t botan_pub = NULL;
     rnp_result_t res = RNP_SUCCESS;
 
     privkey.resize(curve_order);
     pubkey.resize(curve_order);
 
-    if(botan_privkey_create(&botan_priv, botan_name, "", rng->handle())
-        || botan_privkey_export_pubkey(&botan_pub, botan_priv) 
-        || botan_privkey_x25519_get_privkey(botan_priv, privkey.data())
-        || botan_pubkey_x25519_get_pubkey(botan_pub, pubkey.data())) 
-    {
+    int botan_ret;
+    /* NOTE: botan_privkey_ed25519_get_privkey returns pub+priv key and botan_pubkey_x25519_get_pubkey only privkey */
+    if(curve == PGP_CURVE_ED25519) {
+        //botan_ret = botan_privkey_create(&botan_priv, botan_name, NULL, rng->handle());
+        //botan_ret |= botan_privkey_ed25519_get_privkey(botan_priv, pub_priv_key.data());
+        //privkey = std::vector<uint8_t>(pub_priv_key.data(), pub_priv_key.data() + curve_order);
+        //pubkey = std::vector<uint8_t>(pub_priv_key.data() + curve_order, pub_priv_key.data() + pub_priv_key.size());
+        std::vector<uint8_t> pub_priv_key(2*curve_order); // stores pub+priv
+        botan_ret = botan_privkey_create(&botan_priv, botan_name, NULL, rng->handle());
+        botan_ret |= botan_privkey_export_pubkey(&botan_pub, botan_priv);
+        botan_ret |= botan_privkey_ed25519_get_privkey(botan_priv, pub_priv_key.data());
+        botan_ret |= botan_pubkey_ed25519_get_pubkey(botan_pub, pubkey.data());
+        privkey = std::vector<uint8_t>(pub_priv_key.data(), pub_priv_key.data() + curve_order);
+    }
+    else if(curve == PGP_CURVE_25519) {
+        botan_ret = botan_privkey_create(&botan_priv, botan_name, NULL, rng->handle());
+        botan_ret |= botan_privkey_export_pubkey(&botan_pub, botan_priv);
+        botan_ret |= botan_privkey_x25519_get_privkey(botan_priv, privkey.data());
+        botan_ret |= botan_pubkey_x25519_get_pubkey(botan_pub, pubkey.data());
+    }
+    else {
+        RNP_LOG("invalid curve");
+        return RNP_ERROR_BAD_PARAMETERS;
+    }
+    if(botan_ret) {
         RNP_LOG("error when generating edwards key");
         res = RNP_ERROR_GENERIC;
     }
+    if(!botan_pub || botan_pubkey_check_key(botan_pub, rng->handle(), 0)) { 
+        RNP_LOG("No valid public key created");
+        return RNP_ERROR_KEY_GENERATION;
+    }
+    
 
     botan_privkey_destroy(botan_priv);
     botan_pubkey_destroy(botan_pub);
@@ -257,11 +282,11 @@ static rnp_result_t ec_generate_edwards(rnp::RNG *           rng,
 }
 
 /* TODOMTG: can try to share code with ec_generate */
-static rnp_result_t ec_generate_generic_sec1(rnp::RNG *           rng,
-                                             std::vector<uint8_t> &privkey, 
-                                             std::vector<uint8_t> &pubkey,
-                                             pgp_curve_t          curve,
-                                             pgp_pubkey_alg_t     alg)
+static rnp_result_t ec_generate_generic_native(rnp::RNG *           rng,
+                                               std::vector<uint8_t> &privkey, 
+                                               std::vector<uint8_t> &pubkey,
+                                               pgp_curve_t          curve,
+                                               pgp_pubkey_alg_t     alg)
 {
     if(!is_generic_prime_curve(curve)) {
         RNP_LOG("expected generic prime curve");
@@ -337,11 +362,11 @@ end:
         return res;
 }
 
-rnp_result_t ec_generate_sec1(rnp::RNG *           rng,
-                              std::vector<uint8_t> &privkey, 
-                              std::vector<uint8_t> &pubkey,
-                              pgp_curve_t          curve,
-                              pgp_pubkey_alg_t     alg)
+rnp_result_t ec_generate_native(rnp::RNG *           rng,
+                                std::vector<uint8_t> &privkey, 
+                                std::vector<uint8_t> &pubkey,
+                                pgp_curve_t          curve,
+                                pgp_pubkey_alg_t     alg)
 {
     if(is_edwards_curve(curve)) {
         /* TODOMTG: check that alg matches curve */
@@ -352,7 +377,7 @@ rnp_result_t ec_generate_sec1(rnp::RNG *           rng,
             RNP_LOG("alg and curve mismatch");
             return RNP_ERROR_BAD_PARAMETERS;
         }
-        return ec_generate_generic_sec1(rng, privkey, pubkey, curve, alg);
+        return ec_generate_generic_native(rng, privkey, pubkey, curve, alg);
     }
     else {
         RNP_LOG("invalid curve");

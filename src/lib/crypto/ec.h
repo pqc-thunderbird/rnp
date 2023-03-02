@@ -173,10 +173,10 @@ bool x25519_bits_tweaked(const pgp_ec_key_t &key);
 
 
 /* TODOMTG: API description */
-rnp_result_t ec_generate_sec1(rnp::RNG *           rng,
-                              std::vector<uint8_t> &privkey, 
-                              std::vector<uint8_t> &pubkey,
-                              pgp_curve_t          curve,
-                              pgp_pubkey_alg_t     alg);
+rnp_result_t ec_generate_native(rnp::RNG *           rng,
+                                std::vector<uint8_t> &privkey, 
+                                std::vector<uint8_t> &pubkey,
+                                pgp_curve_t          curve,
+                                pgp_pubkey_alg_t     alg);
 
 #endif
