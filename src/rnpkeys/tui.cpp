@@ -208,12 +208,12 @@ rnpkeys_ask_generate_params(rnp_cfg &cfg, FILE *input_fp)
                "\t(17) DSA + RSA\n" // TODO: See #584
                "\t(19) ECDSA + ECDH\n"
                "\t(22) EDDSA + X25519\n"
-               "\t(25) RSA + (Kyber768 + X25519)\n"
-               "\t(26) RSA + (Kyber1024 + X448)\n"
-               "\t(27) RSA + (Kyber768 + ECDH-NIST-P-256)\n"
-               "\t(28) RSA + (Kyber1024 + ECDH-NIST-P-384)\n"
-               "\t(29) RSA + (Kyber768 + ECDH-brainpoolP256r1)\n"
-               "\t(30) RSA + (Kyber1024 + ECDH-brainpoolP384r1)\n"
+               "\t(25) (Dilithium3 + Ed25519) + (Kyber768 + X25519)\n"
+               "\t(26) (Dilithium5 + Ed448) + (Kyber1024 + X448)\n"
+               "\t(27) (Dilithium3 + ECDSA-NIST-P-256) + (Kyber768 + ECDH-NIST-P-256)\n"
+               "\t(28) (Dilithium5 + ECDSA-NIST-P-384) + (Kyber1024 + ECDH-NIST-P-384)\n"
+               "\t(29) (Dilithium3 + ECDSA-brainpoolP256r1) + (Kyber768 + ECDH-brainpoolP256r1)\n"
+               "\t(30) (Dilithium5 + ECDSA-brainpoolP384r1) + (Kyber1024 + ECDH-brainpoolP384r1)\n"
                "\t(99) SM2\n"
                "> ");
         if (!rnp_secure_get_long_from_fd(input_fp, option, false)) {
@@ -262,25 +262,24 @@ rnpkeys_ask_generate_params(rnp_cfg &cfg, FILE *input_fp)
             cfg.set_str(CFG_KG_SUBKEY_CURVE, "Curve25519");
             break;
         }
-        case 25: 
+        case 25:
+            cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM3_ED25519);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER768_X25519);
-            [[fallthrough]];
-        case 26: 
+        case 26:
+            cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM5_ED448);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER1024_X448);
-            [[fallthrough]];
-        case 27: 
+        case 27:
+            cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM3_P256);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER768_P256);
-            [[fallthrough]];
-        case 28: 
+        case 28:
+            cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM5_P384);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER1024_P384);
-            [[fallthrough]];
-        case 29: 
+        case 29:
+            cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM3_BP256);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER768_BP256);
-            [[fallthrough]];
-        case 30: 
+        case 30:
+            cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM5_BP384);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER1024_BP384);
-            cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_RSA);
-            cfg.set_int(CFG_KG_PRIMARY_BITS, 2048);
             break;
         case 99: {
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_SM2);

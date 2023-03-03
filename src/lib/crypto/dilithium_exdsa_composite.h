@@ -58,12 +58,11 @@ public:
   static dilithium_parameter_e pk_alg_to_dilithium_id(pgp_pubkey_alg_t pk_alg);
 
   bool is_initialized() const {
-    return exdsa_initialized_ && dilithium_initialized_;
+    return is_initialized_;
   }
   
 protected: 
-  bool exdsa_initialized_ = false;
-  bool dilithium_initialized_ = false;
+  bool is_initialized_ = false;
   void initialized_or_throw() const;
 };
 
@@ -95,13 +94,13 @@ class pgp_dilithium_exdsa_composite_private_key_t : public pgp_dilithium_exdsa_c
       return pk_alg_;
     }
 
+    bool is_valid() const;
     void secure_clear();
 
     static size_t encoded_size(pgp_pubkey_alg_t pk_alg);
 
   private:
-    void dilithium_key_from_encoded(std::vector<uint8_t> key_encoded);
-    void exdsa_key_from_encoded(std::vector<uint8_t> key_encoded);
+    void parse_component_keys(std::vector<uint8_t> key_encoded);
 
     pgp_pubkey_alg_t pk_alg_;
 
@@ -131,11 +130,11 @@ class pgp_dilithium_exdsa_composite_public_key_t : public pgp_dilithium_exdsa_co
       return pk_alg_;
     }
 
+    bool is_valid() const;
     static size_t encoded_size(pgp_pubkey_alg_t pk_alg);
 
   private:
-    void dilithium_key_from_encoded(std::vector<uint8_t> key_encoded);
-    void exdsa_key_from_encoded(std::vector<uint8_t> key_encoded);
+    void parse_component_keys(std::vector<uint8_t> key_encoded);
 
     pgp_pubkey_alg_t pk_alg_;
 

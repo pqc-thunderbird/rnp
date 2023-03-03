@@ -49,16 +49,55 @@ ec_key_t::~ec_key_t() {}
 ec_key_t::ec_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve)
     : key_(std::vector<uint8_t>(key_buf, key_buf + key_buf_len)),
       curve_(curve)
-{
-    /* TODOMTG validate */
-}
+{}
 
 ec_key_t::ec_key_t(std::vector<uint8_t> key, pgp_curve_t curve)
     : key_(key),
       curve_(curve)
-{
-    /* TODOMTG validate */
+{}
+
+bool ec_key_t::is_edwards_curve(pgp_curve_t curve) {
+    switch(curve) {
+        case PGP_CURVE_25519: [[fallthrough]];
+        case PGP_CURVE_ED25519:
+            return true;
+        default: 
+            return false;
+    }
 }
+
+/* TODOMTG: de-duplicate this */
+const char *
+ec_key_t::ecdsa_padding_str_for(pgp_hash_alg_t hash_alg)
+{
+    switch (hash_alg) {
+        case PGP_HASH_MD5:
+            return "Raw(MD5)";
+        case PGP_HASH_SHA1:
+            return "Raw(SHA-1)";
+        case PGP_HASH_RIPEMD:
+            return "Raw(RIPEMD-160)";
+
+        case PGP_HASH_SHA256:
+            return "Raw(SHA-256)";
+        case PGP_HASH_SHA384:
+            return "Raw(SHA-384)";
+        case PGP_HASH_SHA512:
+            return "Raw(SHA-512)";
+        case PGP_HASH_SHA224:
+            return "Raw(SHA-224)";
+        case PGP_HASH_SHA3_256:
+            return "Raw(SHA3(256))";
+        case PGP_HASH_SHA3_512:
+            return "Raw(SHA3(512))";
+
+        case PGP_HASH_SM3:
+            return "Raw(SM3)";
+        default:
+            return "Raw";
+    }
+}
+
 
 ecdh_kem_public_key_t::ecdh_kem_public_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve)
     : ec_key_t(key_buf, key_buf_len, curve)
@@ -133,53 +172,6 @@ ec_key_t::generate_exdsa_key_pair(rnp::RNG *rng, exdsa_key_t *out, pgp_curve_t c
 
     return RNP_SUCCESS;
 }
-
-
-namespace 
-{
-bool is_edwards_curve(pgp_curve_t curve) {
-    switch(curve) {
-        case PGP_CURVE_25519: [[fallthrough]];
-        case PGP_CURVE_ED25519:
-            return true;
-        default: 
-            return false;
-    }
-}
-
-/* TODOMTG: de-duplicate this */
-const char *
-ecdsa_padding_str_for(pgp_hash_alg_t hash_alg)
-{
-    switch (hash_alg) {
-        case PGP_HASH_MD5:
-            return "Raw(MD5)";
-        case PGP_HASH_SHA1:
-            return "Raw(SHA-1)";
-        case PGP_HASH_RIPEMD:
-            return "Raw(RIPEMD-160)";
-
-        case PGP_HASH_SHA256:
-            return "Raw(SHA-256)";
-        case PGP_HASH_SHA384:
-            return "Raw(SHA-384)";
-        case PGP_HASH_SHA512:
-            return "Raw(SHA-512)";
-        case PGP_HASH_SHA224:
-            return "Raw(SHA-224)";
-        case PGP_HASH_SHA3_256:
-            return "Raw(SHA3(256))";
-        case PGP_HASH_SHA3_512:
-            return "Raw(SHA3(512))";
-
-        case PGP_HASH_SM3:
-            return "Raw(SM3)";
-        default:
-            return "Raw";
-    }
-}
-}
-
 
 /* NOTE hash_alg unused for edwards curves */
 rnp_result_t
@@ -305,5 +297,29 @@ end:
     return res;
 
     // return RNP_ERROR_VERIFICATION_FAILED; 
+}
+
+bool
+exdsa_public_key_t::is_valid() const {
+    /* TODOMTG load and check in botan */
+    return true;
+}
+
+bool
+exdsa_private_key_t::is_valid() const {
+    /* TODOMTG load and check in botan */
+    return true;
+}
+
+bool
+ecdh_kem_public_key_t::is_valid() const {
+    /* TODOMTG load and check in botan */
+    return true;
+}
+
+bool 
+ecdh_kem_private_key_t::is_valid() const {
+    /* TODOMTG load and check in botan */
+    return true;
 }
 

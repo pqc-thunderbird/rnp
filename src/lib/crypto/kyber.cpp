@@ -110,3 +110,15 @@ pgp_kyber_private_key_t::decapsulate(const uint8_t *ciphertext, size_t ciphertex
     return std::vector<uint8_t>(dec_shared_key.data(),
                                 dec_shared_key.data() + dec_shared_key.size());
 }
+
+bool
+pgp_kyber_public_key_t::is_valid() const {
+    /* TODOMTG load and check in botan */
+    return true;
+}
+
+bool
+pgp_kyber_private_key_t::is_valid() const {
+    /* TODOMTG load and check in botan */
+    return true;
+}

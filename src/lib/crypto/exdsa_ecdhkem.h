@@ -50,6 +50,8 @@ public:
 
     static rnp_result_t generate_ecdh_kem_key_pair(rnp::RNG *rng, ecdh_kem_key_t *out, pgp_curve_t curve);
     static rnp_result_t generate_exdsa_key_pair(rnp::RNG *rng, exdsa_key_t *out, pgp_curve_t curve);
+    static const char* ecdsa_padding_str_for(pgp_hash_alg_t hash_alg);
+    static bool is_edwards_curve(pgp_curve_t curve);
 
     std::vector<uint8_t> get_encoded() const
     {
@@ -78,6 +80,8 @@ public:
     ecdh_kem_public_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
     ecdh_kem_public_key_t() = default;
 
+    bool is_valid() const;
+
     rnp_result_t encapsulate(rnp::RNG *rng, ecdh_kem_encap_result_t *result);
 };
 
@@ -89,6 +93,8 @@ public:
     ecdh_kem_private_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
     ecdh_kem_private_key_t() = default;
     
+    bool is_valid() const;
+
     rnp_result_t decapsulate(const std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &plaintext);
 };
 
@@ -105,6 +111,8 @@ public:
     exdsa_public_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
     exdsa_public_key_t() = default;
 
+    bool is_valid() const;
+
     rnp_result_t verify(const std::vector<uint8_t> &sig, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const;
 };
 
@@ -114,6 +122,8 @@ public:
     exdsa_private_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve);
     exdsa_private_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
     exdsa_private_key_t() = default;
+
+    bool is_valid() const;
 
     rnp_result_t sign(std::vector<uint8_t> &sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const;
 };

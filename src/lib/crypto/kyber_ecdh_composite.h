@@ -59,12 +59,11 @@ public:
   static kyber_parameter_e pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg);
 
   bool is_initialized() const {
-    return ecdh_initialized_ && kyber_initialized_;
+    return is_initialized_;
   }
   
 protected: 
-  bool ecdh_initialized_ = false;
-  bool kyber_initialized_ = false;
+  bool is_initialized_ = false;
   void initialized_or_throw() const;
 };
 
@@ -90,6 +89,7 @@ class pgp_kyber_ecdh_composite_private_key_t : public pgp_kyber_ecdh_composite_k
 
     rnp_result_t decrypt(uint8_t *out, size_t *out_len, const pgp_kyber_ecdh_encrypted_t *enc);
 
+    bool is_valid() const;
     std::vector<uint8_t> get_encoded() const;
 
     pgp_pubkey_alg_t pk_alg(pgp_pubkey_alg_t) const 
@@ -102,8 +102,7 @@ class pgp_kyber_ecdh_composite_private_key_t : public pgp_kyber_ecdh_composite_k
     static size_t encoded_size(pgp_pubkey_alg_t pk_alg);
 
   private:
-    void kyber_key_from_encoded(std::vector<uint8_t> key_encoded);
-    void ecdh_key_from_encoded(std::vector<uint8_t> key_encoded);
+    void parse_component_keys(std::vector<uint8_t> key_encoded);
 
     pgp_pubkey_alg_t pk_alg_;
 
@@ -126,6 +125,7 @@ class pgp_kyber_ecdh_composite_public_key_t : public pgp_kyber_ecdh_composite_ke
 
     rnp_result_t encrypt(rnp::RNG *rng, pgp_kyber_ecdh_encrypted_t *out, const uint8_t *in, size_t in_len);
 
+    bool is_valid() const;
     std::vector<uint8_t> get_encoded() const;
 
     pgp_pubkey_alg_t pk_alg(pgp_pubkey_alg_t) const 
@@ -136,8 +136,7 @@ class pgp_kyber_ecdh_composite_public_key_t : public pgp_kyber_ecdh_composite_ke
     static size_t encoded_size(pgp_pubkey_alg_t pk_alg);
 
   private:
-    void kyber_key_from_encoded(std::vector<uint8_t> key_encoded);
-    void ecdh_key_from_encoded(std::vector<uint8_t> key_encoded);
+    void parse_component_keys(std::vector<uint8_t> key_encoded);
 
     pgp_pubkey_alg_t pk_alg_;
 

@@ -238,15 +238,13 @@ pgp_kyber_ecdh_composite_public_key_t& pgp_kyber_ecdh_composite_public_key_t::op
 pgp_kyber_ecdh_composite_private_key_t::pgp_kyber_ecdh_composite_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg):
     pk_alg_(pk_alg)
 {
-    kyber_key_from_encoded(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
-    ecdh_key_from_encoded(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
+    parse_component_keys(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
 }
 
 pgp_kyber_ecdh_composite_private_key_t::pgp_kyber_ecdh_composite_private_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg):
     pk_alg_(pk_alg)
 {
-    kyber_key_from_encoded(key_encoded);
-    ecdh_key_from_encoded(key_encoded);
+    parse_component_keys(key_encoded);
 }
 
 pgp_kyber_ecdh_composite_private_key_t::pgp_kyber_ecdh_composite_private_key_t(std::vector<uint8_t> const &ecdh_key_encoded, std::vector<uint8_t> const &kyber_key_encoded, pgp_pubkey_alg_t pk_alg)
@@ -260,10 +258,8 @@ pgp_kyber_ecdh_composite_private_key_t::pgp_kyber_ecdh_composite_private_key_t(s
         RNP_LOG("ecdh or kyber key length mismatch");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
-    kyber_initialized_ = true;
-    ecdh_initialized_ = true;
+    is_initialized_ = true;
 }
-
 
 size_t
 pgp_kyber_ecdh_composite_private_key_t::encoded_size(pgp_pubkey_alg_t pk_alg)
@@ -273,34 +269,21 @@ pgp_kyber_ecdh_composite_private_key_t::encoded_size(pgp_pubkey_alg_t pk_alg)
   return ecdh_curve_privkey_size(curve) + kyber_privkey_size(kyber_param);
 }
 
-void 
-pgp_kyber_ecdh_composite_private_key_t::kyber_key_from_encoded(std::vector<uint8_t> key_encoded) 
-{
-    if (key_encoded.size() != encoded_size(pk_alg_)) {
-        RNP_LOG("Kyber composite key format invalid: length mismatch");
-        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
-    }
-
-    // make private key from second part of the composite structure
-    size_t offset = ecdh_curve_privkey_size(pk_alg_to_curve_id(pk_alg_));
-    kyber_parameter_e param = pk_alg_to_kyber_id(pk_alg_);
-    
-    kyber_key_ = pgp_kyber_private_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
-    kyber_initialized_ = true;
-}
-
 void
-pgp_kyber_ecdh_composite_private_key_t::ecdh_key_from_encoded(std::vector<uint8_t> key_encoded) 
-{
+pgp_kyber_ecdh_composite_private_key_t::parse_component_keys(std::vector<uint8_t> key_encoded) {
     if (key_encoded.size() != encoded_size(pk_alg_)) {
         RNP_LOG("Kyber composite key format invalid: length mismatch");
-        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
 
-    // make private key from first part of the composite structure
-    size_t len = ecdh_curve_privkey_size(pk_alg_to_curve_id(pk_alg_));
-    ecdh_key_ = ecdh_kem_private_key_t(key_encoded.data(), len, pk_alg_to_curve_id(pk_alg_));
-    ecdh_initialized_ = true;
+    kyber_parameter_e kyber_param = pk_alg_to_kyber_id(pk_alg_);
+    pgp_curve_t ecdh_curve = pk_alg_to_curve_id(pk_alg_);
+    size_t split_at = ecdh_curve_privkey_size(pk_alg_to_curve_id(pk_alg_));
+    
+    kyber_key_ = pgp_kyber_private_key_t(key_encoded.data() + split_at, key_encoded.size() - split_at, kyber_param);
+    ecdh_key_ = ecdh_kem_private_key_t(key_encoded.data(), split_at, ecdh_curve);
+
+    is_initialized_ = true;
 }
 
 
@@ -352,8 +335,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
 void
 pgp_kyber_ecdh_composite_private_key_t::secure_clear() {
     // TODOMTG: securely erase the data
-    ecdh_initialized_ = false;
-    kyber_initialized_ = false;
+    is_initialized_ = false;
 }
 
 std::vector<uint8_t>
@@ -372,15 +354,13 @@ pgp_kyber_ecdh_composite_private_key_t::get_encoded() const {
 pgp_kyber_ecdh_composite_public_key_t::pgp_kyber_ecdh_composite_public_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg):
     pk_alg_(pk_alg)
 {
-    kyber_key_from_encoded(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
-    ecdh_key_from_encoded(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
+    parse_component_keys(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
 }
 
 pgp_kyber_ecdh_composite_public_key_t::pgp_kyber_ecdh_composite_public_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg):
     pk_alg_(pk_alg)
 {
-    kyber_key_from_encoded(key_encoded);
-    ecdh_key_from_encoded(key_encoded);
+    parse_component_keys(key_encoded);
 }
 
 pgp_kyber_ecdh_composite_public_key_t::pgp_kyber_ecdh_composite_public_key_t(std::vector<uint8_t> const &ecdh_key_encoded, std::vector<uint8_t> const &kyber_key_encoded, pgp_pubkey_alg_t pk_alg)
@@ -394,8 +374,7 @@ pgp_kyber_ecdh_composite_public_key_t::pgp_kyber_ecdh_composite_public_key_t(std
         RNP_LOG("ecdh or kyber key length mismatch");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
-    kyber_initialized_ = true;
-    ecdh_initialized_ = true;
+    is_initialized_ = true;
 }
 
 size_t
@@ -406,33 +385,21 @@ pgp_kyber_ecdh_composite_public_key_t::encoded_size(pgp_pubkey_alg_t pk_alg)
   return ecdh_curve_pubkey_size(curve) + kyber_pubkey_size(kyber_param);
 }
 
-void 
-pgp_kyber_ecdh_composite_public_key_t::kyber_key_from_encoded(std::vector<uint8_t> key_encoded) 
-{
-    if (key_encoded.size() != encoded_size(pk_alg_)) {
-        RNP_LOG("Kyber composite key format invalid: length mismatch");
-        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
-    }
-
-    // make private key from second part of the composite structure
-    size_t offset = ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
-    kyber_parameter_e param = pk_alg_to_kyber_id(pk_alg_);
-    kyber_key_ = pgp_kyber_public_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
-    kyber_initialized_ = true;
-}
-
 void
-pgp_kyber_ecdh_composite_public_key_t::ecdh_key_from_encoded(std::vector<uint8_t> key_encoded)
-{
+pgp_kyber_ecdh_composite_public_key_t::parse_component_keys(std::vector<uint8_t> key_encoded) {
     if (key_encoded.size() != encoded_size(pk_alg_)) {
         RNP_LOG("Kyber composite key format invalid: length mismatch");
-        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
 
-    // make private key from first part of the composite structure
-    size_t len = ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
-    ecdh_key_ = ecdh_kem_public_key_t(key_encoded.data(), len, pk_alg_to_curve_id(pk_alg_));
-    ecdh_initialized_ = true;
+    kyber_parameter_e kyber_param = pk_alg_to_kyber_id(pk_alg_);
+    pgp_curve_t ecdh_curve = pk_alg_to_curve_id(pk_alg_);
+    size_t split_at = ecdh_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
+    
+    kyber_key_ = pgp_kyber_public_key_t(key_encoded.data() + split_at, key_encoded.size() - split_at, kyber_param);
+    ecdh_key_ = ecdh_kem_public_key_t(key_encoded.data(), split_at, ecdh_curve);
+
+    is_initialized_ = true;
 }
 
 rnp_result_t
@@ -490,7 +457,32 @@ pgp_kyber_ecdh_composite_public_key_t::get_encoded() const {
     return result;
 };
 
+bool
+pgp_kyber_ecdh_composite_public_key_t::is_valid() const {
+    if(!is_initialized()) {
+        return false;
+    }
+    return(ecdh_key_.is_valid() && kyber_key_.is_valid());
+}
+
+bool
+pgp_kyber_ecdh_composite_private_key_t::is_valid() const {
+    if(!is_initialized()) {
+        return false;
+    }
+    return(ecdh_key_.is_valid() && kyber_key_.is_valid());
+}
+
+
 rnp_result_t kyber_ecdh_validate_key(rnp::RNG *rng, const pgp_kyber_ecdh_key_t *key, bool secret) {
-    // TODOMTG: implement as member of pgp_kyber_ecdh_composite_public_key_t and pgp_kyber_ecdh_composite_private_key_t
+    bool valid;
+
+    valid = key->pub.is_valid();
+    if(secret) {
+        valid = valid && key->priv.is_valid();
+    }
+    if(!valid) {
+        return RNP_ERROR_GENERIC;
+    }
     return RNP_SUCCESS;
 }

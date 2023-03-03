@@ -100,3 +100,15 @@ dilithium_generate_keypair(
       pgp_dilithium_public_key_t(pub_key->public_key_bits(), dilithium_param),
       pgp_dilithium_private_key_t(priv_bits.data(), priv_bits.size(), dilithium_param));
 }
+
+bool
+pgp_dilithium_public_key_t::is_valid() const {
+    /* TODOMTG load and check in botan */
+    return true;
+}
+
+bool
+pgp_dilithium_private_key_t::is_valid() const {
+    /* TODOMTG load and check in botan */
+    return true;
+}

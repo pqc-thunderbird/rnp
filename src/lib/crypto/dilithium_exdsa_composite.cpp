@@ -179,15 +179,13 @@ pgp_dilithium_exdsa_composite_key_t::pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg)
 pgp_dilithium_exdsa_composite_public_key_t::pgp_dilithium_exdsa_composite_public_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg):
     pk_alg_(pk_alg)
 {
-    dilithium_key_from_encoded(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
-    exdsa_key_from_encoded(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
+    parse_component_keys(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
 }
 
 pgp_dilithium_exdsa_composite_public_key_t::pgp_dilithium_exdsa_composite_public_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg):
     pk_alg_(pk_alg)
 {
-    dilithium_key_from_encoded(key_encoded);
-    exdsa_key_from_encoded(key_encoded);
+    parse_component_keys(key_encoded);
 }
 
 pgp_dilithium_exdsa_composite_public_key_t::pgp_dilithium_exdsa_composite_public_key_t(std::vector<uint8_t> const &exdsa_key_encoded, std::vector<uint8_t> const &dilithium_key_encoded, pgp_pubkey_alg_t pk_alg)
@@ -201,8 +199,7 @@ pgp_dilithium_exdsa_composite_public_key_t::pgp_dilithium_exdsa_composite_public
         RNP_LOG("exdsa or dilithium key length mismatch");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
-    dilithium_initialized_ = true;
-    exdsa_initialized_ = true;
+    is_initialized_ = true;
 }
 
 /* copy assignment operator is used on key materials struct and thus needs to be defined for this class as well */
@@ -230,15 +227,13 @@ pgp_dilithium_exdsa_composite_public_key_t& pgp_dilithium_exdsa_composite_public
 pgp_dilithium_exdsa_composite_private_key_t::pgp_dilithium_exdsa_composite_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg):
     pk_alg_(pk_alg)
 {
-    dilithium_key_from_encoded(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
-    exdsa_key_from_encoded(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
+    parse_component_keys(std::vector<uint8_t>(key_encoded, key_encoded + key_encoded_len));
 }
 
 pgp_dilithium_exdsa_composite_private_key_t::pgp_dilithium_exdsa_composite_private_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg):
     pk_alg_(pk_alg)
 {
-    dilithium_key_from_encoded(key_encoded);
-    exdsa_key_from_encoded(key_encoded);
+    parse_component_keys(key_encoded);
 }
 
 pgp_dilithium_exdsa_composite_private_key_t::pgp_dilithium_exdsa_composite_private_key_t(std::vector<uint8_t> const &exdsa_key_encoded, std::vector<uint8_t> const &dilithium_key_encoded, pgp_pubkey_alg_t pk_alg)
@@ -252,8 +247,7 @@ pgp_dilithium_exdsa_composite_private_key_t::pgp_dilithium_exdsa_composite_priva
         RNP_LOG("exdsa or dilithium key length mismatch");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
-    dilithium_initialized_ = true;
-    exdsa_initialized_ = true;
+    is_initialized_ = true;
 }
 
 size_t
@@ -265,33 +259,21 @@ pgp_dilithium_exdsa_composite_private_key_t::encoded_size(pgp_pubkey_alg_t pk_al
 }
 
 void 
-pgp_dilithium_exdsa_composite_private_key_t::dilithium_key_from_encoded(std::vector<uint8_t> key_encoded) 
+pgp_dilithium_exdsa_composite_private_key_t::parse_component_keys(std::vector<uint8_t> key_encoded) 
 {
     if (key_encoded.size() != encoded_size(pk_alg_)) {
-        RNP_LOG("dilithium composite key format invalid: length mismatch");
+        RNP_LOG("Dilithium composite key format invalid: length mismatch");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
 
-    // make private key from second part of the composite structure
-    size_t offset = exdsa_curve_privkey_size(pk_alg_to_curve_id(pk_alg_));
-    dilithium_parameter_e param = pk_alg_to_dilithium_id(pk_alg_);
-    
-    dilithium_key_ = pgp_dilithium_private_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
-    dilithium_initialized_ = true;
-}
+    dilithium_parameter_e dilithium_param = pk_alg_to_dilithium_id(pk_alg_);
+    pgp_curve_t curve = pk_alg_to_curve_id(pk_alg_);
+    size_t split_at = exdsa_curve_privkey_size(pk_alg_to_curve_id(pk_alg_));
 
-void
-pgp_dilithium_exdsa_composite_private_key_t::exdsa_key_from_encoded(std::vector<uint8_t> key_encoded) 
-{
-    if (key_encoded.size() != encoded_size(pk_alg_)) {
-        RNP_LOG("dilithium composite key format invalid: length mismatch");
-        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
-    }
+    dilithium_key_ = pgp_dilithium_private_key_t(key_encoded.data() + split_at, key_encoded.size() - split_at, dilithium_param);
+    exdsa_key_ = exdsa_private_key_t(key_encoded.data(), split_at, curve);
 
-    // make private key from first part of the composite structure
-    size_t len = exdsa_curve_privkey_size(pk_alg_to_curve_id(pk_alg_));
-    exdsa_key_ = exdsa_private_key_t(key_encoded.data(), len, pk_alg_to_curve_id(pk_alg_));
-    exdsa_initialized_ = true;
+    is_initialized_ = true;
 }
 
 std::vector<uint8_t>
@@ -337,8 +319,7 @@ pgp_dilithium_exdsa_composite_private_key_t::sign(rnp::RNG *rng, pgp_dilithium_e
 void
 pgp_dilithium_exdsa_composite_private_key_t::secure_clear() {
     // TODOMTG: securely erase the data
-    dilithium_initialized_ = false;
-    exdsa_initialized_ = false;
+    is_initialized_ = false;
 }
 
 size_t
@@ -350,32 +331,21 @@ pgp_dilithium_exdsa_composite_public_key_t::encoded_size(pgp_pubkey_alg_t pk_alg
 }
 
 void 
-pgp_dilithium_exdsa_composite_public_key_t::dilithium_key_from_encoded(std::vector<uint8_t> key_encoded) 
+pgp_dilithium_exdsa_composite_public_key_t::parse_component_keys(std::vector<uint8_t> key_encoded) 
 {
     if (key_encoded.size() != encoded_size(pk_alg_)) {
         RNP_LOG("Dilithium composite key format invalid: length mismatch");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
 
-    // make private key from second part of the composite structure
-    size_t offset = exdsa_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
-    dilithium_parameter_e param = pk_alg_to_dilithium_id(pk_alg_);
-    dilithium_key_ = pgp_dilithium_public_key_t(key_encoded.data() + offset, key_encoded.size() - offset, param);
-    dilithium_initialized_ = true;
-}
+    dilithium_parameter_e dilithium_param = pk_alg_to_dilithium_id(pk_alg_);
+    pgp_curve_t curve = pk_alg_to_curve_id(pk_alg_);
+    size_t split_at = exdsa_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
 
-void
-pgp_dilithium_exdsa_composite_public_key_t::exdsa_key_from_encoded(std::vector<uint8_t> key_encoded)
-{
-    if (key_encoded.size() != encoded_size(pk_alg_)) {
-        RNP_LOG("Dilithium composite key format invalid: length mismatch");
-        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
-    }
+    dilithium_key_ = pgp_dilithium_public_key_t(key_encoded.data() + split_at, key_encoded.size() - split_at, dilithium_param);
+    exdsa_key_ = exdsa_public_key_t(key_encoded.data(), split_at, curve);
 
-    // make private key from first part of the composite structure
-    size_t len = exdsa_curve_pubkey_size(pk_alg_to_curve_id(pk_alg_));
-    exdsa_key_ = exdsa_public_key_t(key_encoded.data(), len, pk_alg_to_curve_id(pk_alg_));
-    exdsa_initialized_ = true;
+    is_initialized_ = true;
 }
 
 std::vector<uint8_t>
@@ -420,8 +390,33 @@ pgp_dilithium_exdsa_composite_public_key_t::verify(const pgp_dilithium_exdsa_sig
     return RNP_SUCCESS;
 }
 
+bool
+pgp_dilithium_exdsa_composite_public_key_t::is_valid() const {
+    if(!is_initialized()) {
+        return false;
+    }
+    return(exdsa_key_.is_valid() && dilithium_key_.is_valid());
+}
+
+bool
+pgp_dilithium_exdsa_composite_private_key_t::is_valid() const {
+    if(!is_initialized()) {
+        return false;
+    }
+    return(exdsa_key_.is_valid() && dilithium_key_.is_valid());
+}
+
 rnp_result_t dilithium_exdsa_validate_key(rnp::RNG *rng, const pgp_dilithium_exdsa_key_t *key, bool secret) 
 {
-    /* TODOMTG */
+    bool valid;
+
+    valid = key->pub.is_valid();
+    if(secret) {
+        valid = valid && key->priv.is_valid();
+    }
+    if(!valid) {
+        return RNP_ERROR_GENERIC;
+    }
+
     return RNP_SUCCESS;
 }
