@@ -777,7 +777,7 @@ pgp_packet_body_t::add_subpackets(const pgp_signature_t &sig, bool hashed)
     if(sig.version == PGP_V4) {
         add_uint16(spbody.data_.size());
     }
-    else { /* PGP_V5 */
+    else { /* PGP_V6 */
         add_uint32(spbody.data_.size());
     }
     add(spbody.data_.data(), spbody.data_.size());
@@ -1050,8 +1050,8 @@ pgp_pk_sesskey_t::write(pgp_dest_t &dst) const
     if(version == PGP_PKSK_V3) {
         pktbody.add(key_id);
     }
-    else { // PGP_PKSK_V5
-        pktbody.add_byte((fp.length == PGP_FINGERPRINT_V5_SIZE) ? PGP_V5 : PGP_V4);
+    else { // PGP_PKSK_V6
+        pktbody.add_byte((fp.length == PGP_FINGERPRINT_V6_SIZE) ? PGP_V6 : PGP_V4);
         pktbody.add(fp.fingerprint, fp.length);
         RNP_DBG_LOG("DBG: pgp_pk_sesskey_t::write(): fp size = %i", fp.length);
     }
@@ -1074,7 +1074,7 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
         RNP_LOG("Error when reading packet version");
         return RNP_ERROR_BAD_FORMAT;
     }
-    if((bt != PGP_PKSK_V3) && (bt != PGP_PKSK_V5)) {
+    if((bt != PGP_PKSK_V3) && (bt != PGP_PKSK_V6)) {
         RNP_LOG("wrong packet version");
         return RNP_ERROR_BAD_FORMAT;
     }
@@ -1087,7 +1087,7 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
             return RNP_ERROR_BAD_FORMAT;
         }
     }
-    else { // PGP_PKSK_V5
+    else { // PGP_PKSK_V6
         size_t fp_len;
         uint8_t fp_key_version;
         if (!pkt.get(fp_key_version)) {
@@ -1101,11 +1101,11 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
             case PGP_V4:
                 fp_len = PGP_FINGERPRINT_V4_SIZE;
                 break;
-            case PGP_V5:
-                fp_len = PGP_FINGERPRINT_V5_SIZE;
+            case PGP_V6:
+                fp_len = PGP_FINGERPRINT_V6_SIZE;
                 break;
             default:
-                RNP_LOG("wrong key version used with PKESK v5");
+                RNP_LOG("wrong key version used with PKESK v6");
                 return RNP_ERROR_BAD_FORMAT;
         }
         fp.length = fp_len;

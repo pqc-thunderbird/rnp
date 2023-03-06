@@ -95,8 +95,8 @@
 
 /* Size of the fingerprint */
 #define PGP_FINGERPRINT_V4_SIZE 20
-#define PGP_FINGERPRINT_V5_SIZE 32
-#define PGP_MAX_FINGERPRINT_SIZE PGP_FINGERPRINT_V5_SIZE
+#define PGP_FINGERPRINT_V6_SIZE 32
+#define PGP_MAX_FINGERPRINT_SIZE PGP_FINGERPRINT_V6_SIZE
 #define PGP_MAX_FINGERPRINT_HEX_SIZE (PGP_MAX_FINGERPRINT_SIZE * 2) + 1
 
 /* SEIPDv2 salt length */
@@ -109,12 +109,12 @@
 #define PGP_MARKER_CONTENTS "PGP"
 #define PGP_MARKER_LEN 3
 
-/* V5 Signature Salt */
-#define PGP_SALT_SIZE_V5_SIG 16
+/* V6 Signature Salt */
+#define PGP_SALT_SIZE_V6_SIG 16
 
 /* size of length for hashed/unhashed subpacket data*/
 #define PGP_SIG_HASHED_AREA_SIZE_OCTETS_V4 2
-#define PGP_SIG_HASHED_AREA_SIZE_OCTETS_V5 4
+#define PGP_SIG_HASHED_AREA_SIZE_OCTETS_V6 4
 
 /** Old Packet Format Lengths.
  * Defines the meanings of the 2 bits for length type in the
@@ -452,7 +452,7 @@ typedef enum {
 enum { PGP_SKSK_V4 = 4, PGP_SKSK_V5 = 5 };
 typedef enum { 
     PGP_PKSK_V3 = 3, 
-    PGP_PKSK_V5 = 5
+    PGP_PKSK_V6 = 5
 } pgp_pkesk_version_t;
 typedef enum {
     PGP_SE_IP_DATA_VERSION = 1,
@@ -470,7 +470,7 @@ typedef enum {
     PGP_V2 = 2, /* Version 2 (essentially the same as v3) */
     PGP_V3 = 3, /* Version 3 */
     PGP_V4 = 4, /* Version 4 */
-    PGP_V5 = 5  /* Version 5 */
+    PGP_V6 = 6  /* Version 6 (crypto refresh) */
 } pgp_version_t;
 
 typedef enum pgp_op_t {

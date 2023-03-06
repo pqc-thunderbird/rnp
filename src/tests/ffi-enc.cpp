@@ -466,7 +466,7 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk)
 }
 
 
-TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v5_key)
+TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
 {
     rnp_ffi_t        ffi = NULL;
     rnp_input_t      input = NULL;
@@ -481,7 +481,7 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v5_key)
     // TODOMTG: need initial keyring?
     /*assert_true(
       load_keys_gpg(ffi, "data/keyrings/1/pubring.gpg", "data/keyrings/1/secring.gpg"));*/
-    assert_true(import_all_keys(ffi, "data/test_v5_valid_data/transferable_seckey_v5__cryptorefresh_07_fixed.asc"));
+    assert_true(import_all_keys(ffi, "data/test_v6_valid_data/transferable_seckey_v6.asc"));
 
     // write out some data
     FILE *fp = fopen("plaintext", "wb");
@@ -502,7 +502,7 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v5_key)
     ;
     //assert_rnp_failure(rnp_op_encrypt_add_recipient(op, NULL)); // what for ?
     assert_rnp_success(rnp_op_encrypt_add_recipient(op, key));
-    assert_rnp_success(rnp_op_encrypt_enable_pkesk_v5(op));
+    assert_rnp_success(rnp_op_encrypt_enable_pkesk_v6(op));
     rnp_key_handle_destroy(key);
     key = NULL;
     /*assert_rnp_success(rnp_locate_key(ffi, "userid", "key1-uid1", &key));

@@ -57,7 +57,7 @@ pgp_fingerprint(pgp_fingerprint_t &fp, const pgp_key_pkt_t &key)
         }
     }
 
-    if (key.version != PGP_V4 && key.version != PGP_V5) {
+    if (key.version != PGP_V4 && key.version != PGP_V6) {
         RNP_LOG("unsupported key version");
         return RNP_ERROR_NOT_SUPPORTED;
     }
@@ -66,7 +66,7 @@ pgp_fingerprint(pgp_fingerprint_t &fp, const pgp_key_pkt_t &key)
     if (key.version == PGP_V4) {
         hash = rnp::Hash::create(PGP_HASH_SHA1);
     }
-    else if (key.version == PGP_V5) {
+    else if (key.version == PGP_V6) {
         hash = rnp::Hash::create(PGP_HASH_SHA256);
     }
     try {

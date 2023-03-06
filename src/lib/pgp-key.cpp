@@ -1830,7 +1830,7 @@ pgp_key_t::is_signer(const pgp_subsig_t &sig) const
         return sig.sig.keyfp() == fp();
     }
     if (!sig.sig.has_keyid()) {
-        return false || (version() == PGP_V5); // v5 packets MUST NOT include this subpacket, therefore return true for v5
+        return false || (version() == PGP_V6); // v6 packets MUST NOT include this subpacket, therefore return true for v6
     }
 
     return keyid() == sig.sig.keyid();
@@ -2285,7 +2285,7 @@ pgp_key_t::sign_init(pgp_signature_t &sig, pgp_hash_alg_t hash, uint64_t creatio
     sig.set_keyfp(fp());
     sig.set_creation(creation);
     if(version == PGP_V4) {
-        // for v5 issuing keys, this MUST NOT be included
+        // for v6 issuing keys, this MUST NOT be included
         sig.set_keyid(keyid());
     }
 }

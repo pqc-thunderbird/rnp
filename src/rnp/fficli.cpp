@@ -1545,8 +1545,8 @@ cli_rnp_generate_key(cli_rnp_t *rnp, const char *username)
         goto done;
     }
 
-    if(cfg.get_bool(CFG_KG_V5_KEY)) {
-       rnp_op_generate_set_v5_key(genkey);
+    if(cfg.get_bool(CFG_KG_V6_KEY)) {
+       rnp_op_generate_set_v6_key(genkey);
     }
 
     fprintf(rnp->userio_out, "Generating a new key...\n");

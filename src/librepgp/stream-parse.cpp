@@ -1473,12 +1473,12 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
     }
 
     /* Crypto Refresh:
-        - The payload following any v5 PKESK or v5 SKESK packet MUST be a v2 SEIPD.
+        - The payload following any v6 PKESK or v6 SKESK packet MUST be a v2 SEIPD.
         - implementations MUST NOT precede a v2 SEIPD payload with either v3 PKESK or v4 SKESK
        packets. */
-    if ((param->seipd_v2 && !(sesskey->version == PGP_PKSK_V5)) ||
+    if ((param->seipd_v2 && !(sesskey->version == PGP_PKSK_V6)) ||
         (param->has_mdc && !(sesskey->version == PGP_PKSK_V3))) {
-        RNP_LOG("Attempt to mix SEIPD v1 with PKESK v5 or SEIPD v2 with PKESK v3");
+        RNP_LOG("Attempt to mix SEIPD v1 with PKESK v6 or SEIPD v2 with PKESK v3");
         return false;
     }
 
@@ -1567,10 +1567,10 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             return false;
         }
 
-        /* skip over the first byte which aligns the code for v3 and v5 PKESK packets. */
+        /* skip over the first byte which aligns the code for v3 and v6 PKESK packets. */
         decbuf_sesskey++;
     } else {
-        // V5 PKESK
+        // V6 PKESK
         // required key length is not yet known
         if(decbuf_sesskey_len <= 2) {
             RNP_LOG("invalid symmetric key length");
@@ -1603,8 +1603,8 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             param->salg = salg;
         }
         return res;
-    } else { // PGP_PKSK_V5
-        salg = param->aead_hdr.ealg; // NOTEMTG: salg not part of the v5 PKESK, assignment here just to make the following call "happy"
+    } else { // PGP_PKSK_V6
+        salg = param->aead_hdr.ealg; // NOTEMTG: salg not part of the v6 PKESK, assignment here just to make the following call "happy"
         return encrypted_start_aead(param, salg, decbuf_sesskey);
     }
 }
@@ -1669,7 +1669,7 @@ encrypted_try_password(pgp_source_encrypted_param_t *param, const char *password
 #if !defined(ENABLE_AEAD)
             continue;
 #else
-            /* v5 AEAD-encrypted session key */
+            /* v6 AEAD-encrypted session key */
             size_t  taglen = pgp_cipher_aead_tag_len(skey.aalg);
             uint8_t nonce[PGP_AEAD_MAX_NONCE_LEN];
             size_t  noncelen;
@@ -2234,7 +2234,7 @@ init_encrypted_src(pgp_parse_handler_t *handler, pgp_source_t *src, pgp_source_t
             auto &pubenc = param->pubencs[pubidx];
             if (pubenc.version == PGP_PKSK_V3) {
                 keyctx.search.by.keyid = pubenc.key_id;
-            } else { // PGP_PKSK_V5
+            } else { // PGP_PKSK_V6
                 keyctx.search.by.fingerprint = pubenc.fp;
                 keyctx.search.type = PGP_KEY_SEARCH_FINGERPRINT;
             }
@@ -2249,7 +2249,7 @@ init_encrypted_src(pgp_parse_handler_t *handler, pgp_source_t *src, pgp_source_t
             bool hidden;
             if (pubenc.version == PGP_PKSK_V3) {
                 hidden = (pubenc.key_id == pgp_key_id_t({}));
-            } else { // PGP_PKSK_V5
+            } else { // PGP_PKSK_V6
                 hidden = (pubenc.fp.length == 0);
             }
             if (!hidden || (++hidden_tries >= MAX_HIDDEN_TRIES)) {

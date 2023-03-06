@@ -552,7 +552,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     /* Fill pkey */
     pkey.version = pkesk_version;
     pkey.alg = userkey->alg();
-    /* set key_id (used for PKESK v3) and fingerprint (used for PKESK v5) */
+    /* set key_id (used for PKESK v3) and fingerprint (used for PKESK v6) */
     pkey.key_id = userkey->keyid();
     pkey.fp = userkey->fp();
     
@@ -566,7 +566,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         memcpy(&enckey[1], key, keylen);
         sesskey += 1;
         enckey_len = keylen + 3; // keylen + algorithm octet + checksum
-    } else {                     // PGP_PKSK_V5
+    } else {                     // PGP_PKSK_V6
         memcpy(&enckey[0], key, keylen);
         enckey_len = keylen + 2; // keylen + checksum
     }
@@ -992,8 +992,8 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     /* Configuring and writing pk-encrypted session keys */
     for (auto recipient : handler->ctx->recipients) {
         pgp_pkesk_version_t pkesk_version = PGP_PKSK_V3;
-        if (handler->ctx->enable_pkesk_v5 && handler->ctx->pkeskv5_capable()) {
-            pkesk_version = PGP_PKSK_V5;
+        if (handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable()) {
+            pkesk_version = PGP_PKSK_V6;
             param->is_v2_seipd = true;
             param->ctx->aalg = PGP_AEAD_OCB; // TODOMTG: this must be done elsewhere / differently
             dst->write = encrypted_dst_write_aead;

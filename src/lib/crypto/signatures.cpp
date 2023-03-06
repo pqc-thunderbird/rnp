@@ -50,7 +50,7 @@ signature_hash_finish(const pgp_signature_t &sig, rnp::Hash &hash, uint8_t *hbuf
         STORE32BE(&trailer[2], sig.hashed_len);
         hash.add(trailer, 6);
     }
-    else if(sig.version == PGP_V5) {
+    else if(sig.version == PGP_V6) {
         uint8_t trailer[10] = {0x05, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
         STORE64BE(&trailer[2], sig.hashed_len);
         hash.add(trailer, 10);
@@ -63,9 +63,9 @@ signature_init(const pgp_key_pkt_t &key, const pgp_signature_t &sig)
 {
     auto hash = rnp::Hash::create(sig.halg);
 
-    if (key.version == PGP_V5)
+    if (key.version == PGP_V6)
     {
-        hash->add(sig.salt, PGP_SALT_SIZE_V5_SIG);
+        hash->add(sig.salt, PGP_SALT_SIZE_V6_SIG);
     }
 
     if (key.material.alg == PGP_PKA_SM2) {

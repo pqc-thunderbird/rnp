@@ -2549,13 +2549,13 @@ try {
 FFI_GUARD
 
 rnp_result_t
-rnp_op_encrypt_enable_pkesk_v5(rnp_op_encrypt_t op)
+rnp_op_encrypt_enable_pkesk_v6(rnp_op_encrypt_t op)
 try {
     if (!op) {
         return RNP_ERROR_NULL_POINTER;
     }
 
-    op->rnpctx.enable_pkesk_v5 = true;
+    op->rnpctx.enable_pkesk_v6 = true;
     return RNP_SUCCESS;
 }
 FFI_GUARD
@@ -3755,7 +3755,7 @@ str_to_locator(rnp_ffi_t         ffi,
     case PGP_KEY_SEARCH_FINGERPRINT: {
         // Note: v2/v3 fingerprint are 16 bytes (32 chars) long
         if (strlen(identifier) != (PGP_FINGERPRINT_V4_SIZE * 2) &&
-            strlen(identifier) != (PGP_FINGERPRINT_V5_SIZE * 2) &&
+            strlen(identifier) != (PGP_FINGERPRINT_V6_SIZE * 2) &&
             (strlen(identifier) != 32)) {
             FFI_LOG(ffi, "Invalid fingerprint: %s", identifier);
             return RNP_ERROR_BAD_PARAMETERS;
@@ -5615,12 +5615,12 @@ try {
 FFI_GUARD
 
 rnp_result_t
-rnp_op_generate_set_v5_key(rnp_op_generate_t op)
+rnp_op_generate_set_v6_key(rnp_op_generate_t op)
 try {
     if (!op) {
         return RNP_ERROR_NULL_POINTER;
     }
-    op->pgp_version = PGP_V5;
+    op->pgp_version = PGP_V6;
     return RNP_SUCCESS;
 }
 FFI_GUARD

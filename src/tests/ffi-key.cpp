@@ -3138,7 +3138,7 @@ TEST_F(rnp_tests, test_ffi_malformed_keys_import)
     rnp_ffi_destroy(ffi);
 }
 
-TEST_F(rnp_tests, test_ffi_v5_sig_subpackets)
+TEST_F(rnp_tests, test_ffi_v6_sig_subpackets)
 {
     rnp_ffi_t   ffi = NULL;
 
@@ -3148,7 +3148,7 @@ TEST_F(rnp_tests, test_ffi_v5_sig_subpackets)
 
     rnp_op_generate_t op = NULL;
     assert_rnp_success(rnp_op_generate_create(&op, ffi, "EDDSA"));
-    assert_rnp_success(rnp_op_generate_set_v5_key(op));
+    assert_rnp_success(rnp_op_generate_set_v6_key(op));
     assert_rnp_success(rnp_op_generate_set_userid(op, "test"));
     assert_rnp_success(rnp_op_generate_add_usage(op, "sign"));
     assert_rnp_success(rnp_op_generate_add_usage(op, "certify"));
@@ -3163,16 +3163,15 @@ TEST_F(rnp_tests, test_ffi_v5_sig_subpackets)
     rnp_op_generate_destroy(op);
 }
 
-TEST_F(rnp_tests, test_ffi_v5_cert_import)
+TEST_F(rnp_tests, test_ffi_v6_cert_import)
 {
     rnp_ffi_t   ffi = NULL;
     rnp_input_t input = NULL;
     size_t keycount = 255;
 
-    // TODOMTG: use transferable_pubkey_v5__cryptorefresh_07_fixed but there seems to be a Base64 Armor problem 
     assert_rnp_success(rnp_ffi_create(&ffi, "GPG", "GPG"));
     assert_rnp_success(
-      rnp_input_from_path(&input, "data/test_v5_valid_data/transferable_pubkey_v5__cryptorefresh_07.asc"));
+      rnp_input_from_path(&input, "data/test_v6_valid_data/transferable_pubkey_v6.asc"));
     assert_rnp_success(
       rnp_import_keys(ffi, input, RNP_LOAD_SAVE_PUBLIC_KEYS | RNP_LOAD_SAVE_SINGLE | RNP_LOAD_SAVE_BASE64, NULL));
     rnp_input_destroy(input);
@@ -3198,12 +3197,12 @@ TEST_F(rnp_tests, test_ffi_v5_cert_import)
       assert_non_null(issuer_fpr);
       
       /* check that fingerprints match */
-      assert_int_equal(key.fp().length, PGP_FINGERPRINT_V5_SIZE);
+      assert_int_equal(key.fp().length, PGP_FINGERPRINT_V6_SIZE);
       assert_memory_equal(issuer_fpr->data + 1, primary_fp.fingerprint, primary_fp.length); // first byte in data is the version - skip
     }
 }
 
-TEST_F(rnp_tests, test_ffi_v5_seckey_import)
+TEST_F(rnp_tests, test_ffi_v6_seckey_import)
 {
     rnp_ffi_t   ffi = NULL;
     rnp_input_t input = NULL;
@@ -3211,7 +3210,7 @@ TEST_F(rnp_tests, test_ffi_v5_seckey_import)
 
     assert_rnp_success(rnp_ffi_create(&ffi, "GPG", "GPG"));
     assert_rnp_success(
-      rnp_input_from_path(&input, "data/test_v5_valid_data/transferable_seckey_v5__cryptorefresh_07_fixed.asc"));
+      rnp_input_from_path(&input, "data/test_v6_valid_data/transferable_seckey_v6.asc"));
     assert_rnp_success(
       rnp_import_keys(ffi, input, RNP_LOAD_SAVE_SECRET_KEYS | RNP_LOAD_SAVE_SINGLE | RNP_LOAD_SAVE_BASE64, NULL));
     rnp_input_destroy(input);

@@ -206,7 +206,7 @@ rnpkeys_ask_generate_params(rnp_cfg &cfg, FILE *input_fp)
                "\t(16) DSA + ElGamal\n"
                "\t(17) DSA + RSA\n" // TODO: See #584
                "\t(19) ECDSA + ECDH\n"
-               "\t(21) EDDSA + X25519 (v5 key) \n"
+               "\t(21) EDDSA + X25519 (v6 key) \n"
                "\t(22) EDDSA + X25519 (v4 key) \n"
                "\t(99) SM2\n"
                "> ");
@@ -251,7 +251,7 @@ rnpkeys_ask_generate_params(rnp_cfg &cfg, FILE *input_fp)
             break;
         }
         case 21: {
-            cfg.set_str(CFG_KG_V5_KEY, "true");
+            cfg.set_str(CFG_KG_V6_KEY, "true");
             [[fallthrough]];
         }
         case 22: {

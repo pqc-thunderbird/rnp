@@ -165,7 +165,7 @@ typedef struct pgp_pk_sesskey_t {
     /* v3 PKESK */
     pgp_key_id_t         key_id{};
 
-    /* v5 PKESK */
+    /* v6 PKESK */
     pgp_fingerprint_t    fp{};
 
 
@@ -191,7 +191,7 @@ typedef struct pgp_sk_sesskey_t {
     pgp_s2k_t      s2k{};
     uint8_t        enckey[PGP_MAX_KEY_SIZE + PGP_AEAD_MAX_TAG_LEN + 1]{};
     unsigned       enckeylen{};
-    /* v5 specific fields */
+    /* v6 specific fields */
     pgp_aead_alg_t aalg{};
     uint8_t        iv[PGP_MAX_BLOCK_SIZE]{};
     unsigned       ivlen{};
