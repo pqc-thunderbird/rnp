@@ -644,6 +644,21 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         }
         break;
     }
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        ret = userkey->material().kyber_ecdh.pub.encrypt(&handler->ctx->ctx->rng,
+                                                        &material.kyber_ecdh,
+                                                        enckey.data(),
+                                                        keylen + 3);
+        if (ret) {
+            RNP_LOG("Kyber ECC Encrypt failed");
+            return ret;
+        }
+        break;
     default:
         RNP_LOG("unsupported alg: %d", (int) userkey->alg());
         return ret;

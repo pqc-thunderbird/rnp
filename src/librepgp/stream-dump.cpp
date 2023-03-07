@@ -143,6 +143,18 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_RESERVED_DH, "Reserved for DH (X9.42)"},
   {PGP_PKA_EDDSA, "EdDSA"},
   {PGP_PKA_SM2, "SM2"},
+  {PGP_PKA_KYBER768_X25519, "Kyber768 + X25519"},
+  {PGP_PKA_KYBER1024_X448, "Kyber1024 + X448"},
+  {PGP_PKA_KYBER768_P256, "Kyber768 + NIST P-256"},
+  {PGP_PKA_KYBER1024_P384, "Kyber1024 + NIST P-384"},
+  {PGP_PKA_KYBER768_BP256, "Kyber768 + Brainpool256"},
+  {PGP_PKA_KYBER1024_BP384, "Kyber1024 + Brainpool384"},
+  {PGP_PKA_DILITHIUM3_ED25519, "Dilithium3 + X25519"},
+  {PGP_PKA_DILITHIUM5_ED448, "Dilithium + X448"},
+  {PGP_PKA_DILITHIUM3_P256, "Dilithium3 + NIST P-256"},
+  {PGP_PKA_DILITHIUM5_P384, "Dilithium5 + NIST P-384"},
+  {PGP_PKA_DILITHIUM3_BP256, "Dilithium3 + Brainpool256"},
+  {PGP_PKA_DILITHIUM5_BP384, "Dilithium5 + Brainpool384"},
   {0x00, NULL},
 };
 
@@ -317,6 +329,19 @@ dst_print_mpi(pgp_dest_t *dst, const char *name, pgp_mpi_t *mpi, bool dumpbin)
     } else {
         vsnprinthex(hex, sizeof(hex), mpi->mpi, mpi->len);
         dst_printf(dst, "%s: %d bits, %s\n", name, (int) mpi_bits(mpi), hex);
+    }
+}
+
+/* draft-wussler-openpgp-pqc-00 does not use MPIs but only fixed-length buffers */
+static void
+dst_print_pqc_buf(pgp_dest_t *dst, const char *name, uint8_t *encoded, size_t encoded_len, bool dumpbin)
+{
+    std::vector<char> hex(2*encoded_len);
+    if (!dumpbin) {
+        dst_printf(dst, "%s\n", name);
+    } else {
+        vsnprinthex(hex.data(), hex.size(), encoded, encoded_len);
+        dst_printf(dst, "%s, %s\n", name, hex.data());
     }
 }
 
@@ -768,6 +793,14 @@ stream_dump_signature_pkt(rnp_dump_ctx_t *ctx, pgp_signature_t *sig, pgp_dest_t 
         dst_print_mpi(dst, "eg r", &material.eg.r, ctx->dump_mpi);
         dst_print_mpi(dst, "eg s", &material.eg.s, ctx->dump_mpi);
         break;
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        dst_print_pqc_buf(dst, "dilithium-exdsa sig", material.dilithium_exdsa.sig.data(), material.dilithium_exdsa.sig.size(), ctx->dump_mpi);
+        break;
     default:
         dst_printf(dst, "unknown algorithm\n");
     }
@@ -862,6 +895,22 @@ stream_dump_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *dst)
         dst_printf(dst, "ecdh key wrap algorithm: %d\n", (int) key.material.ec.key_wrap_alg);
         break;
     }
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        dst_print_pqc_buf(dst, "kyber-ecdh encoded pubkey", key.material.kyber_ecdh.pub.get_encoded().data(), key.material.kyber_ecdh.pub.get_encoded().size(), ctx->dump_mpi);
+        break;
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        dst_print_pqc_buf(dst, "dilithium-exdsa encodced pubkey", key.material.dilithium_exdsa.pub.get_encoded().data(), key.material.dilithium_exdsa.pub.get_encoded().size(), ctx->dump_mpi);
+        break;
     default:
         dst_printf(dst, "unknown public key algorithm\n");
     }
@@ -1016,6 +1065,15 @@ stream_dump_pk_session_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *d
         } else {
             dst_printf(dst, "ecdh m: %d bytes\n", (int) material.ecdh.mlen);
         }
+        break;
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        dst_print_pqc_buf(dst, "kyber-ecdh composite ciphertext", material.kyber_ecdh.composite_ciphertext.data(), material.kyber_ecdh.composite_ciphertext.size(), ctx->dump_mpi);
+        dst_print_pqc_buf(dst, "kyber-ecdh wrapped session key", material.kyber_ecdh.wrapped_sesskey.data(), material.kyber_ecdh.wrapped_sesskey.size(), ctx->dump_mpi);
         break;
     default:
         dst_printf(dst, "unknown public key algorithm\n");
@@ -1876,6 +1934,14 @@ stream_dump_signature_pkt_json(rnp_dump_ctx_t *       ctx,
             goto done;
         }
         break;
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        /* TODOMTG */
+        break;
     default:
         break;
     }
@@ -2000,6 +2066,22 @@ stream_dump_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_object *pkt)
         }
         break;
     }
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        // TODOMTG
+        break;
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        /* TODOMTG */
+        break;
     default:
         break;
     }
@@ -2132,6 +2214,14 @@ stream_dump_pk_session_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_obj
             !obj_add_hex_json(material, "m", pkmaterial.ecdh.m, pkmaterial.ecdh.mlen)) {
             return RNP_ERROR_OUT_OF_MEMORY;
         }
+        break;
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        // TODOMTG
         break;
     default:;
     }

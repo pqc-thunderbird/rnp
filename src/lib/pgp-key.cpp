@@ -200,6 +200,22 @@ pgp_pk_alg_capabilities(pgp_pubkey_alg_t alg)
     case PGP_PKA_ELGAMAL:
         return PGP_KF_ENCRYPT;
 
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        return PGP_KF_ENCRYPT;
+    
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        return pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY | PGP_KF_AUTH);
+
     default:
         RNP_LOG("unknown pk alg: %d\n", alg);
         return PGP_KF_NONE;
@@ -2747,6 +2763,20 @@ pgp_key_material_t::bits() const
         const ec_curve_desc_t *curve = get_curve_desc(ec.curve);
         return curve ? curve->bitlen : 0;
     }
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384: 
+        return 0; /* TODOMTG: anything meaninful for pqc composite? */
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        return 0; /* TODOMTG: anything meaninful for pqc composite? */
     default:
         RNP_LOG("Unknown public key alg: %d", (int) alg);
         return 0;

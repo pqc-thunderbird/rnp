@@ -188,7 +188,9 @@ typedef struct pgp_key_material_t {
         pgp_eg_key_t  eg;
         pgp_ec_key_t  ec;
     };
-
+    pgp_kyber_ecdh_key_t kyber_ecdh; /* non-trivial type, cannot be in a union */
+    pgp_dilithium_exdsa_key_t dilithium_exdsa; /* non-trivial type, cannot be in a union */
+    
     size_t bits() const;
     size_t qbits() const;
     void   validate(rnp::SecurityContext &ctx, bool reset = true);
@@ -205,6 +207,7 @@ typedef struct pgp_signature_material_t {
         pgp_ec_signature_t  ecc;
         pgp_eg_signature_t  eg;
     };
+    pgp_dilithium_exdsa_signature_t dilithium_exdsa; // non-trivial type cannot be member in union
 } pgp_signature_material_t;
 
 /**
@@ -212,11 +215,12 @@ typedef struct pgp_signature_material_t {
  */
 typedef struct pgp_encrypted_material_t {
     union {
-        pgp_rsa_encrypted_t  rsa;
-        pgp_eg_encrypted_t   eg;
-        pgp_sm2_encrypted_t  sm2;
-        pgp_ecdh_encrypted_t ecdh;
+        pgp_rsa_encrypted_t       rsa;
+        pgp_eg_encrypted_t        eg;
+        pgp_sm2_encrypted_t       sm2;
+        pgp_ecdh_encrypted_t      ecdh;
     };
+    pgp_kyber_ecdh_encrypted_t kyber_ecdh; // non-trivial type cannot be member in union
 } pgp_encrypted_material_t;
 
 typedef struct pgp_s2k_t {

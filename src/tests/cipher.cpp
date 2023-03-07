@@ -612,6 +612,77 @@ TEST_F(rnp_tests, test_dsa_verify_negative)
     assert_int_equal(dsa_verify(&sig, message, h_size, key1), RNP_ERROR_SIGNATURE_INVALID);
 }
 
+TEST_F(rnp_tests, kyber_ecdh_roundtrip)
+{
+    pgp_pubkey_alg_t algs[] = {PGP_PKA_KYBER768_X25519,
+                               /* PGP_PKA_KYBER1024_X448,  */ // X448 not yet implemented
+                               PGP_PKA_KYBER1024_P384,
+                               PGP_PKA_KYBER768_BP256,
+                               PGP_PKA_KYBER1024_BP384
+                               };
+
+    pgp_kyber_ecdh_encrypted_t enc;
+    uint8_t              plaintext[32] = {0};
+    size_t               plaintext_len = sizeof(plaintext);
+    uint8_t              result[32] = {0};
+    size_t               result_len = sizeof(result);
+
+    for (size_t i = 0; i < ARRAY_SIZE(algs); i++) {
+        rnp_keygen_crypto_params_t key_desc;
+        key_desc.key_alg = algs[i];
+        key_desc.hash_alg = PGP_HASH_SHA512;
+        key_desc.ctx = &global_ctx;
+
+        pgp_key_pkt_t key;
+        assert_true(pgp_generate_seckey(key_desc, key, true));
+
+        pgp_fingerprint_t key_fpr = {};
+        assert_rnp_success(pgp_fingerprint(key_fpr, key));
+
+        assert_rnp_success(key.material.kyber_ecdh.pub.encrypt(&global_ctx.rng, &enc, plaintext, plaintext_len));
+        assert_rnp_success(key.material.kyber_ecdh.priv.decrypt(result, &result_len, &enc));
+
+        assert_int_equal(plaintext_len, result_len);
+        assert_int_equal(memcmp(plaintext, result, result_len), 0);
+    }
+}
+
+TEST_F(rnp_tests, dilithium_exdsa_signverify_success)
+{
+    uint8_t              message[64];
+    const pgp_hash_alg_t hash_alg = PGP_HASH_SHA512;
+
+    pgp_pubkey_alg_t algs[] = {PGP_PKA_DILITHIUM3_ED25519, /* PGP_PKA_DILITHIUM5_ED448,*/ PGP_PKA_DILITHIUM3_P256, PGP_PKA_DILITHIUM5_P384, PGP_PKA_DILITHIUM3_BP256, PGP_PKA_DILITHIUM5_BP384};
+    
+    for (size_t i = 0; i < ARRAY_SIZE(algs); i++) {
+        // Generate test data. Mainly to make valgrind not to complain about uninitialized data
+        global_ctx.rng.get(message, sizeof(message));
+
+        pgp_dilithium_exdsa_signature_t sig;
+        rnp_keygen_crypto_params_t key_desc;
+        key_desc.key_alg = algs[i];
+        key_desc.hash_alg = hash_alg;
+        key_desc.ctx = &global_ctx;
+
+        pgp_key_pkt_t seckey1;
+        pgp_key_pkt_t seckey2;
+
+        assert_true(pgp_generate_seckey(key_desc, seckey1, true));
+        assert_true(pgp_generate_seckey(key_desc, seckey2, true));
+
+        const pgp_dilithium_exdsa_key_t *key1 = &seckey1.material.dilithium_exdsa;
+        const pgp_dilithium_exdsa_key_t *key2 = &seckey2.material.dilithium_exdsa;
+
+        assert_rnp_success(
+          key1->priv.sign(&global_ctx.rng, &sig, hash_alg, message, sizeof(message)));
+
+        assert_rnp_success(key1->pub.verify(&sig, hash_alg, message, sizeof(message)));
+
+        // Fails because of different key used
+        assert_rnp_failure(key2->pub.verify(&sig, hash_alg, message, sizeof(message)));
+    }
+}
+
 // platforms known to not have a robust response can compile with
 // -DS2K_MINIMUM_TUNING_RATIO=2 (or whatever they need)
 #ifndef S2K_MINIMUM_TUNING_RATIO

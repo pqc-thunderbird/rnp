@@ -162,6 +162,18 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_ECDSA, RNP_ALGNAME_ECDSA},
   {PGP_PKA_EDDSA, RNP_ALGNAME_EDDSA},
   {PGP_PKA_SM2, RNP_ALGNAME_SM2},
+  {PGP_PKA_KYBER768_X25519, RNP_ALGNAME_KYBER768_X25519},
+  {PGP_PKA_KYBER1024_X448, RNP_ALGNAME_KYBER1024_X448},
+  {PGP_PKA_KYBER768_P256, RNP_ALGNAME_KYBER768_P256},
+  {PGP_PKA_KYBER1024_P384, RNP_ALGNAME_KYBER1024_P384},
+  {PGP_PKA_KYBER768_BP256, RNP_ALGNAME_KYBER768_BP256},
+  {PGP_PKA_KYBER1024_BP384, RNP_ALGNAME_KYBER1024_BP384},
+  {PGP_PKA_DILITHIUM3_ED25519, RNP_ALGNAME_DILITHIUM3_ED25519},
+  {PGP_PKA_DILITHIUM5_ED448, RNP_ALGNAME_DILITHIUM5_ED448},
+  {PGP_PKA_DILITHIUM3_P256, RNP_ALGNAME_DILITHIUM3_P256},
+  {PGP_PKA_DILITHIUM5_P384, RNP_ALGNAME_DILITHIUM5_P384},
+  {PGP_PKA_DILITHIUM3_BP256, RNP_ALGNAME_DILITHIUM3_BP256},
+  {PGP_PKA_DILITHIUM5_BP384, RNP_ALGNAME_DILITHIUM5_BP384},
   {0, NULL}};
 
 static const id_str_pair symm_alg_map[] = {{PGP_SA_IDEA, RNP_ALGNAME_IDEA},
@@ -720,6 +732,8 @@ rnp_result_to_string(rnp_result_t result)
         return "No suitable key";
     case RNP_ERROR_DECRYPT_FAILED:
         return "Decryption failed";
+    case RNP_ERROR_ENCRYPT_FAILED:
+        return "Encryption failed";
     case RNP_ERROR_RNG:
         return "Failure of random number generator";
     case RNP_ERROR_SIGNING_FAILED:
@@ -5215,7 +5229,20 @@ default_key_flags(pgp_pubkey_alg_t alg, bool subkey)
         return subkey ? PGP_KF_ENCRYPT : pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY);
     case PGP_PKA_ECDH:
     case PGP_PKA_ELGAMAL:
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
         return PGP_KF_ENCRYPT;
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        return subkey ? PGP_KF_SIGN : pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY);
     default:
         return PGP_KF_NONE;
     }
@@ -7460,6 +7487,20 @@ add_json_public_mpis(json_object *jso, pgp_key_t *key)
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2:
         return add_json_mpis(jso, "point", &km.ec.p, NULL);
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        return RNP_SUCCESS; /* TODOMTG add_json_pqc_composite_key() */
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        return RNP_SUCCESS; /* TODOMTG */
     default:
         return RNP_ERROR_NOT_SUPPORTED;
     }
@@ -7486,6 +7527,13 @@ add_json_secret_mpis(json_object *jso, pgp_key_t *key)
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2:
         return add_json_mpis(jso, "x", &km.ec.x, NULL);
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        return RNP_SUCCESS; /* TODOMTG add_json_pqc_composite_key() */
     default:
         return RNP_ERROR_NOT_SUPPORTED;
     }
@@ -7518,6 +7566,13 @@ add_json_sig_mpis(json_object *jso, const pgp_signature_t *sig)
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2:
         return add_json_mpis(jso, "r", &material.ecc.r, "s", &material.ecc.s, NULL);
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        return RNP_SUCCESS; /* TODOMTG */
     default:
         // TODO: we could use info->unknown and add a hex string of raw data here
         return RNP_ERROR_NOT_SUPPORTED;
@@ -7769,6 +7824,20 @@ key_to_json(json_object *jso, rnp_key_handle_t handle, uint32_t flags)
         }
         json_object_object_add(jso, "curve", jsocurve);
     } break;
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        return RNP_SUCCESS; /* TODOMTG */
+    case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+    case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+    case PGP_PKA_DILITHIUM5_BP384:
+        return RNP_SUCCESS; /* TODOMTG */
     default:
         break;
     }

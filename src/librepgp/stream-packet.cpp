@@ -1146,6 +1146,7 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
 bool
 pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
 {
+    uint8_t wrapped_key_len = 0;
     pgp_packet_body_t pkt(material_buf.data(), material_buf.size());
     switch (alg) {
     case PGP_PKA_RSA:
@@ -1194,6 +1195,27 @@ pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
         }
         break;
     }
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        material.kyber_ecdh.composite_ciphertext.resize(pgp_kyber_ecdh_encrypted_t::composite_ciphertext_size(alg));
+        if (!pkt.get(material.kyber_ecdh.composite_ciphertext.data(), material.kyber_ecdh.composite_ciphertext.size())) {
+            RNP_LOG("failed to get kyber-ecdh ciphertext");
+            return false;
+        }
+        if (!pkt.get(wrapped_key_len)) {
+            RNP_LOG("failed to get kyber-ecdh wrapped session key length");
+            return false;
+        }
+        material.kyber_ecdh.wrapped_sesskey.resize(wrapped_key_len);
+        if (!pkt.get(material.kyber_ecdh.wrapped_sesskey.data(), material.kyber_ecdh.wrapped_sesskey.size())) {
+            RNP_LOG("failed to get kyber-ecdh session key");
+            return false;
+        }
+        break;
     default:
         RNP_LOG("unknown pk alg %d", (int) alg);
         return false;
@@ -1227,6 +1249,16 @@ pgp_pk_sesskey_t::write_material(const pgp_encrypted_material_t &material)
     case PGP_PKA_ELGAMAL:
         pktbody.add(material.eg.g);
         pktbody.add(material.eg.m);
+        break;
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        pktbody.add(material.kyber_ecdh.composite_ciphertext.data(), material.kyber_ecdh.composite_ciphertext.size());
+        pktbody.add_byte(static_cast<uint8_t>(material.kyber_ecdh.wrapped_sesskey.size()));
+        pktbody.add(material.kyber_ecdh.wrapped_sesskey.data(), material.kyber_ecdh.wrapped_sesskey.size());
         break;
     default:
         RNP_LOG("Unknown pk alg: %d", (int) alg);

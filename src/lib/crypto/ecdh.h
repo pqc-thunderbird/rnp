@@ -28,6 +28,7 @@
 #define ECDH_H_
 
 #include "crypto/ec.h"
+#include <vector>
 
 /* Max size of wrapped and obfuscated key size
  *
@@ -113,5 +114,36 @@ rnp_result_t ecdh_decrypt_pkcs5(uint8_t *                   out,
                                 const pgp_ecdh_encrypted_t *in,
                                 const pgp_ec_key_t *        key,
                                 const pgp_fingerprint_t &   fingerprint);
+
+
+
+/* used for kyber-ecdh composite: only do the public operation and no KDF and key wrap*/
+rnp_result_t ecdh_kem_encaps(rnp::RNG *                 rng,
+                             std::vector<uint8_t>       &ciphertext, /* encrypted shared secret */
+                             std::vector<uint8_t>       &plaintext,  /* plaintext shared secret */
+                             const std::vector<uint8_t> &pubkey_in,  /* public key */
+                             pgp_curve_t curve);
+
+/* used for kyber-ecdh composite: only do the private operation and no KDF and key wrap*/
+rnp_result_t ecdh_kem_decaps(std::vector<uint8_t>       &plaintext,  /* plaintext shared secret */
+                             const std::vector<uint8_t> &ciphertext, /* encrypted shared secret */
+                             const std::vector<uint8_t> &privkey_in,  /* private key */
+                             pgp_curve_t curve);
+
+/* used for kyber-ecdh composite: generate ec keys with plain sec1 / native encoding */
+rnp_result_t ecdh_kem_gen_keypair_native(rnp::RNG *           rng,
+                                       std::vector<uint8_t> &privkey, 
+                                       std::vector<uint8_t> &pubkey,
+                                       pgp_curve_t          curve);
+
+
+rnp_result_t exdsa_gen_keypair_native(rnp::RNG *           rng,
+                                    std::vector<uint8_t> &privkey, 
+                                    std::vector<uint8_t> &pubkey,
+                                    pgp_curve_t          curve);
+
+/* TODOMTG: description -> documentation  */
+/* TODOMTG: this API has to be disabled for OpenSSL backend for now */
+
 
 #endif // ECDH_H_

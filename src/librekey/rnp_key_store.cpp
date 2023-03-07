@@ -739,6 +739,22 @@ rnp_key_store_get_key_grip(const pgp_key_material_t *key, pgp_key_grip_t &grip)
         case PGP_PKA_SM2:
             grip_hash_ec(*hash, key->ec);
             break;
+        case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+        case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+        case PGP_PKA_KYBER768_P256: [[fallthrough]];
+        case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+        case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+        case PGP_PKA_KYBER1024_BP384:
+            hash->add(key->kyber_ecdh.pub.get_encoded().data(), key->kyber_ecdh.pub.get_encoded().size());
+            break;
+        case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
+        case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+        case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
+        case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
+        case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
+        case PGP_PKA_DILITHIUM5_BP384:
+            hash->add(key->dilithium_exdsa.pub.get_encoded().data(), key->dilithium_exdsa.pub.get_encoded().size());
+            break;
         default:
             RNP_LOG("unsupported public-key algorithm %d", (int) key->alg);
             return false;

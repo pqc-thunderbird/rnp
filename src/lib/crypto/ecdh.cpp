@@ -28,6 +28,7 @@
 #include <botan/ffi.h>
 #include "hash_botan.hpp"
 #include "ecdh.h"
+#include "ec.h"
 #include "ecdh_utils.h"
 #include "symmetric.h"
 #include "types.h"
@@ -372,6 +373,185 @@ ecdh_decrypt_pkcs5(uint8_t *                   out,
     memcpy(out, deckey.data(), *out_len);
     ret = RNP_SUCCESS;
 end:
+    botan_privkey_destroy(prv_key);
+    return ret;
+}
+
+rnp_result_t ecdh_kem_gen_keypair_native(rnp::RNG *         rng,
+                                         std::vector<uint8_t> &privkey, 
+                                         std::vector<uint8_t> &pubkey,
+                                         pgp_curve_t          curve)
+{
+    return ec_generate_native(rng, privkey, pubkey, curve, PGP_PKA_ECDH);
+}
+
+rnp_result_t exdsa_gen_keypair_native(rnp::RNG *         rng,
+                                      std::vector<uint8_t> &privkey, 
+                                      std::vector<uint8_t> &pubkey,
+                                      pgp_curve_t          curve)
+{
+    pgp_pubkey_alg_t alg;
+    switch(curve) 
+    {
+        case PGP_CURVE_ED25519:
+            alg = PGP_PKA_EDDSA;
+            break;
+        case PGP_CURVE_NIST_P_256: [[fallthrough]];
+        case PGP_CURVE_NIST_P_384: [[fallthrough]];
+        case PGP_CURVE_NIST_P_521: [[fallthrough]];
+        case PGP_CURVE_BP256: [[fallthrough]];
+        case PGP_CURVE_BP384: [[fallthrough]];
+        case PGP_CURVE_BP512: [[fallthrough]];
+        case PGP_CURVE_P256K1:
+            alg = PGP_PKA_ECDSA;
+            break;
+        default:
+            RNP_LOG("invalid curve for ECDSA/EDDSA");
+            return RNP_ERROR_BAD_PARAMETERS;
+    }
+    return ec_generate_native(rng, privkey, pubkey, curve, alg);
+}
+
+rnp_result_t ecdh_kem_encaps(rnp::RNG *                 rng,
+                             std::vector<uint8_t>       &ciphertext,   /* encrypted shared secret */
+                             std::vector<uint8_t>       &plaintext,    /* plaintext / shared secret / key share */
+                             const std::vector<uint8_t> &pubkey_in,    /* public key */
+                             pgp_curve_t                curve)
+{
+    // TODOMTG: can probably share code with the existing code in ecdh_load_public_key() and ecdh_encrypt_pkcs5()
+    rnp_result_t ret;
+    int botan_ret;
+    botan_privkey_t eph_prv_key = NULL;
+    botan_pk_op_ka_t op_key_agreement = NULL;
+    rnp::secure_array<uint8_t, MAX_CURVE_BYTELEN * 2 + 1> s;
+    size_t s_len = s.size();
+    size_t len;
+    const ec_curve_desc_t *curve_desc = get_curve_desc(curve);
+    if (!curve_desc) {
+        RNP_LOG("unknown curve");
+        return RNP_ERROR_NOT_SUPPORTED;
+    }
+    const size_t curve_order = BITS_TO_BYTES(curve_desc->bitlen);
+
+    /* create ephemeral key */
+    if (curve == PGP_CURVE_25519) {
+        botan_ret = botan_privkey_create(&eph_prv_key, "Curve25519", "", rng->handle());
+    }
+    else {
+        botan_ret = botan_privkey_create(&eph_prv_key, "ECDH", curve_desc->botan_name, rng->handle());
+    }
+    if (botan_ret) {
+        RNP_LOG("failed to generate ephemeral private key");
+        ret = RNP_ERROR_GENERIC;
+        goto end;
+    }
+
+    /* do the actual operation */
+    botan_ret = botan_pk_op_key_agreement_create(&op_key_agreement, eph_prv_key, "Raw", 0);
+    if (botan_ret) {
+        RNP_LOG("failed to create key agreement op, %d", botan_ret);
+        ret = RNP_ERROR_GENERIC;
+        goto end;
+    }
+    botan_ret = botan_pk_op_key_agreement(op_key_agreement, s.data(), &s_len, pubkey_in.data(), pubkey_in.size(), NULL, 0);
+    if(botan_ret)  {
+        RNP_LOG("ECDH key agreement failed, %d", botan_ret);
+        ret = RNP_ERROR_GENERIC;
+        goto end;
+    }
+
+    /* set ciphertext output */
+    if (curve == PGP_CURVE_25519) {
+        ciphertext.resize(curve_order);
+    } else {
+        ciphertext.resize(2*curve_order + 1);
+    }
+    len = ciphertext.size();
+    ret = botan_pk_op_key_agreement_export_public(eph_prv_key, ciphertext.data(), &len);
+    if(ret) {
+        RNP_LOG("botan_pk_op_key_agreement_export_public() failed");
+        ret = RNP_ERROR_GENERIC;
+        goto end; 
+    }
+    if(len != ciphertext.size()) {
+        RNP_LOG("expected different length for botan_pk_op_key_agreement_export_public() (expect: %zu, got: %zu)", ciphertext.size(), len);
+        ret = RNP_ERROR_GENERIC;
+        goto end;    
+    }
+
+    if (curve == PGP_CURVE_25519) {
+        plaintext.assign(s.data(), s.data() + curve_order);
+    } else {
+        /*  draft-wussler-openpgp-pqc-00: 
+            Extract the X coordinate from the SEC1 encoded point S = 04 || X || Y as defined in section Section 1.3.3
+        */
+        plaintext.assign(s.data() + 1, s.data() + curve_order + 1);
+    }
+
+end:
+    botan_pk_op_key_agreement_destroy(op_key_agreement);
+    botan_privkey_destroy(eph_prv_key);
+    return ret;
+}
+
+rnp_result_t ecdh_kem_decaps(std::vector<uint8_t>       &plaintext,  /* plaintext shared secret */
+                             const std::vector<uint8_t> &ciphertext, /* encrypted shared secret */
+                             const std::vector<uint8_t> &privkey_in, /* private key */
+                             pgp_curve_t curve) 
+{
+    rnp_result_t ret = RNP_SUCCESS;
+    int botan_ret;
+    const ec_curve_desc_t *curve_desc = get_curve_desc(curve);
+    if (!curve_desc) {
+        RNP_LOG("unknown curve");
+        return RNP_ERROR_NOT_SUPPORTED;
+    }
+    botan_pk_op_ka_t op_key_agreement = NULL;
+    rnp::secure_array<uint8_t, MAX_CURVE_BYTELEN * 2 + 1> s;
+    size_t s_len = s.size();
+    const size_t curve_order = BITS_TO_BYTES(curve_desc->bitlen);
+
+    botan_privkey_t prv_key = NULL;
+    if (curve == PGP_CURVE_25519) {
+        botan_ret = botan_privkey_load_x25519(&prv_key, privkey_in.data());
+    } else {
+        botan_mp_t x;
+        if(botan_mp_init(&x) || botan_mp_from_bin(x, privkey_in.data(), privkey_in.size())) {
+            botan_mp_destroy(x);
+            RNP_LOG("failed to load ecdh secret key");
+            ret = RNP_ERROR_GENERIC;
+            goto end;
+        }
+        botan_ret = botan_privkey_load_ecdh(&prv_key, x, curve_desc->botan_name);
+        botan_mp_destroy(x);
+    }
+    if(botan_ret) {
+        RNP_LOG("failed to load ecdh secret key");
+        ret = RNP_ERROR_GENERIC;
+        goto end;
+    }
+
+    /* do the actual operation */
+    if (botan_pk_op_key_agreement_create(&op_key_agreement, prv_key, "Raw", 0) ||
+        botan_pk_op_key_agreement(op_key_agreement, s.data(), &s_len, ciphertext.data(), ciphertext.size(), NULL, 0)) 
+    {
+        printf("FAILED: %d, curve: %s\n", botan_pk_op_key_agreement(op_key_agreement, s.data(), &s_len, ciphertext.data(), ciphertext.size(), NULL, 0), curve_desc->pgp_name);
+        RNP_LOG("ECDH key agreement failed");
+        ret = RNP_ERROR_GENERIC;
+        goto end;
+    }
+
+    if (curve == PGP_CURVE_25519) {
+        plaintext.assign(s.data(), s.data() + curve_order);
+    } else {
+        /*  draft-wussler-openpgp-pqc-00: 
+            Extract the X coordinate from the SEC1 encoded point S = 04 || X || Y as defined in section Section 1.3.3
+        */
+        plaintext.assign(s.data() + 1, s.data() + curve_order + 1);
+    }
+
+end:
+    botan_pk_op_key_agreement_destroy(op_key_agreement);
     botan_privkey_destroy(prv_key);
     return ret;
 }

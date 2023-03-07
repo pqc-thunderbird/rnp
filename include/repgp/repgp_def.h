@@ -215,6 +215,22 @@ typedef enum : uint8_t {
                                            * (X9.42, as defined for
                                            * IETF-S/MIME) */
     PGP_PKA_EDDSA = 22,                   /* EdDSA from draft-ietf-openpgp-rfc4880bis */
+
+    /* PQC-ECC composite */
+    PGP_PKA_KYBER768_X25519 = 25,                 /* Kyber768 + X25519 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER1024_X448 = 26,                  /* Kyer1024 + X448 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER768_P256 = 27,                   /* Kyber768 + NIST P-256 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER1024_P384 = 28,                  /* Kyber1024 + NIST P-384 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER768_BP256 = 29,                  /* Kyber768 + Brainpool P256r1 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER1024_BP384 = 30,                 /* Kyber1024 + Brainpool P384r1 from draft-wussler-openpgp-pqc-00 */
+
+    PGP_PKA_DILITHIUM3_ED25519 = 31,              /* Dilithium 3 + Ed25519 from draft-wussler-openpgp-pqc-00*/
+    PGP_PKA_DILITHIUM5_ED448 = 32,                /* Dilithium 5 + Ed448 from draft-wussler-openpgp-pqc-00*/
+    PGP_PKA_DILITHIUM3_P256 = 33,                 /* Dilithium 3 + ECDSA-NIST-P-256 from draft-wussler-openpgp-pqc-00*/
+    PGP_PKA_DILITHIUM5_P384 = 34,                 /* Dilithium 5 + ECDSA-NIST-P-384 from draft-wussler-openpgp-pqc-00*/
+    PGP_PKA_DILITHIUM3_BP256 = 35,                /* Dilithium 3 + ECDSA-brainpoolP256r1 from draft-wussler-openpgp-pqc-00*/
+    PGP_PKA_DILITHIUM5_BP384 = 36,                /* Dilithium 5 + ECDSA-brainpoolP384r1 from draft-wussler-openpgp-pqc-00*/
+
     PGP_PKA_SM2 = 99,                     /* SM2 encryption/signature schemes */
 
     PGP_PKA_PRIVATE00 = 100, /* Private/Experimental Algorithm */

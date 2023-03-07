@@ -39,6 +39,8 @@
 #include "ecdsa.h"
 #include "sm2.h"
 #include "eddsa.h"
+#include "kyber_ecdh_composite.h"
+#include "dilithium_exdsa_composite.h"
 /* symmetric crypto */
 #include "symmetric.h"
 /* hash */

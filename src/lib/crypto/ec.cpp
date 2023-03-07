@@ -40,6 +40,12 @@ static id_str_pair ec_algo_to_botan[] = {
   {0, NULL},
 };
 
+static id_str_pair ec_edwards_curve_to_botan[] = {
+  {PGP_CURVE_25519, "Curve25519"},
+  {PGP_CURVE_ED25519, "Ed25519"},
+  {0, NULL},
+};
+
 rnp_result_t
 x25519_generate(rnp::RNG *rng, pgp_ec_key_t *key)
 {
@@ -184,4 +190,197 @@ end:
     bn_free(py);
     bn_free(x);
     return ret;
+}
+
+
+static bool is_generic_prime_curve(pgp_curve_t curve) {
+    switch(curve) {
+        case PGP_CURVE_NIST_P_256: [[fallthrough]];
+        case PGP_CURVE_NIST_P_384: [[fallthrough]];
+        case PGP_CURVE_NIST_P_521: [[fallthrough]];
+        case PGP_CURVE_BP256: [[fallthrough]];
+        case PGP_CURVE_BP384: [[fallthrough]];
+        case PGP_CURVE_BP512: [[fallthrough]];
+        case PGP_CURVE_P256K1:
+            return true;
+        default: 
+            return false;
+    }
+}
+
+static bool is_edwards_curve(pgp_curve_t curve) {
+    switch(curve) {
+        case PGP_CURVE_25519: [[fallthrough]];
+        case PGP_CURVE_ED25519:
+            return true;
+        default: 
+            return false;
+    }
+}
+
+static rnp_result_t ec_generate_edwards(rnp::RNG *           rng,
+                                             std::vector<uint8_t> &privkey, 
+                                             std::vector<uint8_t> &pubkey,
+                                             pgp_curve_t          curve)
+{
+    const char *botan_name;
+    if(is_edwards_curve(curve)) {
+        botan_name = id_str_pair::lookup(ec_edwards_curve_to_botan, curve, NULL);
+    } 
+    else {
+        RNP_LOG("expected edwards curve");
+        return RNP_ERROR_BAD_PARAMETERS;
+    }
+
+    const ec_curve_desc_t *ec_desc = get_curve_desc(curve);
+    const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
+    botan_privkey_t botan_priv = NULL;
+    botan_pubkey_t botan_pub = NULL;
+    rnp_result_t res = RNP_SUCCESS;
+
+    privkey.resize(curve_order);
+    pubkey.resize(curve_order);
+
+    int botan_ret;
+    /* NOTE: botan_privkey_ed25519_get_privkey returns pub+priv key and botan_pubkey_x25519_get_pubkey only privkey */
+    if(curve == PGP_CURVE_ED25519) {
+        //botan_ret = botan_privkey_create(&botan_priv, botan_name, NULL, rng->handle());
+        //botan_ret |= botan_privkey_ed25519_get_privkey(botan_priv, pub_priv_key.data());
+        //privkey = std::vector<uint8_t>(pub_priv_key.data(), pub_priv_key.data() + curve_order);
+        //pubkey = std::vector<uint8_t>(pub_priv_key.data() + curve_order, pub_priv_key.data() + pub_priv_key.size());
+        std::vector<uint8_t> pub_priv_key(2*curve_order); // stores pub+priv
+        botan_ret = botan_privkey_create(&botan_priv, botan_name, NULL, rng->handle());
+        botan_ret |= botan_privkey_export_pubkey(&botan_pub, botan_priv);
+        botan_ret |= botan_privkey_ed25519_get_privkey(botan_priv, pub_priv_key.data());
+        botan_ret |= botan_pubkey_ed25519_get_pubkey(botan_pub, pubkey.data());
+        privkey = std::vector<uint8_t>(pub_priv_key.data(), pub_priv_key.data() + curve_order);
+    }
+    else if(curve == PGP_CURVE_25519) {
+        botan_ret = botan_privkey_create(&botan_priv, botan_name, NULL, rng->handle());
+        botan_ret |= botan_privkey_export_pubkey(&botan_pub, botan_priv);
+        botan_ret |= botan_privkey_x25519_get_privkey(botan_priv, privkey.data());
+        botan_ret |= botan_pubkey_x25519_get_pubkey(botan_pub, pubkey.data());
+    }
+    else {
+        RNP_LOG("invalid curve");
+        return RNP_ERROR_BAD_PARAMETERS;
+    }
+    if(botan_ret) {
+        RNP_LOG("error when generating edwards key");
+        res = RNP_ERROR_GENERIC;
+    }
+    if(!botan_pub || botan_pubkey_check_key(botan_pub, rng->handle(), 0)) { 
+        RNP_LOG("No valid public key created");
+        return RNP_ERROR_KEY_GENERATION;
+    }
+    
+
+    botan_privkey_destroy(botan_priv);
+    botan_pubkey_destroy(botan_pub);
+
+    return res;
+}
+
+/* TODOMTG: can try to share code with ec_generate */
+static rnp_result_t ec_generate_generic_native(rnp::RNG *           rng,
+                                               std::vector<uint8_t> &privkey, 
+                                               std::vector<uint8_t> &pubkey,
+                                               pgp_curve_t          curve,
+                                               pgp_pubkey_alg_t     alg)
+{
+    if(!is_generic_prime_curve(curve)) {
+        RNP_LOG("expected generic prime curve");
+        return RNP_ERROR_BAD_PARAMETERS;
+    }
+
+    rnp_result_t res = RNP_SUCCESS;
+
+    botan_privkey_t botan_priv = NULL;
+    botan_pubkey_t  botan_pub = NULL;
+
+    bignum_t *      px = NULL;
+    bignum_t *      py = NULL;
+    bignum_t *      x = NULL;
+    size_t offset;
+
+    const ec_curve_desc_t *ec_desc = get_curve_desc(curve);
+    const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
+
+    const char *ec_algo = id_str_pair::lookup(ec_algo_to_botan, alg, NULL);
+    assert(ec_algo);
+
+    pubkey.resize(2 * curve_order + 1);
+    privkey.resize(curve_order);
+
+    if (botan_privkey_create(&botan_priv, ec_algo, ec_desc->botan_name, rng->handle()) 
+        || botan_privkey_export_pubkey(&botan_pub, botan_priv))
+    {
+        RNP_LOG("error when generating EC key");
+        res = RNP_ERROR_GENERIC;
+        goto end;
+    }
+
+    px = bn_new();
+    py = bn_new();
+    x = bn_new();
+    if (botan_pubkey_get_field(BN_HANDLE_PTR(px), botan_pub, "public_x")
+        || botan_pubkey_get_field(BN_HANDLE_PTR(py), botan_pub, "public_y")
+        || botan_privkey_get_field(BN_HANDLE_PTR(x), botan_priv, "x"))
+    {
+        RNP_LOG("error when generating EC key");
+        res = RNP_ERROR_GENERIC;
+        goto end;
+    }
+
+    pubkey.data()[0] = 0x04;
+
+    /* if the px/py/x elements are less than curve order, we have to zero-pad them */
+    offset =  curve_order - bn_num_bytes(*px);
+    if (offset) {
+        memset(&pubkey.data()[1], 0, offset);
+    }
+    bn_bn2bin(px, &pubkey.data()[1 + offset]);
+    offset =  curve_order - bn_num_bytes(*py);
+    if (offset) {
+        memset(&pubkey.data()[1 + curve_order], 0, offset);
+    }
+    bn_bn2bin(py, &pubkey.data()[1 + curve_order + offset]);
+
+    offset =  curve_order - bn_num_bytes(*x);
+    if (offset) {
+        memset(privkey.data(), 0, offset);
+    }
+    bn_bn2bin(x, privkey.data() + offset);
+
+end:
+        botan_privkey_destroy(botan_priv);
+        botan_pubkey_destroy(botan_pub);
+        bn_free(px);
+        bn_free(py);
+        bn_free(x);
+
+        return res;
+}
+
+rnp_result_t ec_generate_native(rnp::RNG *           rng,
+                                std::vector<uint8_t> &privkey, 
+                                std::vector<uint8_t> &pubkey,
+                                pgp_curve_t          curve,
+                                pgp_pubkey_alg_t     alg)
+{
+    if(is_edwards_curve(curve)) {
+        /* TODOMTG: check that alg matches curve */
+        return ec_generate_edwards(rng, privkey, pubkey, curve);
+    }
+    else if(is_generic_prime_curve(curve)) {
+        if(alg != PGP_PKA_ECDH && alg != PGP_PKA_ECDSA) {
+            RNP_LOG("alg and curve mismatch");
+            return RNP_ERROR_BAD_PARAMETERS;
+        }
+        return ec_generate_generic_native(rng, privkey, pubkey, curve, alg);
+    }
+    else {
+        RNP_LOG("invalid curve");
+        return RNP_ERROR_BAD_PARAMETERS;     
+    }
 }
