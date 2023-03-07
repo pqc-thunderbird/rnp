@@ -56,16 +56,6 @@ ec_key_t::ec_key_t(std::vector<uint8_t> key, pgp_curve_t curve)
       curve_(curve)
 {}
 
-bool ec_key_t::is_edwards_curve(pgp_curve_t curve) {
-    switch(curve) {
-        case PGP_CURVE_25519: [[fallthrough]];
-        case PGP_CURVE_ED25519:
-            return true;
-        default: 
-            return false;
-    }
-}
-
 /* TODOMTG: de-duplicate this */
 const char *
 ec_key_t::ecdsa_padding_str_for(pgp_hash_alg_t hash_alg)
@@ -173,29 +163,20 @@ ec_key_t::generate_exdsa_key_pair(rnp::RNG *rng, exdsa_key_t *out, pgp_curve_t c
     return RNP_SUCCESS;
 }
 
-/* NOTE hash_alg unused for edwards curves */
+/* NOTE hash_alg unused for ed25519/x25519 curves */
 rnp_result_t
-exdsa_private_key_t::sign(std::vector<uint8_t> &sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const
+exdsa_private_key_t::sign(rnp::RNG *rng, std::vector<uint8_t> &sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const
 {
     //Botan::System_RNG rng;
     //Botan::Null_RNG null_rng;
     botan_privkey_t    privkey = NULL;
     botan_pk_op_sign_t sign_op = NULL;
     rnp_result_t res = RNP_SUCCESS;
-    botan_rng_t rng;
-    botan_rng_init(&rng, NULL);
     botan_mp_t x = NULL;
 
     // std::unique_ptr<Botan::PK_Signer> signer;
-    if(is_edwards_curve(curve_)) {
-        sig_out.resize(64);
-        size_t sig_size = 64;
-        res = RNP_ERROR_SIGNING_FAILED;
-        if (botan_privkey_load_ed25519(&privkey, key_.data()) != 0) { goto end; }
-        if (botan_pk_op_sign_create(&sign_op, privkey, "Pure", 0) != 0) { goto end; }
-        if (botan_pk_op_sign_update(sign_op, hash, hash_len) != 0) { goto end; }
-        if (botan_pk_op_sign_finish(sign_op, rng, sig_out.data(), &sig_size) != 0) { goto end; }
-        res = RNP_SUCCESS;
+    if(curve_ == PGP_CURVE_ED25519) {
+        return ed25519_sign_native(rng, sig_out, key_, hash, hash_len);
 
         //Botan::secure_vector<uint8_t> sv_key(key_.data(), key_.data() + key_.size());
         //Botan::Ed25519_PrivateKey priv_key(sv_key);
@@ -213,7 +194,7 @@ exdsa_private_key_t::sign(std::vector<uint8_t> &sig_out, const uint8_t *hash, si
         if (botan_privkey_load_ecdsa(&privkey, x, ec_desc->botan_name)) { goto end; }
         if (botan_pk_op_sign_create(&sign_op, privkey, ecdsa_padding_str_for(hash_alg), 0)) { goto end; }
         if (botan_pk_op_sign_update(sign_op, hash, hash_len)) { goto end; }
-        if (botan_pk_op_sign_finish(sign_op, rng, sig_out.data(), &sig_len)) { goto end; }
+        if (botan_pk_op_sign_finish(sign_op, rng->handle(), sig_out.data(), &sig_len)) { goto end; }
 
         res = RNP_SUCCESS;
 
@@ -230,7 +211,6 @@ end:
     botan_pk_op_sign_destroy(sign_op);
     botan_privkey_destroy(privkey);
     botan_mp_destroy(x);
-    botan_rng_destroy(rng);
 
     return res;
     // return RNP_SUCCESS;
@@ -246,13 +226,8 @@ exdsa_public_key_t::verify(const std::vector<uint8_t> &sig, const uint8_t *hash,
     botan_mp_t py = NULL;
 
     std::unique_ptr<Botan::PK_Verifier> verifier;
-    if(is_edwards_curve(curve_)) {
-        res = RNP_ERROR_VERIFICATION_FAILED; 
-        if (botan_pubkey_load_ed25519(&pubkey, key_.data())) { goto end; }
-        if (botan_pk_op_verify_create(&verify_op, pubkey, "Pure", 0)) { goto end; }
-        if (botan_pk_op_verify_update(verify_op, hash, hash_len)) { goto end; }
-        if (botan_pk_op_verify_finish(verify_op, sig.data(), sig.size())) { goto end; }
-        res = RNP_SUCCESS;
+    if(curve_ == PGP_CURVE_ED25519) {
+        return ed25519_verify_native(sig, key_, hash, hash_len);
 
         //Botan::Ed25519_PublicKey pub_key(key_);
         //Botan::System_RNG rng; 

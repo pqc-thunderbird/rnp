@@ -92,7 +92,7 @@ TEST_F(rnp_tests, test_exdsa)
         
         /* sign and verify */
         std::vector<uint8_t> sig;
-        assert_rnp_success(key_pair.priv.sign(sig, msg.data(), msg.size(), hash_alg));
+        assert_rnp_success(key_pair.priv.sign(&global_ctx.rng, sig, msg.data(), msg.size(), hash_alg));
         assert_rnp_success(key_pair.pub.verify(sig, msg.data(), msg.size(), hash_alg));
 
         /* test invalid msg / hash */

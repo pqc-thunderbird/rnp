@@ -188,6 +188,8 @@ typedef struct pgp_key_material_t {
         pgp_eg_key_t  eg;
         pgp_ec_key_t  ec;
     };
+    pgp_ed25519_key_t ed25519; /* non-trivial type, cannot be in a union */
+    pgp_x25519_key_t  x25519; /* non-trivial type, cannot be in a union */
     pgp_kyber_ecdh_key_t kyber_ecdh; /* non-trivial type, cannot be in a union */
     pgp_dilithium_exdsa_key_t dilithium_exdsa; /* non-trivial type, cannot be in a union */
     

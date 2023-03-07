@@ -304,7 +304,7 @@ pgp_dilithium_exdsa_composite_private_key_t::sign(rnp::RNG *rng, pgp_dilithium_e
         RNP_LOG("%s", e.what());
         return RNP_ERROR_SIGNING_FAILED;
     }
-    ret = exdsa_key_.sign(exdsa_sig, msg, msg_len, hash_alg);
+    ret = exdsa_key_.sign(rng, exdsa_sig, msg, msg_len, hash_alg);
     if(ret != RNP_SUCCESS) {
         RNP_LOG("exdsa sign failed");
         return RNP_ERROR_SIGNING_FAILED;

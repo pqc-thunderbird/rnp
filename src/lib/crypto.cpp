@@ -149,6 +149,18 @@ pgp_generate_seckey(const rnp_keygen_crypto_params_t &crypto,
             return false;
         }
         break;
+    case PGP_PKA_ED25519: 
+        if(ec_generate_ed25519_native(&crypto.ctx->rng, seckey.material.ed25519.priv, seckey.material.ed25519.pub) != RNP_SUCCESS) {
+            RNP_LOG("failed to generate ED25519 key");
+            return false;
+        }
+        break;
+    case PGP_PKA_X25519: 
+        if(ec_generate_x25519_native(&crypto.ctx->rng, seckey.material.x25519.priv, seckey.material.x25519.pub) != RNP_SUCCESS) {
+            RNP_LOG("failed to generate X25519 key");
+            return false;
+        }
+        break;
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];

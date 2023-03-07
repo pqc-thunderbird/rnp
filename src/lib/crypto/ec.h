@@ -90,6 +90,24 @@ typedef struct pgp_ec_signature_t {
     pgp_mpi_t s;
 } pgp_ec_signature_t;
 
+typedef struct pgp_ed25519_key_t {
+    std::vector<uint8_t> pub;  // \  native encoding
+    std::vector<uint8_t> priv; // /
+} pgp_ed25519_key_t;
+
+typedef struct pgp_ed25519_signature_t {
+    std::vector<uint8_t> sig; // native encoding
+} pgp_ed25519_signature_t;
+
+typedef struct pgp_x25519_key_t {
+    std::vector<uint8_t> pub;  // \  native encoding
+    std::vector<uint8_t> priv; // /
+} pgp_x25519_key_t;
+
+typedef struct pgp_x25519_signature_t {
+    std::vector<uint8_t> sig; // native encoding
+} pgp_x25519_signature_t;
+
 /*
  * @brief   Finds curve ID by hex representation of OID
  *
@@ -172,11 +190,19 @@ bool x25519_tweak_bits(pgp_ec_key_t &key);
 bool x25519_bits_tweaked(const pgp_ec_key_t &key);
 
 
-/* TODOMTG: API description */
+
 rnp_result_t ec_generate_native(rnp::RNG *           rng,
                                 std::vector<uint8_t> &privkey, 
                                 std::vector<uint8_t> &pubkey,
                                 pgp_curve_t          curve,
                                 pgp_pubkey_alg_t     alg);
+
+rnp_result_t ec_generate_x25519_native(rnp::RNG *           rng,
+                                       std::vector<uint8_t> &privkey, 
+                                       std::vector<uint8_t> &pubkey);
+
+rnp_result_t ec_generate_ed25519_native(rnp::RNG *           rng,
+                                        std::vector<uint8_t> &privkey, 
+                                        std::vector<uint8_t> &pubkey);
 
 #endif

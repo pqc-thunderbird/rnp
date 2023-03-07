@@ -51,4 +51,7 @@ rnp_result_t eddsa_sign(rnp::RNG *          rng,
                         size_t              hash_len,
                         const pgp_ec_key_t *key);
 
+rnp_result_t ed25519_sign_native(rnp::RNG *rng, std::vector<uint8_t> &sig_out, const std::vector<uint8_t> &key, const uint8_t *hash, size_t hash_len);
+rnp_result_t ed25519_verify_native(const std::vector<uint8_t> &sig, const std::vector<uint8_t> &key, const uint8_t *hash, size_t hash_len);
+
 #endif

@@ -210,3 +210,45 @@ done:
     botan_privkey_destroy(eddsa);
     return ret;
 }
+
+rnp_result_t ed25519_sign_native(rnp::RNG *rng, std::vector<uint8_t> &sig_out, const std::vector<uint8_t> &key, const uint8_t *hash, size_t hash_len)
+{
+    botan_privkey_t    privkey = NULL;
+    botan_pk_op_sign_t sign_op = NULL;
+    rnp_result_t ret;
+
+    sig_out.resize(64);
+    size_t sig_size = 64;
+    ret = RNP_ERROR_SIGNING_FAILED;
+    if (botan_privkey_load_ed25519(&privkey, key.data()) != 0) { goto end; }
+    if (botan_pk_op_sign_create(&sign_op, privkey, "Pure", 0) != 0) { goto end; }
+    if (botan_pk_op_sign_update(sign_op, hash, hash_len) != 0) { goto end; }
+    if (botan_pk_op_sign_finish(sign_op, rng->handle(), sig_out.data(), &sig_size) != 0) { goto end; }
+    ret = RNP_SUCCESS;
+
+end:
+    botan_pk_op_sign_destroy(sign_op);
+    botan_privkey_destroy(privkey);
+
+    return ret;
+}
+
+rnp_result_t ed25519_verify_native(const std::vector<uint8_t> &sig, const std::vector<uint8_t> &key, const uint8_t *hash, size_t hash_len)
+{
+    rnp_result_t ret;
+    botan_pk_op_verify_t verify_op = NULL;
+    botan_pubkey_t pubkey = NULL;
+
+    ret = RNP_ERROR_VERIFICATION_FAILED; 
+    if (botan_pubkey_load_ed25519(&pubkey, key.data())) { goto end; }
+    if (botan_pk_op_verify_create(&verify_op, pubkey, "Pure", 0)) { goto end; }
+    if (botan_pk_op_verify_update(verify_op, hash, hash_len)) { goto end; }
+    if (botan_pk_op_verify_finish(verify_op, sig.data(), sig.size())) { goto end; }
+    ret = RNP_SUCCESS;
+
+end:
+    botan_pk_op_verify_destroy(verify_op);
+    botan_pubkey_destroy(pubkey);
+
+    return ret;
+}
