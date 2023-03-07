@@ -32,17 +32,13 @@
 #include "utils.h"
 #include "mem.h"
 #include "bn.h"
+#include "x25519.h"
+#include "ed25519.h"
 
 static id_str_pair ec_algo_to_botan[] = {
   {PGP_PKA_ECDH, "ECDH"},
   {PGP_PKA_ECDSA, "ECDSA"},
   {PGP_PKA_SM2, "SM2_Sig"},
-  {0, NULL},
-};
-
-static id_str_pair ec_curve_to_botan[] = {
-  {PGP_CURVE_25519, "Curve25519"},
-  {PGP_CURVE_ED25519, "Ed25519"},
   {0, NULL},
 };
 
@@ -208,77 +204,6 @@ static bool is_generic_prime_curve(pgp_curve_t curve) {
     }
 }
 
-rnp_result_t ec_generate_ed25519_native(rnp::RNG *           rng,
-                                        std::vector<uint8_t> &privkey, 
-                                        std::vector<uint8_t> &pubkey)
-{
-    const pgp_curve_t curve = PGP_CURVE_ED25519;
-    const char *botan_name = id_str_pair::lookup(ec_curve_to_botan, curve, NULL);
-    const ec_curve_desc_t *ec_desc = get_curve_desc(curve);
-    const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
-    botan_privkey_t botan_priv = NULL;
-    botan_pubkey_t botan_pub = NULL;
-    rnp_result_t ret = RNP_SUCCESS;
-
-    privkey.resize(curve_order);
-    pubkey.resize(curve_order);
-
-    /* NOTE: botan_privkey_ed25519_get_privkey returns pub+priv key and botan_pubkey_x25519_get_pubkey only privkey */
-    std::vector<uint8_t> pub_priv_key(2*curve_order); // stores pub+priv
-    int botan_ret = botan_privkey_create(&botan_priv, botan_name, NULL, rng->handle());
-    botan_ret |= botan_privkey_export_pubkey(&botan_pub, botan_priv);
-    botan_ret |= botan_privkey_ed25519_get_privkey(botan_priv, pub_priv_key.data());
-    botan_ret |= botan_pubkey_ed25519_get_pubkey(botan_pub, pubkey.data());
-    privkey = std::vector<uint8_t>(pub_priv_key.data(), pub_priv_key.data() + curve_order);
-    if(botan_ret) {
-        RNP_LOG("error when generating ed25519 key");
-        ret = RNP_ERROR_GENERIC;
-    }
-    if(!botan_pub || botan_pubkey_check_key(botan_pub, rng->handle(), 0)) { 
-        RNP_LOG("No valid public key created");
-        return RNP_ERROR_KEY_GENERATION;
-    }
-    
-    botan_privkey_destroy(botan_priv);
-    botan_pubkey_destroy(botan_pub);
-
-    return ret;
-}
-
-rnp_result_t ec_generate_x25519_native(rnp::RNG *           rng,
-                                       std::vector<uint8_t> &privkey, 
-                                       std::vector<uint8_t> &pubkey)
-{
-    const pgp_curve_t curve = PGP_CURVE_25519;
-    const char *botan_name = id_str_pair::lookup(ec_curve_to_botan, curve, NULL);
-    const ec_curve_desc_t *ec_desc = get_curve_desc(curve);
-    const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
-    botan_privkey_t botan_priv = NULL;
-    botan_pubkey_t botan_pub = NULL;
-    rnp_result_t ret = RNP_SUCCESS;
-
-    privkey.resize(curve_order);
-    pubkey.resize(curve_order);
-
-    int botan_ret = botan_privkey_create(&botan_priv, botan_name, NULL, rng->handle());
-    botan_ret |= botan_privkey_export_pubkey(&botan_pub, botan_priv);
-    botan_ret |= botan_privkey_x25519_get_privkey(botan_priv, privkey.data());
-    botan_ret |= botan_pubkey_x25519_get_pubkey(botan_pub, pubkey.data());
-    if(botan_ret) {
-        RNP_LOG("error when generating x25519 key");
-        ret = RNP_ERROR_GENERIC;
-    }
-    if(!botan_pub || botan_pubkey_check_key(botan_pub, rng->handle(), 0)) { 
-        RNP_LOG("No valid public key created");
-        return RNP_ERROR_KEY_GENERATION;
-    }
-    
-    botan_privkey_destroy(botan_priv);
-    botan_pubkey_destroy(botan_pub);
-
-    return ret;
-}
-
 /* TODOMTG: can try to share code with ec_generate */
 static rnp_result_t ec_generate_generic_native(rnp::RNG *           rng,
                                                std::vector<uint8_t> &privkey, 
@@ -367,10 +292,10 @@ rnp_result_t ec_generate_native(rnp::RNG *           rng,
                                 pgp_pubkey_alg_t     alg)
 {
     if(curve == PGP_CURVE_25519) {
-        return ec_generate_x25519_native(rng, privkey, pubkey);
+        return generate_x25519_native(rng, privkey, pubkey);
     }
     else if(curve == PGP_CURVE_ED25519) {
-        return ec_generate_ed25519_native(rng, privkey, pubkey);
+        return generate_ed25519_native(rng, privkey, pubkey);
     }
     else if(is_generic_prime_curve(curve)) {
         if(alg != PGP_PKA_ECDH && alg != PGP_PKA_ECDSA) {

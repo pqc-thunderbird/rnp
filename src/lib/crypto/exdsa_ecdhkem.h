@@ -79,6 +79,11 @@ public:
     ecdh_kem_public_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
     ecdh_kem_public_key_t() = default;
 
+    bool operator==(const ecdh_kem_public_key_t &rhs) const
+    {
+      return (curve_ == rhs.curve_) && (key_ == rhs.key_);
+    }
+
     bool is_valid() const;
 
     rnp_result_t encapsulate(rnp::RNG *rng, ecdh_kem_encap_result_t *result);
@@ -109,6 +114,11 @@ public:
     exdsa_public_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve);
     exdsa_public_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
     exdsa_public_key_t() = default;
+
+    bool operator==(const exdsa_public_key_t &rhs) const
+    {
+      return (curve_ == rhs.curve_) && (key_ == rhs.key_);
+    }
 
     bool is_valid() const;
 

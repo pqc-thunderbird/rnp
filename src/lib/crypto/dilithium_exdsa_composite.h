@@ -121,6 +121,11 @@ class pgp_dilithium_exdsa_composite_public_key_t : public pgp_dilithium_exdsa_co
     pgp_dilithium_exdsa_composite_public_key_t& operator=(const pgp_dilithium_exdsa_composite_public_key_t &other);
     pgp_dilithium_exdsa_composite_public_key_t() = default;
 
+    bool operator==(const pgp_dilithium_exdsa_composite_public_key_t &rhs) const 
+    {
+      return (pk_alg_ == rhs.pk_alg_) && (dilithium_key_ == rhs.dilithium_key_) && (exdsa_key_ == rhs.exdsa_key_);
+    }
+
     rnp_result_t verify(const pgp_dilithium_exdsa_signature_t *sig, pgp_hash_alg_t hash_alg,  const uint8_t *hash, size_t hash_len) const;
 
     std::vector<uint8_t> get_encoded() const;

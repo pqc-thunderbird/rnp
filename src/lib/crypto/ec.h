@@ -104,9 +104,6 @@ typedef struct pgp_x25519_key_t {
     std::vector<uint8_t> priv; // /
 } pgp_x25519_key_t;
 
-typedef struct pgp_x25519_signature_t {
-    std::vector<uint8_t> sig; // native encoding
-} pgp_x25519_signature_t;
 
 /*
  * @brief   Finds curve ID by hex representation of OID
@@ -196,13 +193,5 @@ rnp_result_t ec_generate_native(rnp::RNG *           rng,
                                 std::vector<uint8_t> &pubkey,
                                 pgp_curve_t          curve,
                                 pgp_pubkey_alg_t     alg);
-
-rnp_result_t ec_generate_x25519_native(rnp::RNG *           rng,
-                                       std::vector<uint8_t> &privkey, 
-                                       std::vector<uint8_t> &pubkey);
-
-rnp_result_t ec_generate_ed25519_native(rnp::RNG *           rng,
-                                        std::vector<uint8_t> &privkey, 
-                                        std::vector<uint8_t> &pubkey);
 
 #endif

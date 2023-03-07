@@ -1,6 +1,10 @@
-/*-
- * Copyright (c) 2018 Ribose Inc.
+/*
+ * Copyright (c) 2023 MTG AG
  * All rights reserved.
+ *
+ * This code is originally derived from software contributed to
+ * The NetBSD Foundation by Alistair Crooks (agc@netbsd.org), and
+ * carried further by Ribose Inc (https://www.ribose.com).
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,32 +28,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RNP_CRYPTO_COMMON_H_
-#define RNP_CRYPTO_COMMON_H_
+#ifndef ED25519_H_
+#define ED25519_H_
 
-/* base */
-#include "mpi.h"
-#include "rng.h"
-/* asymmetric crypto */
-#include "rsa.h"
-#include "dsa.h"
-#include "elgamal.h"
-#include "ec.h"
-#include "ecdh.h"
-#include "ecdsa.h"
-#include "sm2.h"
-#include "eddsa.h"
-#include "kyber_ecdh_composite.h"
-#include "dilithium_exdsa_composite.h"
-#include "x25519.h"
-#include "ed25519.h"
-/* symmetric crypto */
-#include "symmetric.h"
-/* hash */
-#include "hash.hpp"
-/* s2k */
-#include "s2k.h"
-/* backend name and version */
-#include "backend_version.h"
+#include "config.h"
+#include <rnp/rnp_def.h>
+#include <vector>
+#include <repgp/repgp_def.h>
+#include "crypto/rng.h"
+#include "crypto/ec.h"
 
-#endif // RNP_CRYPTO_COMMON_H_
+rnp_result_t generate_ed25519_native(rnp::RNG *           rng,
+                                     std::vector<uint8_t> &privkey, 
+                                     std::vector<uint8_t> &pubkey);
+
+rnp_result_t ed25519_validate_key_native(rnp::RNG *rng, const pgp_ed25519_key_t *key, bool secret);
+
+#endif

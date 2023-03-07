@@ -73,6 +73,11 @@ class pgp_kyber_public_key_t {
     pgp_kyber_public_key_t() = default;
     kyber_encap_result_t encapsulate();
 
+    bool operator==(const pgp_kyber_public_key_t &rhs) const 
+    {
+      return (kyber_mode_ == rhs.kyber_mode_) && (key_encoded_ == rhs.key_encoded_);
+    }
+
     bool is_valid() const;
 
     std::vector<uint8_t>

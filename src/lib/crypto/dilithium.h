@@ -72,6 +72,12 @@ class pgp_dilithium_public_key_t {
     pgp_dilithium_public_key_t(std::vector<uint8_t> const &key_encoded,
                                dilithium_parameter_e       mode);
     pgp_dilithium_public_key_t() = default;
+
+    bool operator==(const pgp_dilithium_public_key_t &rhs) const
+    {
+      return (dilithium_param_ == rhs.dilithium_param_) && (key_encoded_ == rhs.key_encoded_);
+    }
+
     bool verify_signature(const uint8_t *msg,
                           size_t         msg_len,
                           const uint8_t *signature,

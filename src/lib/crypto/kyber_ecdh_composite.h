@@ -122,6 +122,11 @@ class pgp_kyber_ecdh_composite_public_key_t : public pgp_kyber_ecdh_composite_ke
     //pgp_kyber_ecdh_composite_public_key_t(pgp_kyber_ecdh_composite_public_key_t &other);
     pgp_kyber_ecdh_composite_public_key_t& operator=(const pgp_kyber_ecdh_composite_public_key_t &other);
     pgp_kyber_ecdh_composite_public_key_t() = default;
+    
+    bool operator==(const pgp_kyber_ecdh_composite_public_key_t &rhs) const
+    {
+      return (pk_alg_ == rhs.pk_alg_) && (kyber_key_ == rhs.kyber_key_) && (ecdh_key_ == rhs.ecdh_key_);
+    }
 
     rnp_result_t encrypt(rnp::RNG *rng, pgp_kyber_ecdh_encrypted_t *out, const uint8_t *in, size_t in_len);
 

@@ -255,6 +255,8 @@ elseif(CRYPTO_BACKEND_BOTAN)
     crypto/kyber_ecdh_composite.cpp
     crypto/dilithium_exdsa_composite.cpp
     crypto/exdsa_ecdhkem.cpp
+    crypto/x25519.cpp
+    crypto/ed25519.cpp
   )
   if(ENABLE_SM2)
     list(APPEND CRYPTO_SOURCES crypto/sm2.cpp)
