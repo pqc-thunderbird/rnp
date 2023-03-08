@@ -55,6 +55,8 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_RESERVED_DH, "Reserved for Diffie-Hellman (X9.42)"},
   {PGP_PKA_EDDSA, "EdDSA"},
   {PGP_PKA_SM2, "SM2"},
+  {PGP_PKA_ED25519, "ED25519"},
+  {PGP_PKA_X25519, "X25519"},
   {PGP_PKA_KYBER768_X25519, "Kyber-X25519"},
   {PGP_PKA_KYBER1024_X448, "Kyber-X448"},
   {PGP_PKA_KYBER768_P256, "Kyber-P256"},

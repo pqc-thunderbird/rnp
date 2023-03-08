@@ -162,6 +162,8 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_ECDSA, RNP_ALGNAME_ECDSA},
   {PGP_PKA_EDDSA, RNP_ALGNAME_EDDSA},
   {PGP_PKA_SM2, RNP_ALGNAME_SM2},
+  {PGP_PKA_ED25519, RNP_ALGNAME_ED25519},
+  {PGP_PKA_X25519, RNP_ALGNAME_X25519},
   {PGP_PKA_KYBER768_X25519, RNP_ALGNAME_KYBER768_X25519},
   {PGP_PKA_KYBER1024_X448, RNP_ALGNAME_KYBER1024_X448},
   {PGP_PKA_KYBER768_P256, RNP_ALGNAME_KYBER768_P256},
@@ -5224,11 +5226,13 @@ default_key_flags(pgp_pubkey_alg_t alg, bool subkey)
     case PGP_PKA_DSA:
     case PGP_PKA_ECDSA:
     case PGP_PKA_EDDSA:
+    case PGP_PKA_ED25519:
         return subkey ? PGP_KF_SIGN : pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY);
     case PGP_PKA_SM2:
         return subkey ? PGP_KF_ENCRYPT : pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY);
     case PGP_PKA_ECDH:
     case PGP_PKA_ELGAMAL:
+    case PGP_PKA_X25519:
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
@@ -7487,13 +7491,16 @@ add_json_public_mpis(json_object *jso, pgp_key_t *key)
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2:
         return add_json_mpis(jso, "point", &km.ec.p, NULL);
+    case PGP_PKA_ED25519:
+    case PGP_PKA_X25519:
+        return RNP_SUCCESS; /* TODOMTG */ 
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        return RNP_SUCCESS; /* TODOMTG add_json_pqc_composite_key() */
+        return RNP_SUCCESS; /* TODOMTG */
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
@@ -7527,6 +7534,9 @@ add_json_secret_mpis(json_object *jso, pgp_key_t *key)
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2:
         return add_json_mpis(jso, "x", &km.ec.x, NULL);
+    case PGP_PKA_ED25519:
+    case PGP_PKA_X25519:
+        return RNP_SUCCESS; /* TODOMTG */
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
@@ -7566,6 +7576,9 @@ add_json_sig_mpis(json_object *jso, const pgp_signature_t *sig)
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2:
         return add_json_mpis(jso, "r", &material.ecc.r, "s", &material.ecc.s, NULL);
+    case PGP_PKA_ED25519:
+    case PGP_PKA_X25519:
+        return RNP_SUCCESS; /* TODOMTG */
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];

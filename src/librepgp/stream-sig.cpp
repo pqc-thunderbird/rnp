@@ -58,7 +58,7 @@ signature_hash_key(const pgp_key_pkt_t &key, rnp::Hash &hash)
         }
     }
     else { // PGP_V6
-        uint8_t hdr[5] = {0x9a, 0x00, 0x00, 0x00, 0x00};
+        uint8_t hdr[5] = {0x9b, 0x00, 0x00, 0x00, 0x00};
         if (key.hashed_data) {
             write_uint32(hdr + 1, key.hashed_len);
             hash.add(hdr, sizeof(hdr));
@@ -1376,7 +1376,7 @@ pgp_signature_t::parse(pgp_packet_body_t &pkt)
     }
     version = (pgp_version_t) ver;
 
-    /* v3 or v4 signature body */
+    /* v3 or v4 or v6 signature body */
     rnp_result_t res;
     if ((ver == PGP_V2) || (ver == PGP_V3)) {
         res = parse_v3(pkt);
@@ -1398,7 +1398,16 @@ pgp_signature_t::parse(pgp_packet_body_t &pkt)
     }
     
     if (ver == PGP_V6) {
-        if(!pkt.get(salt, PGP_SALT_SIZE_V6_SIG)) {
+        uint8_t salt_size;
+        if(!pkt.get(salt_size)) {
+            RNP_LOG("not enough data for v6 salt size octet");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        if(salt_size != rnp::Hash::size(halg)/2) {
+            RNP_LOG("invalid salt size");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        if(!pkt.get(salt, salt_size)) {
             RNP_LOG("not enough data for v6 signature salt");
             return RNP_ERROR_BAD_FORMAT;
         }
@@ -1471,6 +1480,15 @@ pgp_signature_t::parse_material(pgp_signature_material_t &material) const
             return false;
         }
         break;
+    case PGP_PKA_ED25519: {
+        const ec_curve_desc_t *ec_desc = get_curve_desc(PGP_CURVE_25519);
+        material.ed25519.sig.resize(2 * BITS_TO_BYTES(ec_desc->bitlen));
+        if (!pkt.get(material.ed25519.sig.data(), material.ed25519.sig.size())) {
+            RNP_LOG("failed to parse ED25519 signature data");
+            return false;
+        }
+        break;
+    }
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
@@ -1520,7 +1538,7 @@ pgp_signature_t::write(pgp_dest_t &dst) const
     }
     pktbody.add(lbits, 2);
     if(version == PGP_V6) {
-        pktbody.add(salt, PGP_SALT_SIZE_V6_SIG);
+        pktbody.add(salt, rnp::Hash::size(halg)/2);
     }
     /* write mpis */
     pktbody.add(material_buf, material_len);
@@ -1552,13 +1570,16 @@ pgp_signature_t::write_material(const pgp_signature_material_t &material)
         pktbody.add(material.eg.r);
         pktbody.add(material.eg.s);
         break;
+    case PGP_PKA_ED25519:
+        pktbody.add(material.ed25519.sig);
+        break;
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        pktbody.add(material.dilithium_exdsa.sig.data(), material.dilithium_exdsa.sig.size());
+        pktbody.add(material.dilithium_exdsa.sig);
         break;
     default:
         RNP_LOG("Unknown pk algorithm : %d", (int) palg);

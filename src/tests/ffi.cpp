@@ -3102,7 +3102,7 @@ TEST_F(rnp_tests, test_ffi_supported_features)
     /* public key algorithm */
     assert_rnp_success(rnp_supported_features(RNP_FEATURE_PK_ALG, &features));
     assert_non_null(features);
-    assert_true(check_features(RNP_FEATURE_PK_ALG, features, 6 + has_sm2 + 12)); // 12 pqc-composite
+    assert_true(check_features(RNP_FEATURE_PK_ALG, features, 6 + has_sm2 + 12 + 2)); // 12 pqc-composite, 2 for X25519/ED25519
     rnp_buffer_destroy(features);
     /* TODOMTG: check for the pqc-composite variants */
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_PK_ALG, "RSA", &supported));

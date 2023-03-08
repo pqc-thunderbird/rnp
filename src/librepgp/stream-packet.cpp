@@ -703,6 +703,13 @@ pgp_packet_body_t::add(const void *data, size_t len)
 }
 
 void
+pgp_packet_body_t::add(const std::vector<uint8_t> &data)
+{
+    add(data.data(), data.size());
+}
+
+
+void
 pgp_packet_body_t::add_byte(uint8_t bt)
 {
     data_.push_back(bt);
@@ -1195,6 +1202,15 @@ pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
         }
         break;
     }
+    case PGP_PKA_X25519: {
+        const ec_curve_desc_t *ec_desc = get_curve_desc(PGP_CURVE_25519);
+        material.x25519.ct.resize(BITS_TO_BYTES(ec_desc->bitlen));
+        if (!pkt.get(material.x25519.ct.data(), material.x25519.ct.size())) {
+            RNP_LOG("failed to parse X25519 PKESK");
+            return false;
+        }
+        break;
+    }
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
@@ -1250,15 +1266,18 @@ pgp_pk_sesskey_t::write_material(const pgp_encrypted_material_t &material)
         pktbody.add(material.eg.g);
         pktbody.add(material.eg.m);
         break;
+    case PGP_PKA_X25519:
+        pktbody.add(material.x25519.ct);
+        break;
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        pktbody.add(material.kyber_ecdh.composite_ciphertext.data(), material.kyber_ecdh.composite_ciphertext.size());
+        pktbody.add(material.kyber_ecdh.composite_ciphertext);
         pktbody.add_byte(static_cast<uint8_t>(material.kyber_ecdh.wrapped_sesskey.size()));
-        pktbody.add(material.kyber_ecdh.wrapped_sesskey.data(), material.kyber_ecdh.wrapped_sesskey.size());
+        pktbody.add(material.kyber_ecdh.wrapped_sesskey);
         break;
     default:
         RNP_LOG("Unknown pk alg: %d", (int) alg);

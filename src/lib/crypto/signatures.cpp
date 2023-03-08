@@ -65,7 +65,7 @@ signature_init(const pgp_key_pkt_t &key, const pgp_signature_t &sig)
 
     if (key.version == PGP_V6)
     {
-        hash->add(sig.salt, PGP_SALT_SIZE_V6_SIG);
+        hash->add(sig.salt, rnp::Hash::size(sig.halg)/2);
     }
 
     if (key.material.alg == PGP_PKA_SM2) {
@@ -135,6 +135,12 @@ signature_calculate(pgp_signature_t &     sig,
         ret = eddsa_sign(&ctx.rng, &material.ecc, hval, hlen, &seckey.ec);
         if (ret) {
             RNP_LOG("eddsa signing failed");
+        }
+        break;
+    case PGP_PKA_ED25519:
+        ret = ed25519_sign_native(&ctx.rng, material.ed25519.sig, seckey.ed25519.priv, hval, hlen);
+        if(ret) {
+            RNP_LOG("ed25519 signing failed");
         }
         break;
     case PGP_PKA_DSA:
@@ -263,6 +269,9 @@ signature_validate(const pgp_signature_t &     sig,
         break;
     case PGP_PKA_EDDSA:
         ret = eddsa_verify(&material.ecc, hval, hlen, &key.ec);
+        break;
+    case PGP_PKA_ED25519:
+        ret = ed25519_verify_native(material.ed25519.sig, key.ed25519.pub, hval, hlen);
         break;
     case PGP_PKA_SM2:
 #if defined(ENABLE_SM2)

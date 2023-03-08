@@ -29,6 +29,8 @@
  */
 
 #include "x25519.h"
+#include "ecdh.h"
+#include "hkdf.hpp"
 #include "botan/ffi.h"
 #include "utils.h"
 
@@ -64,6 +66,56 @@ rnp_result_t generate_x25519_native(rnp::RNG *           rng,
     botan_pubkey_destroy(botan_pub);
 
     return ret;
+}
+
+rnp_result_t x25519_native_encrypt(rnp::RNG *                 rng,
+                                   const std::vector<uint8_t> &pubkey, 
+                                   const uint8_t *            in,
+                                   size_t                     in_len,
+                                   pgp_x25519_encrypted_t     *encrypted)
+{
+    return RNP_SUCCESS;
+    /* TODOMTG */
+#if 0
+    rnp_result_t ret;
+    std::vector<uint8_t> shared_key;
+    std::vector<uint8_t> eph_pubkey;
+
+    ret = ecdh_kem_encaps(rng, eph_pubkey, shared_key, pubkey, PGP_CURVE_25519);
+    if(ret) {
+        RNP_LOG("Error when doing X25519 key agreement");
+        return RNP_ERROR_ENCRYPT_FAILED;
+    }
+
+    /* The shared secret is passed to HKDF (see {{RFC5869}}) using SHA256, and the UTF-8-encoded string "OpenPGP X25519" as the info parameter. */
+    const std::vector<uint8_t> info = {'O', 'p', 'e', 'n', 'P', 'G', 'P', ' ', 'X', '2', '5', '5', '1', '9'};
+    auto hkdf = Hkdf::create(PGP_HASH_SHA256);
+    std::vector<uint8_t> derived_key();
+
+    hkdf.extract_expand(NULL, 0, // no salt
+                        shared_key.data(),
+                        shared_key.size(),
+                        info.data(),
+                        info.size(),
+                        derived_key.data(),
+                        derived_key_size());
+
+    /* The resulting key is used to encrypt the session key with AES-128 keywrap, defined in {{RFC3394}}. */
+
+    /* 32 octets representing an ephemeral X25519 public key.
+     * A one-octet size, followed by an encrypted session key.
+     */
+
+#endif
+}
+
+rnp_result_t x25519_native_decrypt(const std::vector<uint8_t>   &privkey,
+                                   const pgp_x25519_encrypted_t *encrypted,
+                                   uint8_t                      *decbuf,
+                                   size_t                       *decbuf_len)
+{
+    return RNP_SUCCESS;
+    /* TODOMTG*/
 }
 
 rnp_result_t

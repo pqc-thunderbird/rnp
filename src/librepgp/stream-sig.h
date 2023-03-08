@@ -62,7 +62,7 @@ typedef struct pgp_signature_t {
     std::vector<pgp_sig_subpkt_t> subpkts;
 
     /* v6 - only fields */
-    uint8_t salt[PGP_SALT_SIZE_V6_SIG];
+    uint8_t salt[PGP_MAX_SALT_SIZE_V6_SIG];
 
     pgp_signature_t()
         : type_(PGP_SIG_BINARY), version(PGP_VUNKNOWN), palg(PGP_PKA_NOTHING),

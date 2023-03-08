@@ -1543,6 +1543,14 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             return false;
         }
         break;
+    case PGP_PKA_X25519:
+        declen = decbuf.size();
+        err = x25519_native_decrypt(keymaterial->x25519.priv, &encmaterial.x25519, decbuf.data(), &declen);
+        if(err != RNP_SUCCESS) {
+            RNP_LOG("X25519 decryption error %u", err);
+            return false;
+        }
+        break;
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];

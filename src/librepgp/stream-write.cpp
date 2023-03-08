@@ -644,6 +644,17 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         }
         break;
     }
+    case PGP_PKA_X25519:
+        ret = x25519_native_encrypt(&handler->ctx->ctx->rng,
+                                    userkey->material().x25519.pub,
+                                    enckey.data(),
+                                    enckey_len,
+                                    &material.x25519);
+        if(ret) {
+            RNP_LOG("x25519 encryption failed");
+            return ret;
+        }
+        break;
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];

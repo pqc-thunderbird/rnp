@@ -110,7 +110,7 @@
 #define PGP_MARKER_LEN 3
 
 /* V6 Signature Salt */
-#define PGP_SALT_SIZE_V6_SIG 16
+#define PGP_MAX_SALT_SIZE_V6_SIG 32
 
 /* size of length for hashed/unhashed subpacket data*/
 #define PGP_SIG_HASHED_AREA_SIZE_OCTETS_V4 2
