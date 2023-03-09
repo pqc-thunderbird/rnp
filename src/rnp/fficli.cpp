@@ -1672,7 +1672,10 @@ key_matches_string(rnp_key_handle_t handle, const std::string &str)
         }
 
         /* check fingerprint */
-        if (len == RNP_FP_SIZE * 2) {
+        int key_version;
+        rnp_key_get_version(handle, &key_version);
+        const size_t fp_size = (key_version == RNP_PGP_VER_6) ? RNP_FP_V6_SIZE : RNP_FP_V4_SIZE;
+        if (len == fp_size * 2) {
             if (rnp_key_get_fprint(handle, &id)) {
                 goto done;
             }

@@ -207,8 +207,9 @@ rnpkeys_ask_generate_params(rnp_cfg &cfg, FILE *input_fp)
                "\t(16) DSA + ElGamal\n"
                "\t(17) DSA + RSA\n" // TODO: See #584
                "\t(19) ECDSA + ECDH\n"
-               "\t(21) EDDSA + X25519 (v6 key) \n"
-               "\t(22) EDDSA + X25519 (v4 key) \n"
+               "\t(21) EDDSA + ECDH (v6 key) \n"
+               "\t(22) EDDSA + ECDH (v4 key) \n"
+               "\t(23) ED25519 + X25519 (v6 key) \n"
                "\t(25) (Dilithium3 + Ed25519) + (Kyber768 + X25519)\n"
                "\t(26) (Dilithium5 + Ed448) + (Kyber1024 + X448)\n"
                "\t(27) (Dilithium3 + ECDSA-NIST-P-256) + (Kyber768 + ECDH-NIST-P-256)\n"
@@ -265,6 +266,11 @@ rnpkeys_ask_generate_params(rnp_cfg &cfg, FILE *input_fp)
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_EDDSA);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_ECDH);
             cfg.set_str(CFG_KG_SUBKEY_CURVE, "Curve25519");
+            break;
+        }
+        case 23: {
+            cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_ED25519);
+            cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_X25519);
             break;
         }
         case 25:

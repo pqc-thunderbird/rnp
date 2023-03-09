@@ -1580,6 +1580,14 @@ RNP_API rnp_result_t rnp_uid_remove(rnp_key_handle_t key, rnp_uid_handle_t uid);
  */
 RNP_API rnp_result_t rnp_uid_handle_destroy(rnp_uid_handle_t uid);
 
+/**
+ * @brief Get key's version as integer.
+ *
+ * @param key key handle, should not be NULL
+ * @return RNP_SUCCESS or error code on failure.
+ */
+RNP_API rnp_result_t rnp_key_get_version(rnp_key_handle_t handle, int *version);
+
 /** Get number of the key's subkeys.
  *
  * @param key key handle.

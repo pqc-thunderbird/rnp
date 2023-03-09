@@ -289,11 +289,9 @@ validate_pgp_key_material(const pgp_key_material_t *material, rnp::RNG *rng)
         return elgamal_validate_key(&material->eg, material->secret) ? RNP_SUCCESS :
                                                                        RNP_ERROR_GENERIC;
     case PGP_PKA_ED25519: 
-        return ed25519_validate_key_native(rng, &material->ed25519, material->secret) ? RNP_SUCCESS : 
-                                                                                        RNP_ERROR_GENERIC;
+        return ed25519_validate_key_native(rng, &material->ed25519, material->secret);
     case PGP_PKA_X25519: 
-        return x25519_validate_key_native(rng, &material->x25519, material->secret) ? RNP_SUCCESS : 
-                                                                                      RNP_ERROR_GENERIC;
+        return x25519_validate_key_native(rng, &material->x25519, material->secret);
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];

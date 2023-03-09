@@ -6480,6 +6480,18 @@ try {
 FFI_GUARD
 
 rnp_result_t
+rnp_key_get_version(rnp_key_handle_t handle, int *version)
+try {
+    if (!handle || !version) {
+        return RNP_ERROR_NULL_POINTER;
+    }
+
+    *version = get_key_prefer_public(handle)->version();
+    return RNP_SUCCESS;
+}
+FFI_GUARD
+
+rnp_result_t
 rnp_key_get_subkey_count(rnp_key_handle_t handle, size_t *count)
 try {
     if (!handle || !count) {
@@ -7543,7 +7555,7 @@ add_json_secret_mpis(json_object *jso, pgp_key_t *key)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        return RNP_SUCCESS; /* TODOMTG add_json_pqc_composite_key() */
+        return RNP_SUCCESS; /* TODOMTG */
     default:
         return RNP_ERROR_NOT_SUPPORTED;
     }
@@ -7837,6 +7849,9 @@ key_to_json(json_object *jso, rnp_key_handle_t handle, uint32_t flags)
         }
         json_object_object_add(jso, "curve", jsocurve);
     } break;
+    case PGP_PKA_ED25519:
+    case PGP_PKA_X25519:
+        return RNP_SUCCESS; /* TODOMTG */
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
