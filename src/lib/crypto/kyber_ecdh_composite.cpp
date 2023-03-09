@@ -294,8 +294,11 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
     rnp_result_t res;
     std::vector<uint8_t> ecdh_keyshare;
     std::vector<uint8_t> kyber_keyshare;
-    size_t padded_session_key_len = MAX_SESSION_KEY_SIZE;
-    std::vector<uint8_t> padded_session_key(padded_session_key_len);
+
+    if( ((enc->wrapped_sesskey.size() % 8) != 0) && (enc->wrapped_sesskey.size() > 8)) {
+        RNP_LOG("invalid wrapped AES key length (size is a multiple of 8 octets with 8 octets integrity check)");
+        return RNP_ERROR_BAD_PARAMETERS;
+    }
 
     // Compute (eccKeyShare) := eccKem.decap(eccCipherText, eccPrivateKey)
     pgp_curve_t curve = pk_alg_to_curve_id(pk_alg_);
@@ -315,19 +318,13 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
     }
 
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
-    std::vector<uint8_t> kek = dummy_kmac_kdf(ecdh_keyshare, kyber_keyshare); 
+    std::vector<uint8_t> kek = dummy_kmac_kdf(ecdh_keyshare, kyber_keyshare); /* TODOMTG: replace with KMAC */
 
     // Compute sessionKey := AESKeyUnwrap(KEK, C) with AES-256 as per [RFC3394], aborting if the 64 bit integrity check fails
-    if(botan_key_unwrap3394(enc->wrapped_sesskey.data(), enc->wrapped_sesskey.size(), kek.data(), kek.size(), padded_session_key.data(), &padded_session_key_len)) {
+    if(botan_key_unwrap3394(enc->wrapped_sesskey.data(), enc->wrapped_sesskey.size(), kek.data(), kek.size(), out, out_len)) {
         RNP_LOG("error when unwrapping encrypted session key");
         return RNP_ERROR_DECRYPT_FAILED;
     }
-    if (!unpad_pkcs7(padded_session_key.data(), padded_session_key_len, &padded_session_key_len)) {
-        RNP_LOG("Failed to unpad key after unwrapping");
-        return RNP_ERROR_DECRYPT_FAILED;
-    }
-    memcpy(out, padded_session_key.data(), padded_session_key_len);
-    *out_len = padded_session_key_len;
 
     return RNP_SUCCESS;
 }
@@ -410,8 +407,10 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     rnp_result_t res;
     ecdh_kem_encap_result_t ecdh_encap;
 
-    const size_t padded_session_key_len = (session_key_len / 8 + 1) * 8;
-    std::vector<uint8_t> padded_session_key(padded_session_key_len);
+    if((session_key_len % 8) != 0) {
+        RNP_LOG("AES key wrap requires a multiple of 8 octets as input key");
+        return RNP_ERROR_BAD_PARAMETERS;
+    }
 	
     // Compute (eccCipherText, eccKeyShare) := eccKem.encap(eccPublicKey)
     res = ecdh_key_.encapsulate(rng, &ecdh_encap);
@@ -424,18 +423,13 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     kyber_encap_result_t kyber_encap = kyber_key_.encapsulate();
 
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
-    std::vector<uint8_t> kek = dummy_kmac_kdf(ecdh_encap.symmetric_key, kyber_encap.symmetric_key); 
+    std::vector<uint8_t> kek = dummy_kmac_kdf(ecdh_encap.symmetric_key, kyber_encap.symmetric_key);  /* TODOMTG: replace with KMAC */
 
     // Compute C := AESKeyWrap(KEK, sessionKey) with AES-256 as per [RFC3394] that includes a 64 bit integrity check
-    size_t c_len = ((padded_session_key_len + 7)/8 + 1) * 8; // RFC3394 "Outputs:     Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}."
+    size_t c_len = ((session_key_len + 7)/8 + 1) * 8; // RFC3394 "Outputs:     Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}."
     out->wrapped_sesskey.resize(c_len);
 
-    memcpy(padded_session_key.data(), session_key, session_key_len);
-    if (!pad_pkcs7(padded_session_key.data(), padded_session_key_len, session_key_len)) {
-        RNP_LOG("error when doing padding session key for key wrap");
-        return RNP_ERROR_ENCRYPT_FAILED;
-    }
-    if (botan_key_wrap3394(padded_session_key.data(), padded_session_key_len, kek.data(), kek.size(), out->wrapped_sesskey.data(), &c_len)) {
+    if (botan_key_wrap3394(session_key, session_key_len, kek.data(), kek.size(), out->wrapped_sesskey.data(), &c_len)) {
         RNP_LOG("error when doing AES key wrap");
         return RNP_ERROR_ENCRYPT_FAILED;
     }
