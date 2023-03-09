@@ -45,15 +45,12 @@ static void
 signature_hash_finish(const pgp_signature_t &sig, rnp::Hash &hash, uint8_t *hbuf, size_t &hlen)
 {
     hash.add(sig.hashed_data, sig.hashed_len);
-    if (sig.version == PGP_V4) {
-        uint8_t trailer[6] = {0x04, 0xff, 0x00, 0x00, 0x00, 0x00};
+    if(sig.version >= PGP_V4)
+    {
+        uint8_t trailer[6] = {0x00, 0xff, 0x00, 0x00, 0x00, 0x00};
+        trailer[0] = sig.version;
         STORE32BE(&trailer[2], sig.hashed_len);
         hash.add(trailer, 6);
-    }
-    else if(sig.version == PGP_V6) {
-        uint8_t trailer[10] = {0x05, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-        STORE64BE(&trailer[2], sig.hashed_len);
-        hash.add(trailer, 10);
     }
     hlen = hash.finish(hbuf);
 }
@@ -65,7 +62,7 @@ signature_init(const pgp_key_pkt_t &key, const pgp_signature_t &sig)
 
     if (key.version == PGP_V6)
     {
-        hash->add(sig.salt, rnp::Hash::size(sig.halg)/2);
+        hash->add(sig.salt, sig.salt_size);
     }
 
     if (key.material.alg == PGP_PKA_SM2) {
