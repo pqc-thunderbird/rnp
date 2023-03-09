@@ -445,7 +445,8 @@ pgp_signature_t::pgp_signature_t(const pgp_signature_t &src)
     halg = src.halg;
     memcpy(lbits, src.lbits, sizeof(src.lbits));
     if(version == PGP_V6) {
-        memcpy(salt, src.salt, sizeof(src.salt));
+        salt_size = src.salt_size;
+        memcpy(salt, src.salt, salt_size);
     }
     creation_time = src.creation_time;
     signer = src.signer;
@@ -477,7 +478,8 @@ pgp_signature_t::pgp_signature_t(pgp_signature_t &&src)
     halg = src.halg;
     memcpy(lbits, src.lbits, sizeof(src.lbits));
     if(version == PGP_V6) {
-        memcpy(salt, src.salt, sizeof(src.salt));
+        salt_size = src.salt_size;
+        memcpy(salt, src.salt, salt_size);
     }
     creation_time = src.creation_time;
     signer = src.signer;
@@ -530,7 +532,8 @@ pgp_signature_t::operator=(const pgp_signature_t &src)
     halg = src.halg;
     memcpy(lbits, src.lbits, sizeof(src.lbits));
     if(version == PGP_V6) {
-        memcpy(salt, src.salt, sizeof(src.salt));
+        salt_size = src.salt_size;
+        memcpy(salt, src.salt, salt_size);
     }
     creation_time = src.creation_time;
     signer = src.signer;
@@ -1398,7 +1401,6 @@ pgp_signature_t::parse(pgp_packet_body_t &pkt)
     }
     
     if (ver == PGP_V6) {
-        uint8_t salt_size;
         if(!pkt.get(salt_size)) {
             RNP_LOG("not enough data for v6 salt size octet");
             return RNP_ERROR_BAD_FORMAT;
@@ -1538,7 +1540,8 @@ pgp_signature_t::write(pgp_dest_t &dst) const
     }
     pktbody.add(lbits, 2);
     if(version == PGP_V6) {
-        pktbody.add(salt, rnp::Hash::size(halg)/2);
+        pktbody.add_byte(salt_size);
+        pktbody.add(salt, salt_size);
     }
     /* write mpis */
     pktbody.add(material_buf, material_len);

@@ -2295,7 +2295,7 @@ pgp_key_t::mark_valid()
 }
 
 void
-pgp_key_t::sign_init(pgp_signature_t &sig, pgp_hash_alg_t hash, uint64_t creation, pgp_version_t version) const
+pgp_key_t::sign_init(rnp::RNG &rng, pgp_signature_t &sig, pgp_hash_alg_t hash, uint64_t creation, pgp_version_t version) const
 {
     sig.version = version;
     sig.halg = pgp_hash_adjust_alg_to_key(hash, &pkt_);
@@ -2305,6 +2305,10 @@ pgp_key_t::sign_init(pgp_signature_t &sig, pgp_hash_alg_t hash, uint64_t creatio
     if(version == PGP_V4) {
         // for v6 issuing keys, this MUST NOT be included
         sig.set_keyid(keyid());
+    }
+    if(version == PGP_V6) {
+        sig.salt_size = rnp::Hash::size(sig.halg)/2;
+        rng.get(sig.salt, sig.salt_size);
     }
 }
 
@@ -2347,7 +2351,7 @@ pgp_key_t::gen_revocation(const pgp_revoke_t &  revoke,
                           pgp_signature_t &     sig,
                           rnp::SecurityContext &ctx)
 {
-    sign_init(sig, hash, ctx.time(), key.version);
+    sign_init(ctx.rng, sig, hash, ctx.time(), key.version);
     sig.set_type(is_primary_key_pkt(key.tag) ? PGP_SIG_REV_KEY : PGP_SIG_REV_SUBKEY);
     sig.set_revocation_reason(revoke.code, revoke.reason);
 
@@ -2371,7 +2375,7 @@ pgp_key_t::sign_subkey_binding(pgp_key_t &           sub,
     /* add primary key binding subpacket if requested */
     if (subsign) {
         pgp_signature_t embsig;
-        sub.sign_init(embsig, sig.halg, ctx.time(), sub.version());
+        sub.sign_init(ctx.rng, embsig, sig.halg, ctx.time(), sub.version());
         embsig.set_type(PGP_SIG_PRIMARY);
         sub.sign_binding(pkt(), embsig, ctx);
         sig.set_embedded_sig(embsig);
@@ -2418,7 +2422,7 @@ pgp_key_t::add_uid_cert(rnp_selfsig_cert_info_t &cert,
     /* Fill the transferable userid */
     pgp_userid_pkt_t uid;
     pgp_signature_t  sig;
-    sign_init(sig, hash, ctx.time(), pkt().version);
+    sign_init(ctx.rng, sig, hash, ctx.time(), pkt().version);
     cert.populate(uid, sig);
     try {
         sign_cert(pkt_, uid, sig, ctx);
@@ -2452,7 +2456,7 @@ pgp_key_t::add_sub_binding(pgp_key_t &                       subsec,
 
     /* populate signature */
     pgp_signature_t sig;
-    sign_init(sig, hash, ctx.time(), version());
+    sign_init(ctx.rng, sig, hash, ctx.time(), version());
     sig.set_type(PGP_SIG_SUBKEY);
     if (binding.key_expiration) {
         sig.set_key_expiration(binding.key_expiration);
