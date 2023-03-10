@@ -483,6 +483,9 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
       load_keys_gpg(ffi, "data/keyrings/1/pubring.gpg", "data/keyrings/1/secring.gpg"));*/
     assert_true(import_all_keys(ffi, "data/test_v6_valid_data/transferable_seckey_v6.asc"));
 
+    //RNP_LOG_HEX("key id", ffi->secring->keys.front().keyid().data(), ffi->secring->keys.front().keyid().size());
+    //RNP_LOG_HEX("key id", ffi->secring->keys.back().keyid().data(), ffi->secring->keys.back().keyid().size());
+
     // write out some data
     FILE *fp = fopen("plaintext", "wb");
     assert_non_null(fp);
@@ -498,8 +501,9 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
     assert_rnp_success(rnp_op_encrypt_create(&op, ffi, input, output));
     // add recipients
     rnp_key_handle_t key = NULL;
-    assert_rnp_success(rnp_locate_key(ffi, "keyid", "cc77da1c6ad94eb0", &key));
-    ;
+    assert_rnp_success(rnp_locate_key(ffi, "keyid", "d1db378da9930885", &key));
+    assert_non_null(key);
+    
     //assert_rnp_failure(rnp_op_encrypt_add_recipient(op, NULL)); // what for ?
     assert_rnp_success(rnp_op_encrypt_add_recipient(op, key));
     assert_rnp_success(rnp_op_encrypt_enable_pkesk_v6(op));

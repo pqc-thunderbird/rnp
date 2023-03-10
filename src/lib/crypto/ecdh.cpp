@@ -413,7 +413,7 @@ rnp_result_t exdsa_gen_keypair_native(rnp::RNG *         rng,
 }
 
 rnp_result_t ecdh_kem_encaps(rnp::RNG *                 rng,
-                             std::vector<uint8_t>       &ciphertext,   /* encrypted shared secret */
+                             std::vector<uint8_t>       &ciphertext,   /* encrypted shared secret (eph. pubkey) */
                              std::vector<uint8_t>       &plaintext,    /* plaintext / shared secret / key share */
                              const std::vector<uint8_t> &pubkey_in,    /* public key */
                              pgp_curve_t                curve)
@@ -535,7 +535,6 @@ rnp_result_t ecdh_kem_decaps(std::vector<uint8_t>       &plaintext,  /* plaintex
     if (botan_pk_op_key_agreement_create(&op_key_agreement, prv_key, "Raw", 0) ||
         botan_pk_op_key_agreement(op_key_agreement, s.data(), &s_len, ciphertext.data(), ciphertext.size(), NULL, 0)) 
     {
-        printf("FAILED: %d, curve: %s\n", botan_pk_op_key_agreement(op_key_agreement, s.data(), &s_len, ciphertext.data(), ciphertext.size(), NULL, 0), curve_desc->pgp_name);
         RNP_LOG("ECDH key agreement failed");
         ret = RNP_ERROR_GENERIC;
         goto end;

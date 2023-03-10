@@ -34,6 +34,22 @@
 #include "botan/ffi.h"
 #include "utils.h"
 
+static void x25519_hkdf(std::vector<uint8_t> &derived_key, const std::vector<uint8_t> &shared_key) 
+{
+    /* The shared secret is passed to HKDF (see {{RFC5869}}) using SHA256, and the UTF-8-encoded string "OpenPGP X25519" as the info parameter. */
+    const std::vector<uint8_t> info = {'O', 'p', 'e', 'n', 'P', 'G', 'P', ' ', 'X', '2', '5', '5', '1', '9'};
+    auto kdf = rnp::Hkdf::create(PGP_HASH_SHA256);
+    derived_key.resize(16); // 128-bit AES key wrap
+
+    kdf->extract_expand(NULL, 0, // no salt
+                       shared_key.data(),
+                       shared_key.size(),
+                       info.data(),
+                       info.size(),
+                       derived_key.data(),
+                       derived_key.size());
+}
+
 rnp_result_t generate_x25519_native(rnp::RNG *           rng,
                                     std::vector<uint8_t> &privkey, 
                                     std::vector<uint8_t> &pubkey)
@@ -74,39 +90,33 @@ rnp_result_t x25519_native_encrypt(rnp::RNG *                 rng,
                                    size_t                     in_len,
                                    pgp_x25519_encrypted_t     *encrypted)
 {
-    return RNP_SUCCESS;
-    /* TODOMTG */
-#if 0
     rnp_result_t ret;
     std::vector<uint8_t> shared_key;
-    std::vector<uint8_t> eph_pubkey;
+    std::vector<uint8_t> derived_key;
 
-    ret = ecdh_kem_encaps(rng, eph_pubkey, shared_key, pubkey, PGP_CURVE_25519);
-    if(ret) {
+    if(!in_len || (in_len % 8) != 0) {
+        RNP_LOG("incorrect size of in, AES key wrap requires a multiple of 8 bytes");
+        return RNP_ERROR_BAD_FORMAT;
+    }
+
+    ret = ecdh_kem_encaps(rng, encrypted->eph_key, shared_key, pubkey, PGP_CURVE_25519);
+    if(ret || encrypted->eph_key.size() != 32) {
         RNP_LOG("Error when doing X25519 key agreement");
         return RNP_ERROR_ENCRYPT_FAILED;
     }
 
-    /* The shared secret is passed to HKDF (see {{RFC5869}}) using SHA256, and the UTF-8-encoded string "OpenPGP X25519" as the info parameter. */
-    const std::vector<uint8_t> info = {'O', 'p', 'e', 'n', 'P', 'G', 'P', ' ', 'X', '2', '5', '5', '1', '9'};
-    auto hkdf = Hkdf::create(PGP_HASH_SHA256);
-    std::vector<uint8_t> derived_key();
-
-    hkdf.extract_expand(NULL, 0, // no salt
-                        shared_key.data(),
-                        shared_key.size(),
-                        info.data(),
-                        info.size(),
-                        derived_key.data(),
-                        derived_key_size());
+    x25519_hkdf(derived_key, shared_key);
 
     /* The resulting key is used to encrypt the session key with AES-128 keywrap, defined in {{RFC3394}}. */
+    size_t c_len = ((in_len + 7)/8 + 1) * 8; // RFC3394 "Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}."
+    encrypted->enc_sess_key.resize(c_len);
 
-    /* 32 octets representing an ephemeral X25519 public key.
-     * A one-octet size, followed by an encrypted session key.
-     */
+    if (botan_key_wrap3394(in, in_len, derived_key.data(), derived_key.size(), encrypted->enc_sess_key.data(), &c_len)) {
+        RNP_LOG("error when doing AES key wrap");
+        return RNP_ERROR_ENCRYPT_FAILED;
+    }
 
-#endif
+    return RNP_SUCCESS;
 }
 
 rnp_result_t x25519_native_decrypt(const std::vector<uint8_t>   &privkey,
@@ -114,8 +124,34 @@ rnp_result_t x25519_native_decrypt(const std::vector<uint8_t>   &privkey,
                                    uint8_t                      *decbuf,
                                    size_t                       *decbuf_len)
 {
+    rnp_result_t ret;
+    std::vector<uint8_t> shared_key;
+    std::vector<uint8_t> derived_key;
+
+    if(encrypted->eph_key.size() != 32) {
+        RNP_LOG("Wrong ephemeral public key size");
+        return RNP_ERROR_BAD_FORMAT;
+    }
+    if(!encrypted->enc_sess_key.size()) {
+        // TODO: could do a check for possible sizes
+        RNP_LOG("No encrypted session key provided");
+        return RNP_ERROR_BAD_FORMAT;
+    }
+
+    ret = ecdh_kem_decaps(shared_key, encrypted->eph_key, privkey, PGP_CURVE_25519);
+    if(ret) {
+        RNP_LOG("Error when doing X25519 key agreement");
+        return RNP_ERROR_ENCRYPT_FAILED;
+    }
+
+    x25519_hkdf(derived_key, shared_key);
+
+    if (botan_key_unwrap3394(encrypted->enc_sess_key.data(), encrypted->enc_sess_key.size(), derived_key.data(), derived_key.size(), decbuf, decbuf_len)) {
+        RNP_LOG("error when doing AES key unwrap");
+        return RNP_ERROR_ENCRYPT_FAILED;
+    }
+
     return RNP_SUCCESS;
-    /* TODOMTG*/
 }
 
 rnp_result_t

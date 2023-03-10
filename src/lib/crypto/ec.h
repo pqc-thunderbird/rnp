@@ -105,7 +105,8 @@ typedef struct pgp_x25519_key_t {
 } pgp_x25519_key_t;
 
 typedef struct pgp_x25519_encrypted_t {
-    std::vector<uint8_t> ct;
+    std::vector<uint8_t> eph_key;
+    std::vector<uint8_t> enc_sess_key;
 } pgp_x25519_encrypted_t;
 
 

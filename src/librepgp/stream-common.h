@@ -553,4 +553,5 @@ class MemoryDest : public Dest {
 };
 } // namespace rnp
 
+bool have_pkesk_checksum(pgp_pubkey_alg_t alg);
 #endif

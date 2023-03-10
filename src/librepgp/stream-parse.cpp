@@ -1600,16 +1600,18 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         keylen = decbuf_sesskey_len - 2;
     }
 
-    /* Validate checksum */
-    rnp::secure_array<unsigned, 1> checksum;
-    for (unsigned i = 0; i < keylen; i++) {
-        checksum[0] += decbuf_sesskey[i];
-    }
+    if(have_pkesk_checksum(sesskey->alg)) {
+        /* Validate checksum */
+        rnp::secure_array<unsigned, 1> checksum;
+        for (unsigned i = 0; i < keylen; i++) {
+            checksum[0] += decbuf_sesskey[i];
+        }
 
-    if ((checksum[0] & 0xffff) !=
-        (decbuf_sesskey[keylen + 1] | ((unsigned) decbuf_sesskey[keylen] << 8))) {
-        RNP_LOG("wrong checksum\n");
-        return false;
+        if ((checksum[0] & 0xffff) !=
+            (decbuf_sesskey[keylen + 1] | ((unsigned) decbuf_sesskey[keylen] << 8))) {
+            RNP_LOG("wrong checksum\n");
+            return false;
+        }
     }
 
     if (sesskey->version == PGP_PKSK_V3) {

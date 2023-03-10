@@ -559,26 +559,30 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     /* Encrypt the session key */
     rnp::secure_array<uint8_t, PGP_MAX_KEY_SIZE + 3> enckey;
     uint8_t *sesskey = enckey.data(); /* pointer to the actual session key */
-    size_t   enckey_len;
+    size_t   enckey_len = keylen;
 
     if (pkey.version == PGP_PKSK_V3) {
         enckey[0] = param->ctx->ealg;
         memcpy(&enckey[1], key, keylen);
         sesskey += 1;
-        enckey_len = keylen + 3; // keylen + algorithm octet + checksum
-    } else {                     // PGP_PKSK_V6
+        enckey_len += 1;
+    } else { // PGP_PKSK_V6
         memcpy(&enckey[0], key, keylen);
-        enckey_len = keylen + 2; // keylen + checksum
     }
 
-    /* Calculate checksum */
-    rnp::secure_array<unsigned, 1> checksum;
+    if(have_pkesk_checksum(pkey.alg)) {
+        /* Calculate checksum */
+        rnp::secure_array<unsigned, 1> checksum;
 
-    for (unsigned i = 0; i < keylen; i++) {
-        checksum[0] += sesskey[i];
+        for (unsigned i = 0; i < keylen; i++) {
+            checksum[0] += sesskey[i];
+        }
+        sesskey[keylen] = (checksum[0] >> 8) & 0xff;
+        sesskey[keylen + 1] = checksum[0] & 0xff;
+
+        /* increment enckey_len by checksum */
+        enckey_len += 2;
     }
-    sesskey[keylen] = (checksum[0] >> 8) & 0xff;
-    sesskey[keylen + 1] = checksum[0] & 0xff;
 
     pgp_encrypted_material_t material;
 
@@ -664,7 +668,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         ret = userkey->material().kyber_ecdh.pub.encrypt(&handler->ctx->ctx->rng,
                                                         &material.kyber_ecdh,
                                                         enckey.data(),
-                                                        keylen + 3);
+                                                        enckey_len);
         if (ret) {
             RNP_LOG("Kyber ECC Encrypt failed");
             return ret;

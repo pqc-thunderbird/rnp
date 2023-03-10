@@ -1203,9 +1203,19 @@ pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
     }
     case PGP_PKA_X25519: {
         const ec_curve_desc_t *ec_desc = get_curve_desc(PGP_CURVE_25519);
-        material.x25519.ct.resize(BITS_TO_BYTES(ec_desc->bitlen));
-        if (!pkt.get(material.x25519.ct.data(), material.x25519.ct.size())) {
-            RNP_LOG("failed to parse X25519 PKESK");
+        material.x25519.eph_key.resize(BITS_TO_BYTES(ec_desc->bitlen));
+        if (!pkt.get(material.x25519.eph_key.data(), material.x25519.eph_key.size())) {
+            RNP_LOG("failed to parse X25519 PKESK (eph. pubkey)");
+            return false;
+        }
+        uint8_t enc_sesskey_len;
+        if(!pkt.get(enc_sesskey_len)) {
+            RNP_LOG("failed to parse X25519 PKESK (enc sesskey length)");
+            return false;
+        }
+        material.x25519.enc_sess_key.resize(enc_sesskey_len);
+        if (!pkt.get(material.x25519.enc_sess_key.data(), enc_sesskey_len)) {
+            RNP_LOG("failed to parse X25519 PKESK (enc sesskey)");
             return false;
         }
         break;
@@ -1268,7 +1278,9 @@ pgp_pk_sesskey_t::write_material(const pgp_encrypted_material_t &material)
         pktbody.add(material.eg.m);
         break;
     case PGP_PKA_X25519:
-        pktbody.add(material.x25519.ct);
+        pktbody.add(material.x25519.eph_key);
+        pktbody.add_byte(static_cast<uint8_t>(material.x25519.enc_sess_key.size()));
+        pktbody.add(material.x25519.enc_sess_key);
         break;
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
