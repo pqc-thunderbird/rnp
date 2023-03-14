@@ -257,6 +257,8 @@ elseif(CRYPTO_BACKEND_BOTAN)
     crypto/exdsa_ecdhkem.cpp
     crypto/x25519.cpp
     crypto/ed25519.cpp
+    crypto/kmac.cpp
+    crypto/kmac_botan.cpp
   )
   if(ENABLE_SM2)
     list(APPEND CRYPTO_SOURCES crypto/sm2.cpp)

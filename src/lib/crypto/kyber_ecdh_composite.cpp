@@ -32,6 +32,7 @@
 #include "logging.h"
 #include "types.h"
 #include "ecdh_utils.h"
+#include "kmac.hpp"
 #include <botan/ffi.h>
 
 pgp_kyber_ecdh_composite_key_t::~pgp_kyber_ecdh_composite_key_t() {}
@@ -199,19 +200,6 @@ pgp_kyber_ecdh_composite_key_t::pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg) {
     }
 }
 
-namespace {
-    /* TODO: replace with real functionality */
-    std::vector<uint8_t> dummy_kmac_kdf(std::vector<uint8_t> key1, std::vector<uint8_t> key2) {
-        std::vector<uint8_t> out(32);
-        for (int i = 0; i < 32; i++)
-        {
-            out.data()[i] = key1.data()[i] ^ key2.data()[i];
-        }
-        return out;
-    }
-}
-
-
 /* copy assignment operator is used on key materials struct and thus needs to be defined for this class as well */
 pgp_kyber_ecdh_composite_private_key_t& pgp_kyber_ecdh_composite_private_key_t::operator=(const pgp_kyber_ecdh_composite_private_key_t& other)
 {
@@ -288,7 +276,7 @@ pgp_kyber_ecdh_composite_private_key_t::parse_component_keys(std::vector<uint8_t
 
 
 rnp_result_t
-pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, const pgp_kyber_ecdh_encrypted_t *enc)
+pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, const pgp_kyber_ecdh_encrypted_t *enc, const std::vector<uint8_t> &encoded_pubkey)
 {
     initialized_or_throw();
     rnp_result_t res;
@@ -318,7 +306,9 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
     }
 
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
-    std::vector<uint8_t> kek = dummy_kmac_kdf(ecdh_keyshare, kyber_keyshare); /* TODOMTG: replace with KMAC */
+    std::vector<uint8_t> kek;
+    auto kmac = rnp::KMAC256::create();
+    kmac->compute(ecdh_keyshare, kyber_keyshare, pk_alg(), encoded_pubkey, kek);
 
     // Compute sessionKey := AESKeyUnwrap(KEK, C) with AES-256 as per [RFC3394], aborting if the 64 bit integrity check fails
     if(botan_key_unwrap3394(enc->wrapped_sesskey.data(), enc->wrapped_sesskey.size(), kek.data(), kek.size(), out, out_len)) {
@@ -423,7 +413,9 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     kyber_encap_result_t kyber_encap = kyber_key_.encapsulate();
 
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
-    std::vector<uint8_t> kek = dummy_kmac_kdf(ecdh_encap.symmetric_key, kyber_encap.symmetric_key);  /* TODOMTG: replace with KMAC */
+    std::vector<uint8_t> kek;
+    auto kmac = rnp::KMAC256::create();
+    kmac->compute(ecdh_encap.symmetric_key, kyber_encap.symmetric_key, pk_alg(), get_encoded(), kek);
 
     // Compute C := AESKeyWrap(KEK, sessionKey) with AES-256 as per [RFC3394] that includes a 64 bit integrity check
     size_t c_len = ((session_key_len + 7)/8 + 1) * 8; // RFC3394 "Outputs:     Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}."

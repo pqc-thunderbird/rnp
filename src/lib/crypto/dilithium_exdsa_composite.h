@@ -89,7 +89,7 @@ class pgp_dilithium_exdsa_composite_private_key_t : public pgp_dilithium_exdsa_c
 
     std::vector<uint8_t> get_encoded() const;
 
-    pgp_pubkey_alg_t pk_alg(pgp_pubkey_alg_t) const 
+    pgp_pubkey_alg_t pk_alg() const 
     {
       return pk_alg_;
     }
@@ -130,7 +130,7 @@ class pgp_dilithium_exdsa_composite_public_key_t : public pgp_dilithium_exdsa_co
 
     std::vector<uint8_t> get_encoded() const;
 
-    pgp_pubkey_alg_t pk_alg(pgp_pubkey_alg_t) const 
+    pgp_pubkey_alg_t pk_alg() const 
     {
       return pk_alg_;
     }
