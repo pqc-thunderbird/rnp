@@ -563,9 +563,17 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
 
     if (pkey.version == PGP_PKSK_V3) {
         enckey[0] = param->ctx->ealg;
-        memcpy(&enckey[1], key, keylen);
-        sesskey += 1;
-        enckey_len += 1;
+
+        /* add 7 zero-bytes for X25519 */
+        size_t opt_padding = 0;
+        if(pkey.alg == PGP_PKA_X25519) {
+            opt_padding = 7;
+            memset(&enckey[1], 0, opt_padding);
+        }
+
+        memcpy(&enckey[1 + opt_padding], key, keylen);
+        sesskey += 1 + opt_padding;
+        enckey_len += 1 + opt_padding;
     } else { // PGP_PKSK_V6
         memcpy(&enckey[0], key, keylen);
     }

@@ -1583,7 +1583,23 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         }
 
         keylen = pgp_key_size(salg);
-        if (decbuf_sesskey_len != keylen + 3) { // alg id + 2 checksum bytes
+
+        if(sesskey->alg == PGP_PKA_X25519) {
+            // expect 7 zero bytes after alg id
+            if(decbuf_sesskey_len != keylen + 8) {
+                RNP_LOG("invalid symmetric key length");
+                return false;
+            }
+
+            const uint8_t padding[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+            if(memcmp(&decbuf_sesskey[1], padding, 7) != 0) {
+                RNP_LOG("invalid padding for X25519");
+                return false;
+            }
+
+            decbuf_sesskey += 7; // skip over padding
+        }
+        else if (decbuf_sesskey_len != keylen + 3) { // alg id + 2 checksum bytes
             RNP_LOG("invalid symmetric key length");
             return false;
         }
