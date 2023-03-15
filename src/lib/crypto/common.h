@@ -39,10 +39,14 @@
 #include "ecdsa.h"
 #include "sm2.h"
 #include "eddsa.h"
+#if defined(ENABLE_PQC)
 #include "kyber_ecdh_composite.h"
 #include "dilithium_exdsa_composite.h"
+#endif
+#if defined(ENABLE_CRYPTO_REFRESH)
 #include "x25519.h"
 #include "ed25519.h"
+#endif
 /* symmetric crypto */
 #include "symmetric.h"
 /* hash */

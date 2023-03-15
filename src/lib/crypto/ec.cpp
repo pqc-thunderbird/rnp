@@ -32,8 +32,10 @@
 #include "utils.h"
 #include "mem.h"
 #include "bn.h"
+#if defined(ENABLE_CRYPTO_REFRESH)
 #include "x25519.h"
 #include "ed25519.h"
+#endif
 
 static id_str_pair ec_algo_to_botan[] = {
   {PGP_PKA_ECDH, "ECDH"},
@@ -189,6 +191,7 @@ end:
 }
 
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 static bool is_generic_prime_curve(pgp_curve_t curve) {
     switch(curve) {
         case PGP_CURVE_NIST_P_256: [[fallthrough]];
@@ -309,3 +312,4 @@ rnp_result_t ec_generate_native(rnp::RNG *           rng,
         return RNP_ERROR_BAD_PARAMETERS;     
     }
 }
+#endif

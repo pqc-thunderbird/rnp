@@ -1054,14 +1054,18 @@ pgp_pk_sesskey_t::write(pgp_dest_t &dst) const
 {
     pgp_packet_body_t pktbody(PGP_PKT_PK_SESSION_KEY);
     pktbody.add_byte(version);
+#if defined(ENABLE_CRYPTO_REFRESH)
     if(version == PGP_PKSK_V3) {
+#endif
         pktbody.add(key_id);
+#if defined(ENABLE_CRYPTO_REFRESH)
     }
     else { // PGP_PKSK_V6
         pktbody.add_byte((fp.length == PGP_FINGERPRINT_V6_SIZE) ? PGP_V6 : PGP_V4);
         pktbody.add(fp.fingerprint, fp.length);
         RNP_DBG_LOG("DBG: pgp_pk_sesskey_t::write(): fp size = %i", fp.length);
     }
+#endif
     pktbody.add_byte(alg);
     pktbody.add(material_buf.data(), material_buf.size());
     pktbody.write(dst);
@@ -1081,19 +1085,27 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
         RNP_LOG("Error when reading packet version");
         return RNP_ERROR_BAD_FORMAT;
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
     if((bt != PGP_PKSK_V3) && (bt != PGP_PKSK_V6)) {
+#else
+    if((bt != PGP_PKSK_V3)) {
+#endif
         RNP_LOG("wrong packet version");
         return RNP_ERROR_BAD_FORMAT;
     }
     version = (pgp_pkesk_version_t) bt;
 
-    if (version == PGP_PKSK_V3) {
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if (version == PGP_PKSK_V3)
+#endif
+    {
         /* key id */
         if (!pkt.get(key_id)) {
             RNP_LOG("failed to get key id");
             return RNP_ERROR_BAD_FORMAT;
         }
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
     else { // PGP_PKSK_V6
         size_t fp_len;
         uint8_t fp_key_version;
@@ -1121,6 +1133,7 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
             return RNP_ERROR_BAD_FORMAT;
         }
     }
+#endif
 
     /* public key algorithm */
     if (!pkt.get(bt)) {
@@ -1201,6 +1214,7 @@ pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
         }
         break;
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_X25519: {
         const ec_curve_desc_t *ec_desc = get_curve_desc(PGP_CURVE_25519);
         material.x25519.eph_key.resize(BITS_TO_BYTES(ec_desc->bitlen));
@@ -1220,6 +1234,8 @@ pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
         }
         break;
     }
+#endif
+#if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
@@ -1243,6 +1259,7 @@ pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
         }
         break;
     }
+#endif
     default:
         RNP_LOG("unknown pk alg %d", (int) alg);
         return false;
@@ -1277,11 +1294,14 @@ pgp_pk_sesskey_t::write_material(const pgp_encrypted_material_t &material)
         pktbody.add(material.eg.g);
         pktbody.add(material.eg.m);
         break;
+#if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_X25519:
         pktbody.add(material.x25519.eph_key);
         pktbody.add_byte(static_cast<uint8_t>(material.x25519.enc_sess_key.size()));
         pktbody.add(material.x25519.enc_sess_key);
         break;
+#endif
+#if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
@@ -1292,6 +1312,7 @@ pgp_pk_sesskey_t::write_material(const pgp_encrypted_material_t &material)
         pktbody.add_byte(static_cast<uint8_t>(material.kyber_ecdh.wrapped_sesskey.size()));
         pktbody.add(material.kyber_ecdh.wrapped_sesskey);
         break;
+#endif
     default:
         RNP_LOG("Unknown pk alg: %d", (int) alg);
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);

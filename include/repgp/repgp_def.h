@@ -32,6 +32,7 @@
 #define REPGP_DEF_H_
 
 #include <cstdint>
+#include "config.h"
 
 /************************************/
 /* Packet Tags - RFC4880, 4.2 */
@@ -216,9 +217,12 @@ typedef enum : uint8_t {
                                            * IETF-S/MIME) */
     PGP_PKA_EDDSA = 22,                   /* EdDSA from draft-ietf-openpgp-rfc4880bis */
 
+#if defined(ENABLE_CRYPTO_REFRESH)
     PGP_PKA_X25519 = 25,                    /* v6 / Crypto Refresh */
     PGP_PKA_ED25519 = 27,                   /* v6 / Crypto Refresh */
+#endif
 
+#if defined(ENABLE_PQC)
     /* PQC-ECC composite */
     PGP_PKA_KYBER768_X25519 = 29,                 /* Kyber768 + X25519 from draft-wussler-openpgp-pqc-00 */
     PGP_PKA_KYBER1024_X448 = 30,                  /* Kyer1024 + X448 from draft-wussler-openpgp-pqc-00 */
@@ -233,6 +237,7 @@ typedef enum : uint8_t {
     PGP_PKA_DILITHIUM5_P384 = 38,                 /* Dilithium 5 + ECDSA-NIST-P-384 from draft-wussler-openpgp-pqc-00*/
     PGP_PKA_DILITHIUM3_BP256 = 39,                /* Dilithium 3 + ECDSA-brainpoolP256r1 from draft-wussler-openpgp-pqc-00*/
     PGP_PKA_DILITHIUM5_BP384 = 40,                /* Dilithium 5 + ECDSA-brainpoolP384r1 from draft-wussler-openpgp-pqc-00*/
+#endif
 
     PGP_PKA_SM2 = 99,                     /* SM2 encryption/signature schemes */
 
@@ -470,8 +475,10 @@ typedef enum {
 
 enum { PGP_SKSK_V4 = 4, PGP_SKSK_V5 = 5 };
 typedef enum { 
-    PGP_PKSK_V3 = 3, 
-    PGP_PKSK_V6 = 5
+    PGP_PKSK_V3 = 3,
+#if defined(ENABLE_CRYPTO_REFRESH)
+    PGP_PKSK_V6 = 6
+#endif
 } pgp_pkesk_version_t;
 typedef enum {
     PGP_SE_IP_DATA_VERSION = 1,

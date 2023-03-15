@@ -28,10 +28,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if defined(ENABLE_CRYPTO_REFRESH)
+
 #include "rnp_tests.h"
 #include <array>
 #include "crypto/dilithium.h"
 #include "crypto/kyber.h"
+
 
 TEST_F(rnp_tests, test_kyber_key_function)
 {
@@ -102,3 +105,5 @@ TEST_F(rnp_tests, test_dilithium_exdsa_direct)
         sig.sig.data()[sig.sig.size()-1] = ~sig.sig.data()[sig.sig.size()-1];
     }
 }
+
+#endif

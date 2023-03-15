@@ -612,6 +612,7 @@ TEST_F(rnp_tests, test_dsa_verify_negative)
     assert_int_equal(dsa_verify(&sig, message, h_size, key1), RNP_ERROR_SIGNATURE_INVALID);
 }
 
+#if defined(ENABLE_PQC)
 TEST_F(rnp_tests, kyber_ecdh_roundtrip)
 {
     pgp_pubkey_alg_t algs[] = {PGP_PKA_KYBER768_X25519,
@@ -682,6 +683,7 @@ TEST_F(rnp_tests, dilithium_exdsa_signverify_success)
         assert_rnp_failure(key2->pub.verify(&sig, hash_alg, message, sizeof(message)));
     }
 }
+#endif
 
 // platforms known to not have a robust response can compile with
 // -DS2K_MINIMUM_TUNING_RATIO=2 (or whatever they need)

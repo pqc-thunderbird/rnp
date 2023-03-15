@@ -377,6 +377,7 @@ end:
     return ret;
 }
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 rnp_result_t ecdh_kem_gen_keypair_native(rnp::RNG *         rng,
                                          std::vector<uint8_t> &privkey, 
                                          std::vector<uint8_t> &pubkey,
@@ -554,3 +555,4 @@ end:
     botan_privkey_destroy(prv_key);
     return ret;
 }
+#endif

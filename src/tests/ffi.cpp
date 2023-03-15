@@ -3102,7 +3102,15 @@ TEST_F(rnp_tests, test_ffi_supported_features)
     /* public key algorithm */
     assert_rnp_success(rnp_supported_features(RNP_FEATURE_PK_ALG, &features));
     assert_non_null(features);
-    assert_true(check_features(RNP_FEATURE_PK_ALG, features, 6 + has_sm2 + 12 + 2)); // 12 pqc-composite, 2 for X25519/ED25519
+    size_t pqc_opt = 0;
+    size_t crypto_refresh_opt = 0;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    crypto_refresh_opt = 2; // X25519 + ED25519
+#endif
+#if defined(ENABLE_PQC)
+    pqc_opt = 12; // kyber+ecc and dilithium+ecc variants
+#endif
+    assert_true(check_features(RNP_FEATURE_PK_ALG, features, 6 + has_sm2 + pqc_opt + crypto_refresh_opt));
     rnp_buffer_destroy(features);
     /* TODOMTG: check for the pqc-composite variants */
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_PK_ALG, "RSA", &supported));

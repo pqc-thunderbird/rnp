@@ -1226,20 +1226,25 @@ dst_write_src(pgp_source_t *src, pgp_dest_t *dst, uint64_t limit)
     return dst->werr;
 }
 
+
+#if defined(ENABLE_CRYPTO_REFRESH)
 /* TODOMTG: better place to put this? (needed in stream-parse/stream-write) */
 bool have_pkesk_checksum(pgp_pubkey_alg_t alg)
 {
     switch(alg)
     {
         case PGP_PKA_X25519:
+#if defined(ENABLE_PQC)
         case PGP_PKA_KYBER768_X25519:
         case PGP_PKA_KYBER1024_X448:
         case PGP_PKA_KYBER768_P256:
         case PGP_PKA_KYBER1024_P384:
         case PGP_PKA_KYBER768_BP256:
         case PGP_PKA_KYBER1024_BP384:
+#endif
             return false;
         default:
             return true;
     }
 }
+#endif

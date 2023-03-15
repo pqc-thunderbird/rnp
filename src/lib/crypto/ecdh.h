@@ -117,7 +117,8 @@ rnp_result_t ecdh_decrypt_pkcs5(uint8_t *                   out,
 
 
 
-/* used for kyber-ecdh composite: only do the public operation and no KDF and key wrap*/
+#if defined(ENABLE_CRYPTO_REFRESH)
+/* used for kyber-ecdh composite and X25519: only do the public operation and no KDF and key wrap*/
 rnp_result_t ecdh_kem_encaps(rnp::RNG *                 rng,
                              std::vector<uint8_t>       &ciphertext, /* encrypted shared secret */
                              std::vector<uint8_t>       &plaintext,  /* plaintext shared secret */
@@ -143,7 +144,6 @@ rnp_result_t exdsa_gen_keypair_native(rnp::RNG *           rng,
                                     pgp_curve_t          curve);
 
 /* TODOMTG: description -> documentation  */
-/* TODOMTG: this API has to be disabled for OpenSSL backend for now */
-
+#endif
 
 #endif // ECDH_H_

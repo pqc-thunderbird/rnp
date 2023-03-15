@@ -3138,6 +3138,7 @@ TEST_F(rnp_tests, test_ffi_malformed_keys_import)
     rnp_ffi_destroy(ffi);
 }
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 TEST_F(rnp_tests, test_ffi_v6_sig_subpackets)
 {
     rnp_ffi_t   ffi = NULL;
@@ -3217,7 +3218,7 @@ TEST_F(rnp_tests, test_ffi_v6_seckey_import)
     assert_rnp_success(rnp_get_secret_key_count(ffi, &keycount));
     assert_int_equal(keycount, 2);
 }
-
+#endif
 
 TEST_F(rnp_tests, test_ffi_iterated_key_import)
 {

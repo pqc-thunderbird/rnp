@@ -59,6 +59,8 @@
 #cmakedefine ENABLE_TWOFISH
 #cmakedefine ENABLE_BRAINPOOL
 #cmakedefine ENABLE_IDEA
+#cmakedefine ENABLE_CRYPTO_REFRESH
+#cmakedefine ENABLE_PQC
 
 /* Macro _GLIBCXX_USE_CXX11_ABI was first introduced with GCC 5.0, which
  * we assume to be bundled with a sane implementation of std::regex. */

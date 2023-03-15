@@ -159,6 +159,8 @@ if(CRYPTO_BACKEND_BOTAN)
   resolve_feature_state(ENABLE_AEAD "AEAD_EAX;AEAD_OCB")
   resolve_feature_state(ENABLE_TWOFISH "TWOFISH")
   resolve_feature_state(ENABLE_IDEA "IDEA")
+  resolve_feature_state(ENABLE_CRYPTO_REFRESH "HKDF")
+  resolve_feature_state(ENABLE_PQC "KMAC;DILITHIUM;KYBER")
   # Botan supports Brainpool curves together with SECP via the ECC_GROUP define
   set(CMAKE_REQUIRED_INCLUDES)
 endif()
@@ -191,6 +193,8 @@ if(CRYPTO_BACKEND_OPENSSL)
   #resolve_feature_state(ENABLE_SM2 "SM2;SM3;SM4-ECB")
   openssl_nope(ENABLE_TWOFISH "Twofish isn't and won't be supported by OpenSSL, see https://github.com/openssl/openssl/issues/2046")
   openssl_nope(ENABLE_AEAD "it's on our roadmap, see https://github.com/rnpgp/rnp/issues/1642")
+  openssl_nope(ENABLE_CRYPTO_REFRESH, "not yet implemented")
+  openssl_nope(ENABLE_PQC, "not yet implemented")
 endif()
 
 configure_file(config.h.in config.h)
@@ -248,20 +252,28 @@ elseif(CRYPTO_BACKEND_BOTAN)
     crypto/cipher_botan.cpp
     crypto/hkdf.cpp
     crypto/hkdf_botan.cpp
-    crypto/dilithium.cpp
-    crypto/dilithium_common.cpp
-    crypto/kyber_common.cpp
-    crypto/kyber.cpp
-    crypto/kyber_ecdh_composite.cpp
-    crypto/dilithium_exdsa_composite.cpp
-    crypto/exdsa_ecdhkem.cpp
-    crypto/x25519.cpp
-    crypto/ed25519.cpp
-    crypto/kmac.cpp
-    crypto/kmac_botan.cpp
   )
   if(ENABLE_SM2)
     list(APPEND CRYPTO_SOURCES crypto/sm2.cpp)
+  endif()
+  if(ENABLE_CRYPTO_REFRESH)
+    list(APPEND CRYPTO_SOURCES 
+        crypto/x25519.cpp
+        crypto/ed25519.cpp
+        crypto/exdsa_ecdhkem.cpp
+    )
+  endif()
+  if(ENABLE_PQC)
+    list(APPEND CRYPTO_SOURCES 
+        crypto/dilithium.cpp 
+        crypto/dilithium_common.cpp
+        crypto/kyber_common.cpp
+        crypto/kyber.cpp
+        crypto/kyber_ecdh_composite.cpp
+        crypto/dilithium_exdsa_composite.cpp
+        crypto/kmac.cpp
+        crypto/kmac_botan.cpp
+    )
   endif()
 else()
   message(FATAL_ERROR "Unknown crypto backend: ${CRYPTO_BACKEND}.")

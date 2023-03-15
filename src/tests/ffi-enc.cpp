@@ -466,6 +466,7 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk)
 }
 
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
 {
     rnp_ffi_t        ffi = NULL;
@@ -578,6 +579,7 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
 #endif
     rnp_ffi_destroy(ffi);
 }
+#endif
 
 TEST_F(rnp_tests, test_ffi_encrypt_pk_key_provider)
 {

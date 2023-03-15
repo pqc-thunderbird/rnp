@@ -157,5 +157,4 @@ typedef struct pgp_dilithium_exdsa_key_t {
 
 rnp_result_t dilithium_exdsa_validate_key(rnp::RNG *rng, const pgp_dilithium_exdsa_key_t *key, bool secret);
 
-
 #endif

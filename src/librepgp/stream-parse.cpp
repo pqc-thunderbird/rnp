@@ -1472,6 +1472,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         return false;
     }
 
+#if defined(ENABLE_CRYPTO_REFRESH)
     /* Crypto Refresh:
         - The payload following any v6 PKESK or v6 SKESK packet MUST be a v2 SEIPD.
         - implementations MUST NOT precede a v2 SEIPD payload with either v3 PKESK or v4 SKESK
@@ -1481,6 +1482,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         RNP_LOG("Attempt to mix SEIPD v1 with PKESK v6 or SEIPD v2 with PKESK v3");
         return false;
     }
+#endif
 
     rnp::secure_array<uint8_t, PGP_MPINT_SIZE> decbuf;
     /* Decrypting session key value */
@@ -1543,6 +1545,8 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             return false;
         }
         break;
+    }
+#if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_X25519:
         declen = decbuf.size();
         err = x25519_native_decrypt(keymaterial->x25519.priv, &encmaterial.x25519, decbuf.data(), &declen);
@@ -1551,6 +1555,8 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             return false;
         }
         break;
+#endif
+#if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
@@ -1564,7 +1570,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             return false;
         }
         break;
-    }
+#endif
     default:
         RNP_LOG("unsupported public key algorithm %d\n", seckey->alg);
         return false;
@@ -1584,6 +1590,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 
         keylen = pgp_key_size(salg);
 
+#if defined(ENABLE_CRYPTO_REFRESH)
         if(sesskey->alg == PGP_PKA_X25519) {
             // expect 7 zero bytes after alg id
             if(decbuf_sesskey_len != keylen + 8) {
@@ -1599,14 +1606,18 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 
             decbuf_sesskey += 7; // skip over padding
         }
-        else if (decbuf_sesskey_len != keylen + 3) { // alg id + 2 checksum bytes
+        else
+#endif
+        if (decbuf_sesskey_len != keylen + 3) { // alg id + 2 checksum bytes
             RNP_LOG("invalid symmetric key length");
             return false;
         }
 
         /* skip over the first byte which aligns the code for v3 and v6 PKESK packets. */
         decbuf_sesskey++;
-    } else {
+    }
+#if defined(ENABLE_CRYPTO_REFRESH)
+    else {
         // V6 PKESK
         // required key length is not yet known
         if(decbuf_sesskey_len <= 2) {
@@ -1615,8 +1626,12 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         }
         keylen = decbuf_sesskey_len - 2;
     }
+#endif
 
-    if(have_pkesk_checksum(sesskey->alg)) {
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if(have_pkesk_checksum(sesskey->alg))
+#endif
+    {
         /* Validate checksum */
         rnp::secure_array<unsigned, 1> checksum;
         for (unsigned i = 0; i < keylen; i++) {
@@ -1630,7 +1645,10 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         }
     }
 
-    if (sesskey->version == PGP_PKSK_V3) {
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if (sesskey->version == PGP_PKSK_V3)
+#endif
+    {
         if (!param->aead) {
             /* Decrypt header */
             res = encrypted_decrypt_cfb_header(param, salg, decbuf_sesskey);
@@ -1642,10 +1660,13 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             param->salg = salg;
         }
         return res;
-    } else { // PGP_PKSK_V6
+    } 
+#if defined(ENABLE_CRYPTO_REFRESH)
+    else { // PGP_PKSK_V6
         salg = param->aead_hdr.ealg; // NOTEMTG: salg not part of the v6 PKESK, assignment here just to make the following call "happy"
         return encrypted_start_aead(param, salg, decbuf_sesskey);
     }
+#endif
 }
 
 #if defined(ENABLE_AEAD)
@@ -2271,12 +2292,16 @@ init_encrypted_src(pgp_parse_handler_t *handler, pgp_source_t *src, pgp_source_t
         errcode = RNP_ERROR_NO_SUITABLE_KEY;
         while (pubidx < param->pubencs.size()) {
             auto &pubenc = param->pubencs[pubidx];
+#if defined(ENABLE_CRYPTO_REFRESH)
             if (pubenc.version == PGP_PKSK_V3) {
+#endif
                 keyctx.search.by.keyid = pubenc.key_id;
+#if defined(ENABLE_CRYPTO_REFRESH)
             } else { // PGP_PKSK_V6
                 keyctx.search.by.fingerprint = pubenc.fp;
                 keyctx.search.type = PGP_KEY_SEARCH_FINGERPRINT;
             }
+#endif
 
             /* Get the key if any */
             pgp_key_t *seckey = pgp_request_key(handler->key_provider, &keyctx);
@@ -2286,11 +2311,15 @@ init_encrypted_src(pgp_parse_handler_t *handler, pgp_source_t *src, pgp_source_t
             }
             /* Check whether key fits our needs */
             bool hidden;
+#if defined(ENABLE_CRYPTO_REFRESH)
             if (pubenc.version == PGP_PKSK_V3) {
+#endif
                 hidden = (pubenc.key_id == pgp_key_id_t({}));
+#if defined(ENABLE_CRYPTO_REFRESH)
             } else { // PGP_PKSK_V6
                 hidden = (pubenc.fp.length == 0);
             }
+#endif
             if (!hidden || (++hidden_tries >= MAX_HIDDEN_TRIES)) {
                 pubidx++;
             }

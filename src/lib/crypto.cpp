@@ -149,18 +149,21 @@ pgp_generate_seckey(const rnp_keygen_crypto_params_t &crypto,
             return false;
         }
         break;
-    case PGP_PKA_ED25519: 
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
         if(generate_ed25519_native(&crypto.ctx->rng, seckey.material.ed25519.priv, seckey.material.ed25519.pub) != RNP_SUCCESS) {
             RNP_LOG("failed to generate ED25519 key");
             return false;
         }
         break;
-    case PGP_PKA_X25519: 
+    case PGP_PKA_X25519:
         if(generate_x25519_native(&crypto.ctx->rng, seckey.material.x25519.priv, seckey.material.x25519.pub) != RNP_SUCCESS) {
             RNP_LOG("failed to generate X25519 key");
             return false;
         }
         break;
+#endif
+#if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
@@ -183,6 +186,7 @@ pgp_generate_seckey(const rnp_keygen_crypto_params_t &crypto,
             return false;
         }
         break;
+#endif
     default:
         RNP_LOG("key generation not implemented for PK alg: %d", seckey.alg);
         return false;
@@ -223,10 +227,13 @@ key_material_equal(const pgp_key_material_t *key1, const pgp_key_material_t *key
     case PGP_PKA_ECDSA:
     case PGP_PKA_SM2:
         return (key1->ec.curve == key2->ec.curve) && mpi_equal(&key1->ec.p, &key2->ec.p);
-    case PGP_PKA_ED25519: 
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
         return (key1->ed25519.pub == key2->ed25519.pub);
-    case PGP_PKA_X25519: 
+    case PGP_PKA_X25519:
         return (key1->x25519.pub == key2->x25519.pub);
+#endif
+#if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
@@ -241,6 +248,7 @@ key_material_equal(const pgp_key_material_t *key1, const pgp_key_material_t *key
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
         return (key1->dilithium_exdsa.pub == key2->dilithium_exdsa.pub);
+#endif
     default:
         RNP_LOG("unknown public key algorithm: %d", (int) key1->alg);
         return false;
@@ -288,10 +296,13 @@ validate_pgp_key_material(const pgp_key_material_t *material, rnp::RNG *rng)
     case PGP_PKA_ELGAMAL_ENCRYPT_OR_SIGN:
         return elgamal_validate_key(&material->eg, material->secret) ? RNP_SUCCESS :
                                                                        RNP_ERROR_GENERIC;
+#if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519: 
         return ed25519_validate_key_native(rng, &material->ed25519, material->secret);
     case PGP_PKA_X25519: 
         return x25519_validate_key_native(rng, &material->x25519, material->secret);
+#endif
+#if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
@@ -306,6 +317,7 @@ validate_pgp_key_material(const pgp_key_material_t *material, rnp::RNG *rng)
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
         return dilithium_exdsa_validate_key(rng, &material->dilithium_exdsa, material->secret);
+#endif
     default:
         RNP_LOG("unknown public key algorithm: %d", (int) material->alg);
     }

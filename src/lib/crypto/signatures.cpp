@@ -134,12 +134,14 @@ signature_calculate(pgp_signature_t &     sig,
             RNP_LOG("eddsa signing failed");
         }
         break;
+#if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519:
         ret = ed25519_sign_native(&ctx.rng, material.ed25519.sig, seckey.ed25519.priv, hval, hlen);
         if(ret) {
             RNP_LOG("ed25519 signing failed");
         }
         break;
+#endif
     case PGP_PKA_DSA:
         ret = dsa_sign(&ctx.rng, &material.dsa, hval, hlen, &seckey.dsa);
         if (ret != RNP_SUCCESS) {
@@ -190,6 +192,7 @@ signature_calculate(pgp_signature_t &     sig,
         }
         break;
     }
+#if defined(ENABLE_PQC)
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
@@ -198,6 +201,7 @@ signature_calculate(pgp_signature_t &     sig,
     case PGP_PKA_DILITHIUM5_BP384:
         ret = seckey.dilithium_exdsa.priv.sign(&ctx.rng, &material.dilithium_exdsa, hash_alg, hval, hlen);
         break;
+#endif
     default:
         RNP_LOG("Unsupported algorithm %d", sig.palg);
         break;
@@ -267,9 +271,11 @@ signature_validate(const pgp_signature_t &     sig,
     case PGP_PKA_EDDSA:
         ret = eddsa_verify(&material.ecc, hval, hlen, &key.ec);
         break;
+#if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519:
         ret = ed25519_verify_native(material.ed25519.sig, key.ed25519.pub, hval, hlen);
         break;
+#endif
     case PGP_PKA_SM2:
 #if defined(ENABLE_SM2)
         ret = sm2_verify(&material.ecc, hash.alg(), hval, hlen, &key.ec);
@@ -299,6 +305,7 @@ signature_validate(const pgp_signature_t &     sig,
         RNP_LOG("ElGamal are considered as invalid.");
         ret = RNP_ERROR_SIGNATURE_INVALID;
         break;
+#if defined(ENABLE_PQC)
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
@@ -307,6 +314,7 @@ signature_validate(const pgp_signature_t &     sig,
     case PGP_PKA_DILITHIUM5_BP384:
         ret = key.dilithium_exdsa.pub.verify(&material.dilithium_exdsa, hash.alg(), hval, hlen);
         break;
+#endif
     default:
         RNP_LOG("Unknown algorithm");
         ret = RNP_ERROR_BAD_PARAMETERS;

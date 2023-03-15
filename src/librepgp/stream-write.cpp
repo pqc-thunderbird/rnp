@@ -561,24 +561,34 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     uint8_t *sesskey = enckey.data(); /* pointer to the actual session key */
     size_t   enckey_len = keylen;
 
+#if defined(ENABLE_CRYPTO_REFRESH)
     if (pkey.version == PGP_PKSK_V3) {
+#endif
         enckey[0] = param->ctx->ealg;
+        size_t opt_padding = 0;
+#if defined(ENABLE_CRYPTO_REFRESH)
 
         /* add 7 zero-bytes for X25519 */
-        size_t opt_padding = 0;
         if(pkey.alg == PGP_PKA_X25519) {
             opt_padding = 7;
             memset(&enckey[1], 0, opt_padding);
         }
 
+#endif
         memcpy(&enckey[1 + opt_padding], key, keylen);
         sesskey += 1 + opt_padding;
         enckey_len += 1 + opt_padding;
-    } else { // PGP_PKSK_V6
+#if defined(ENABLE_CRYPTO_REFRESH)
+    }
+    else { // PGP_PKSK_V6
         memcpy(&enckey[0], key, keylen);
     }
+#endif
 
-    if(have_pkesk_checksum(pkey.alg)) {
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if(have_pkesk_checksum(pkey.alg))
+#endif
+    {
         /* Calculate checksum */
         rnp::secure_array<unsigned, 1> checksum;
 
@@ -656,6 +666,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         }
         break;
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_X25519:
         ret = x25519_native_encrypt(&handler->ctx->ctx->rng,
                                     userkey->material().x25519.pub,
@@ -667,6 +678,8 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
             return ret;
         }
         break;
+#endif
+#if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
@@ -682,6 +695,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
             return ret;
         }
         break;
+#endif
     default:
         RNP_LOG("unsupported alg: %d", (int) userkey->alg());
         return ret;
@@ -1030,12 +1044,14 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     /* Configuring and writing pk-encrypted session keys */
     for (auto recipient : handler->ctx->recipients) {
         pgp_pkesk_version_t pkesk_version = PGP_PKSK_V3;
+#if defined(ENABLE_CRYPTO_REFRESH)
         if (handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable()) {
             pkesk_version = PGP_PKSK_V6;
             param->is_v2_seipd = true;
             param->ctx->aalg = PGP_AEAD_OCB; // TODOMTG: this must be done elsewhere / differently
             dst->write = encrypted_dst_write_aead;
         }
+#endif
         ret = encrypted_add_recipient(
           handler, dst, recipient, enckey.data(), keylen, pkesk_version);
         if (ret) {

@@ -33,6 +33,8 @@
 #include "crypto/exdsa_ecdhkem.h"
 #include "crypto/bn.h"
 
+#if defined(ENABLE_CRYPTO_REFRESH)
+
 TEST_F(rnp_tests, test_ecdh_kem_direct)
 {
     std::vector<uint8_t> pubkey_buf;
@@ -105,3 +107,5 @@ TEST_F(rnp_tests, test_exdsa)
         assert_rnp_failure(key_pair.pub.verify(sig, msg.data(), msg.size(), hash_alg));
     }
 }
+
+#endif

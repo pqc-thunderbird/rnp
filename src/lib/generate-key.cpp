@@ -55,8 +55,11 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_RESERVED_DH, "Reserved for Diffie-Hellman (X9.42)"},
   {PGP_PKA_EDDSA, "EdDSA"},
   {PGP_PKA_SM2, "SM2"},
+#if defined(ENABLE_CRYPTO_REFRESH)
   {PGP_PKA_ED25519, "ED25519"},
   {PGP_PKA_X25519, "X25519"},
+#endif
+#if defined(ENABLE_PQC)
   {PGP_PKA_KYBER768_X25519, "Kyber-X25519"},
   {PGP_PKA_KYBER1024_X448, "Kyber-X448"},
   {PGP_PKA_KYBER768_P256, "Kyber-P256"},
@@ -69,6 +72,7 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_DILITHIUM5_P384, "Dilithium-P384"},
   {PGP_PKA_DILITHIUM3_BP256, "Dilithium-BP256"},
   {PGP_PKA_DILITHIUM5_BP384, "Dilithium-BP384"},
+#endif
   {PGP_PKA_PRIVATE00, "Private/Experimental"},
   {PGP_PKA_PRIVATE01, "Private/Experimental"},
   {PGP_PKA_PRIVATE02, "Private/Experimental"},
