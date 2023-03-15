@@ -199,7 +199,6 @@ ask_dsa_bitlen(FILE *input_fp)
 static bool
 rnpkeys_ask_generate_params(rnp_cfg &cfg, FILE *input_fp)
 {
-    // TODOMTG: replace RSA by SPHINCS+ in PQC keys
     long option = 0;
     do {
         printf("Please select what kind of key you want:\n"
@@ -271,31 +270,38 @@ rnpkeys_ask_generate_params(rnp_cfg &cfg, FILE *input_fp)
         case 23: {
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_ED25519);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_X25519);
+            cfg.set_str(CFG_KG_V6_KEY, "true");
             break;
         }
         case 25:
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM3_ED25519);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER768_X25519);
+            cfg.set_str(CFG_KG_V6_KEY, "true");
             break;
         case 26:
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM5_ED448);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER1024_X448);
+            cfg.set_str(CFG_KG_V6_KEY, "true");
             break;
         case 27:
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM3_P256);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER768_P256);
+            cfg.set_str(CFG_KG_V6_KEY, "true");
             break;
         case 28:
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM5_P384);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER1024_P384);
+            cfg.set_str(CFG_KG_V6_KEY, "true");
             break;
         case 29:
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM3_BP256);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER768_BP256);
+            cfg.set_str(CFG_KG_V6_KEY, "true");
             break;
         case 30:
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM5_BP384);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER1024_BP384);
+            cfg.set_str(CFG_KG_V6_KEY, "true");
             break;
         case 99: {
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_SM2);
