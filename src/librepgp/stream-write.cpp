@@ -485,7 +485,7 @@ encrypted_dst_finish(pgp_dest_t *dst)
         }
 
         rnp_result_t res = encrypted_start_aead_chunk(param, chunks, true);
-        pgp_cipher_aead_destroy(&param->encrypt);
+        //pgp_cipher_aead_destroy(&param->encrypt);
 #endif
         if (res) {
             finish_streamed_packet(&param->pkt);
