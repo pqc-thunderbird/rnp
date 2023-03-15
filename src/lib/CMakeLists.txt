@@ -162,6 +162,14 @@ if(CRYPTO_BACKEND_BOTAN)
   resolve_feature_state(ENABLE_CRYPTO_REFRESH "HKDF")
   resolve_feature_state(ENABLE_PQC "KMAC;DILITHIUM;KYBER")
   # Botan supports Brainpool curves together with SECP via the ECC_GROUP define
+
+  # check that AEAD is enabled and not turned off for ENABLE_CRYPTO_REFRESH
+  if(ENABLE_CRYPTO_REFRESH STREQUAL On)
+    if(ENABLE_AEAD STREQUAL Off)
+      message(FATAL_ERROR "ENABLE_CRYPTO_REFRESH requires ENABLE_AEAD, but it's either Off or Auto and got turned off")
+    endif()
+  endif()
+
   set(CMAKE_REQUIRED_INCLUDES)
 endif()
 if(CRYPTO_BACKEND_OPENSSL)

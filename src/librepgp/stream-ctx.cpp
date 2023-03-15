@@ -69,6 +69,7 @@ rnp_ctx_t::add_encryption_password(const std::string &password,
 }
 
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 bool
 rnp_ctx_t::pkeskv6_capable() {
     /* TODOMTG:
@@ -82,3 +83,4 @@ rnp_ctx_t::pkeskv6_capable() {
     }
     return true;
 }
+#endif

@@ -1034,12 +1034,14 @@ RNP_API rnp_result_t rnp_op_generate_clear_pref_ciphers(rnp_op_generate_t op);
 RNP_API rnp_result_t rnp_op_generate_set_pref_keyserver(rnp_op_generate_t op,
                                                         const char *      keyserver);
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 /** Set the generated key version to v6.
  *
  * @param op pointer to opaque key generation context.
  * @return RNP_SUCCESS or error code if failed.
  */
 RNP_API rnp_result_t rnp_op_generate_set_v6_key(rnp_op_generate_t op);
+#endif
 
 /** Execute the prepared key or subkey generation operation.
  *  Note: if you set protection algorithm, then you need to specify ffi password provider to
@@ -2811,6 +2813,7 @@ RNP_API rnp_result_t rnp_op_encrypt_create(rnp_op_encrypt_t *op,
  */
 RNP_API rnp_result_t rnp_op_encrypt_add_recipient(rnp_op_encrypt_t op, rnp_key_handle_t key);
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 /**
  * @brief Enables the creation of PKESK v6 (instead of v3) which results in the use of SEIPDv2. 
  * The actually created version depends on the capabilities of the list of recipients. 
@@ -2819,6 +2822,7 @@ RNP_API rnp_result_t rnp_op_encrypt_add_recipient(rnp_op_encrypt_t op, rnp_key_h
  * @return RNP_SUCCESS or errorcode if failed.
  */
 RNP_API rnp_result_t rnp_op_encrypt_enable_pkesk_v6(rnp_op_encrypt_t op);
+#endif
 
 /**
  * @brief Add signature to encrypting context, so data will be encrypted and signed.

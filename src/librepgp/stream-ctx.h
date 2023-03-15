@@ -104,7 +104,9 @@ typedef struct rnp_ctx_t {
     bool           overwrite{}; /* allow to overwrite output file if exists */
     bool           armor{};     /* whether to use ASCII armor on output */
     bool           no_wrap{};   /* do not wrap source in literal data packet */
+#if defined(ENABLE_CRYPTO_REFRESH)
     bool           enable_pkesk_v6{}; /* allows pkesk v6 if list of recipients is suitable */
+#endif
     std::list<pgp_key_t *> recipients{};              /* recipients of the encrypted message */
     std::list<rnp_symmetric_pass_info_t> passwords{}; /* passwords to encrypt message */
     std::list<rnp_signer_info_t>         signers{};   /* keys to which sign message */
@@ -122,7 +124,9 @@ typedef struct rnp_ctx_t {
                                          pgp_symm_alg_t     ealg,
                                          size_t             iterations = 0);
 
+#if defined(ENABLE_CRYPTO_REFRESH)
     bool pkeskv6_capable();
+#endif
 } rnp_ctx_t;
 
 #endif

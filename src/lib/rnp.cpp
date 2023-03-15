@@ -2568,6 +2568,7 @@ try {
 }
 FFI_GUARD
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 rnp_result_t
 rnp_op_encrypt_enable_pkesk_v6(rnp_op_encrypt_t op)
 try {
@@ -2579,6 +2580,7 @@ try {
     return RNP_SUCCESS;
 }
 FFI_GUARD
+#endif
 
 rnp_result_t
 rnp_op_encrypt_add_signature(rnp_op_encrypt_t         op,
@@ -5235,6 +5237,7 @@ default_key_flags(pgp_pubkey_alg_t alg, bool subkey)
         return subkey ? PGP_KF_ENCRYPT : pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY);
     case PGP_PKA_ECDH:
     case PGP_PKA_ELGAMAL:
+        return PGP_KF_ENCRYPT;
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519:
         return subkey ? PGP_KF_SIGN : pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY);
@@ -5655,6 +5658,7 @@ try {
 }
 FFI_GUARD
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 rnp_result_t
 rnp_op_generate_set_v6_key(rnp_op_generate_t op)
 try {
@@ -5665,6 +5669,7 @@ try {
     return RNP_SUCCESS;
 }
 FFI_GUARD
+#endif
 
 rnp_result_t
 rnp_op_generate_execute(rnp_op_generate_t op)
