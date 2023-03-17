@@ -50,7 +50,6 @@ public:
 
     static rnp_result_t generate_ecdh_kem_key_pair(rnp::RNG *rng, ecdh_kem_key_t *out, pgp_curve_t curve);
     static rnp_result_t generate_exdsa_key_pair(rnp::RNG *rng, exdsa_key_t *out, pgp_curve_t curve);
-    static const char* ecdsa_padding_str_for(pgp_hash_alg_t hash_alg);
 
     std::vector<uint8_t> get_encoded() const
     {

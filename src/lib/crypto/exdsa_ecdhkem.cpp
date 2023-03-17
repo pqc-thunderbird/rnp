@@ -30,6 +30,7 @@
 
 #include "exdsa_ecdhkem.h"
 #include "ecdh.h"
+#include "ecdsa.h"
 #include "ec.h"
 #include "types.h"
 #include "logging.h"
@@ -55,39 +56,6 @@ ec_key_t::ec_key_t(std::vector<uint8_t> key, pgp_curve_t curve)
     : key_(key),
       curve_(curve)
 {}
-
-/* TODOMTG: de-duplicate this */
-const char *
-ec_key_t::ecdsa_padding_str_for(pgp_hash_alg_t hash_alg)
-{
-    switch (hash_alg) {
-        case PGP_HASH_MD5:
-            return "Raw(MD5)";
-        case PGP_HASH_SHA1:
-            return "Raw(SHA-1)";
-        case PGP_HASH_RIPEMD:
-            return "Raw(RIPEMD-160)";
-
-        case PGP_HASH_SHA256:
-            return "Raw(SHA-256)";
-        case PGP_HASH_SHA384:
-            return "Raw(SHA-384)";
-        case PGP_HASH_SHA512:
-            return "Raw(SHA-512)";
-        case PGP_HASH_SHA224:
-            return "Raw(SHA-224)";
-        case PGP_HASH_SHA3_256:
-            return "Raw(SHA3(256))";
-        case PGP_HASH_SHA3_512:
-            return "Raw(SHA3(512))";
-
-        case PGP_HASH_SM3:
-            return "Raw(SM3)";
-        default:
-            return "Raw";
-    }
-}
-
 
 ecdh_kem_public_key_t::ecdh_kem_public_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve)
     : ec_key_t(key_buf, key_buf_len, curve)
