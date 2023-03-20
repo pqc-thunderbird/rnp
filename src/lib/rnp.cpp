@@ -340,6 +340,24 @@ pub_alg_supported(int alg)
 #if defined(ENABLE_SM2)
     case PGP_PKA_SM2:
 #endif
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_X25519:
+    case PGP_PKA_ED25519:
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+    case PGP_PKA_KYBER1024_X448:
+    case PGP_PKA_KYBER768_P256:
+    case PGP_PKA_KYBER1024_P384:
+    case PGP_PKA_KYBER768_BP256:
+    case PGP_PKA_KYBER1024_BP384:
+    case PGP_PKA_DILITHIUM3_ED25519:
+    case PGP_PKA_DILITHIUM5_ED448:
+    case PGP_PKA_DILITHIUM3_P256:
+    case PGP_PKA_DILITHIUM5_P384:
+    case PGP_PKA_DILITHIUM3_BP256:
+    case PGP_PKA_DILITHIUM5_BP384:
+#endif
         return true;
     default:
         return false;
