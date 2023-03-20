@@ -194,16 +194,15 @@ set_pass_fd(FILE **file, int passfd)
 static char *
 ptimestr(char *dest, size_t size, time_t t)
 {
-    struct tm *tm;
-
-    tm = rnp_gmtime(t);
+    struct tm tm = {};
+    rnp_gmtime(t, tm);
     (void) snprintf(dest,
                     size,
                     "%s%04d-%02d-%02d",
                     rnp_y2k38_warning(t) ? ">=" : "",
-                    tm->tm_year + 1900,
-                    tm->tm_mon + 1,
-                    tm->tm_mday);
+                    tm.tm_year + 1900,
+                    tm.tm_mon + 1,
+                    tm.tm_mday);
     return dest;
 }
 
@@ -555,6 +554,32 @@ rnpffiInvalidParameterHandler(const wchar_t *expression,
                               uintptr_t      pReserved)
 {
     // do nothing as within release CRT all params are NULL
+}
+#endif
+
+cli_rnp_t::~cli_rnp_t()
+{
+    end();
+#ifdef _WIN32
+    if (subst_argv) {
+        rnp_win_clear_args(subst_argc, subst_argv);
+    }
+#endif
+}
+
+int
+cli_rnp_t::ret_code(bool success)
+{
+    return success ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+#ifdef _WIN32
+void
+cli_rnp_t::substitute_args(int *argc, char ***argv)
+{
+    rnp_win_substitute_cmdline_args(argc, argv);
+    subst_argc = *argc;
+    subst_argv = *argv;
 }
 #endif
 
@@ -987,6 +1012,35 @@ done:
 }
 
 bool
+cli_rnp_t::set_key_expire(const std::string &key)
+{
+    std::vector<rnp_key_handle_t> keys;
+    if (!cli_rnp_keys_matching_string(
+          this, keys, key, CLI_SEARCH_SECRET | CLI_SEARCH_SUBKEYS)) {
+        ERR_MSG("Secret keys matching '%s' not found.", key.c_str());
+        return false;
+    }
+    bool     res = false;
+    uint32_t expiration = 0;
+    if (keys.size() > 1) {
+        ERR_MSG("Ambiguous input: too many keys found for '%s'.", key.c_str());
+        goto done;
+    }
+    if (!cfg().get_expiration(CFG_SET_KEY_EXPIRE, expiration) ||
+        rnp_key_set_expiration(keys[0], expiration)) {
+        ERR_MSG("Failed to set key expiration.");
+        goto done;
+    }
+    res = cli_rnp_save_keyrings(this);
+done:
+    if (res) {
+        cli_rnp_print_key_info(stdout, ffi, keys[0], true, false);
+    }
+    clear_key_handles(keys);
+    return res;
+}
+
+bool
 cli_rnp_t::add_new_subkey(const std::string &key)
 {
     rnp_cfg &lcfg = cfg();
@@ -1077,6 +1131,30 @@ done:
 bool
 cli_rnp_t::edit_key(const std::string &key)
 {
+    int edit_options = 0;
+
+    if (cfg().get_bool(CFG_CHK_25519_BITS)) {
+        edit_options++;
+    }
+    if (cfg().get_bool(CFG_FIX_25519_BITS)) {
+        edit_options++;
+    }
+    if (cfg().get_bool(CFG_ADD_SUBKEY)) {
+        edit_options++;
+    }
+    if (cfg().has(CFG_SET_KEY_EXPIRE)) {
+        edit_options++;
+    }
+
+    if (!edit_options) {
+        ERR_MSG("You should specify one of the editing options for --edit-key.");
+        return false;
+    }
+    if (edit_options > 1) {
+        ERR_MSG("Only one key edit option can be executed at a time.");
+        return false;
+    }
+
     if (cfg().get_bool(CFG_CHK_25519_BITS)) {
         return fix_cv25519_subkey(key, true);
     }
@@ -1088,8 +1166,10 @@ cli_rnp_t::edit_key(const std::string &key)
         return add_new_subkey(key);
     }
 
-    /* more options, like --passwd, --unprotect, --expiration are to come */
-    ERR_MSG("You should specify at least one editing option for --edit-key.");
+    if (cfg().has(CFG_SET_KEY_EXPIRE)) {
+        return set_key_expire(key);
+    }
+
     return false;
 }
 
@@ -2693,9 +2773,19 @@ cli_rnp_encrypt_and_sign(const rnp_cfg &cfg,
     if (cfg.get_bool(CFG_ENCRYPT_SK)) {
         std::string halg = cfg.get_hashalg();
         std::string ealg = cfg.get_str(CFG_CIPHER);
+        size_t      iterations = cfg.get_int(CFG_S2K_ITER);
+        size_t      msec = cfg.get_int(CFG_S2K_MSEC);
+
+        if (msec != DEFAULT_S2K_MSEC) {
+            if (rnp_calculate_iterations(halg.c_str(), msec, &iterations)) {
+                ERR_MSG("Failed to calculate S2K iterations");
+                goto done;
+            }
+        }
 
         for (int i = 0; i < cfg.get_int(CFG_PASSWORDC, 1); i++) {
-            if (rnp_op_encrypt_add_password(op, NULL, halg.c_str(), 0, ealg.c_str())) {
+            if (rnp_op_encrypt_add_password(
+                  op, NULL, halg.c_str(), iterations, ealg.c_str())) {
                 ERR_MSG("Failed to add encrypting password");
                 goto done;
             }
@@ -2772,6 +2862,36 @@ cli_rnp_setup(cli_rnp_t *rnp)
         }
     }
     rnp->pswdtries = rnp->cfg().get_pswdtries();
+    return true;
+}
+
+bool
+cli_rnp_check_weak_hash(cli_rnp_t *rnp)
+{
+    if (rnp->cfg().has(CFG_WEAK_HASH)) {
+        return true;
+    }
+
+    uint32_t security_level = 0;
+
+    if (rnp_get_security_rule(rnp->ffi,
+                              RNP_FEATURE_HASH_ALG,
+                              rnp->cfg().get_hashalg().c_str(),
+                              rnp->cfg().time(),
+                              NULL,
+                              NULL,
+                              &security_level)) {
+        ERR_MSG("Failed to get security rules for hash algorithm \'%s\'!",
+                rnp->cfg().get_hashalg().c_str());
+        return false;
+    }
+
+    if (security_level < RNP_SECURITY_DEFAULT) {
+        ERR_MSG("Hash algorithm \'%s\' is cryptographically weak!",
+                rnp->cfg().get_hashalg().c_str());
+        return false;
+    }
+    /* TODO: check other weak algorithms and key sizes */
     return true;
 }
 
@@ -2868,17 +2988,17 @@ cli_rnp_print_signatures(cli_rnp_t *rnp, const std::vector<rnp_op_verify_signatu
         rnp_op_verify_signature_get_times(sig, &create, &expiry);
 
         time_t crtime = create;
+        auto   str = rnp_ctime(crtime);
         fprintf(resfp,
                 "%s made %s%s",
                 title.c_str(),
                 rnp_y2k38_warning(crtime) ? ">=" : "",
-                rnp_ctime(crtime));
+                str.c_str());
         if (expiry) {
             crtime = rnp_timeadd(crtime, expiry);
-            fprintf(resfp,
-                    "Valid until %s%s\n",
-                    rnp_y2k38_warning(crtime) ? ">=" : "",
-                    rnp_ctime(crtime));
+            str = rnp_ctime(crtime);
+            fprintf(
+              resfp, "Valid until %s%s\n", rnp_y2k38_warning(crtime) ? ">=" : "", str.c_str());
         }
 
         rnp_signature_handle_t handle = NULL;

@@ -66,10 +66,10 @@ else()
 endif()
 
 find_package(JSON-C 0.11 REQUIRED)
-if (CRYPTO_BACKEND STREQUAL "botan")
+if (CRYPTO_BACKEND_LOWERCASE STREQUAL "botan")
   find_package(Botan2 2.14.0 REQUIRED)
 endif()
-if (CRYPTO_BACKEND STREQUAL "openssl")
+if (CRYPTO_BACKEND_LOWERCASE STREQUAL "openssl")
   find_package(OpenSSL 1.1.1 REQUIRED)
 endif()
 
@@ -111,6 +111,7 @@ add_executable(rnp_tests
   large-packet.cpp
   large-mpi.cpp
   load-g10.cpp
+  load-g23.cpp
   load-pgp.cpp
   log-switch.cpp
   partial-length.cpp
@@ -179,7 +180,7 @@ target_link_libraries(rnp_tests
     Sexp::Sexp
     ${GTestMain}
 )
-if (CRYPTO_BACKEND STREQUAL "openssl")
+if (CRYPTO_BACKEND_LOWERCASE STREQUAL "openssl")
   target_link_libraries(rnp_tests PRIVATE OpenSSL::Crypto)
 endif()
 if (WIN32 AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
@@ -223,11 +224,11 @@ if (DOWNLOAD_RUBYRNP AND NOT ENABLE_SANITIZERS AND BUILD_SHARED_LIBS AND NOT WIN
     GIT_SHALLOW yes
     SOURCE_DIR "${_sourcedir}"
     BUILD_IN_SOURCE yes
-    CONFIGURE_COMMAND ""
+    CONFIGURE_COMMAND bundle config set --local path '.'
     BUILD_COMMAND
       COMMAND bundle add ffi --version 1.15.5
       COMMAND bundle show parallel_tests || bundle add parallel_tests
-      COMMAND bundle install --path .
+      COMMAND bundle install
     INSTALL_COMMAND ""
     TEST_COMMAND ""
   )

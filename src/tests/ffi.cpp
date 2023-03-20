@@ -728,11 +728,18 @@ TEST_F(rnp_tests, test_ffi_add_userid)
     assert_int_equal(
       RNP_SUCCESS, rnp_key_add_uid(key_handle, new_userid, "SHA256", 2147317200, 0x00, false));
 
-    assert_rnp_success(
-      rnp_key_add_uid(key_handle, ripemd_hash_userid, "RIPEMD160", 2147317200, 0, false));
+    int uid_count_expected = 3;
+    int res =
+      rnp_key_add_uid(key_handle, ripemd_hash_userid, "RIPEMD160", 2147317200, 0, false);
+    if (ripemd160_enabled()) {
+        assert_rnp_success(res);
+        uid_count_expected++;
+    } else {
+        assert_rnp_failure(res);
+    }
 
     assert_rnp_success(rnp_key_get_uid_count(key_handle, &count));
-    assert_int_equal(4, count);
+    assert_int_equal(uid_count_expected, count);
 
     rnp_key_handle_t key_handle2 = NULL;
     assert_rnp_success(rnp_locate_key(ffi, "userid", new_userid, &key_handle2));
@@ -3018,7 +3025,9 @@ TEST_F(rnp_tests, test_ffi_supported_features)
     bool has_brainpool = brainpool_enabled();
     bool has_idea = idea_enabled();
     assert_true(
-      check_features(RNP_FEATURE_SYMM_ALG, features, 9 + has_sm2 + has_tf + has_idea));
+      check_features(RNP_FEATURE_SYMM_ALG,
+                     features,
+                     7 + has_sm2 + has_tf + has_idea + blowfish_enabled() + cast5_enabled()));
     rnp_buffer_destroy(features);
     bool supported = false;
     assert_rnp_failure(rnp_supports_feature(NULL, "IDEA", &supported));
@@ -3030,9 +3039,9 @@ TEST_F(rnp_tests, test_ffi_supported_features)
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_SYMM_ALG, "TRIPLEDES", &supported));
     assert_true(supported);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_SYMM_ALG, "CAST5", &supported));
-    assert_true(supported);
+    assert_int_equal(supported, cast5_enabled());
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_SYMM_ALG, "BLOWFISH", &supported));
-    assert_true(supported);
+    assert_int_equal(supported, blowfish_enabled());
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_SYMM_ALG, "AES128", &supported));
     assert_true(supported);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_SYMM_ALG, "AES192", &supported));
@@ -3054,9 +3063,9 @@ TEST_F(rnp_tests, test_ffi_supported_features)
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_SYMM_ALG, "tripledes", &supported));
     assert_true(supported);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_SYMM_ALG, "cast5", &supported));
-    assert_true(supported);
+    assert_true(supported == cast5_enabled());
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_SYMM_ALG, "blowfish", &supported));
-    assert_true(supported);
+    assert_true(supported == blowfish_enabled());
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_SYMM_ALG, "aes128", &supported));
     assert_true(supported);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_SYMM_ALG, "aes192", &supported));
@@ -3137,14 +3146,15 @@ TEST_F(rnp_tests, test_ffi_supported_features)
     /* hash algorithm */
     assert_rnp_success(rnp_supported_features(RNP_FEATURE_HASH_ALG, &features));
     assert_non_null(features);
-    assert_true(check_features(RNP_FEATURE_HASH_ALG, features, 9 + has_sm2));
+    assert_true(
+      check_features(RNP_FEATURE_HASH_ALG, features, 8 + has_sm2 + ripemd160_enabled()));
     rnp_buffer_destroy(features);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_HASH_ALG, "MD5", &supported));
     assert_true(supported);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_HASH_ALG, "SHA1", &supported));
     assert_true(supported);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_HASH_ALG, "RIPEMD160", &supported));
-    assert_true(supported);
+    assert_true(supported == ripemd160_enabled());
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_HASH_ALG, "SHA256", &supported));
     assert_true(supported);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_HASH_ALG, "SHA384", &supported));
@@ -3164,7 +3174,7 @@ TEST_F(rnp_tests, test_ffi_supported_features)
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_HASH_ALG, "sha1", &supported));
     assert_true(supported);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_HASH_ALG, "ripemd160", &supported));
-    assert_true(supported);
+    assert_true(supported == ripemd160_enabled());
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_HASH_ALG, "sha256", &supported));
     assert_true(supported);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_HASH_ALG, "sha384", &supported));
@@ -4336,7 +4346,7 @@ TEST_F(rnp_tests, test_ffi_op_verify_get_protection_info)
       rnp_input_from_path(&input, "data/test_messages/message.txt.enc-aead-ocb"));
     assert_rnp_success(rnp_output_to_null(&output));
     assert_rnp_success(rnp_op_verify_create(&verify, ffi, input, output));
-    if (!aead_ocb_enabled()) {
+    if (!aead_ocb_enabled() || aead_ocb_aes_only()) {
         assert_rnp_failure(rnp_op_verify_execute(verify));
     } else {
         assert_rnp_success(rnp_op_verify_execute(verify));
@@ -4347,6 +4357,29 @@ TEST_F(rnp_tests, test_ffi_op_verify_get_protection_info)
     assert_rnp_success(rnp_op_verify_get_protection_info(verify, &mode, &cipher, &valid));
     assert_string_equal(mode, "aead-ocb");
     assert_string_equal(cipher, "CAMELLIA192");
+    assert_true(valid == (aead_ocb_enabled() && !aead_ocb_aes_only()));
+    rnp_buffer_destroy(mode);
+    rnp_buffer_destroy(cipher);
+    rnp_op_verify_destroy(verify);
+    rnp_input_destroy(input);
+    rnp_output_destroy(output);
+
+    /* message with AEAD-OCB AES-192 */
+    assert_rnp_success(
+      rnp_input_from_path(&input, "data/test_messages/message.txt.enc-aead-ocb-aes"));
+    assert_rnp_success(rnp_output_to_null(&output));
+    assert_rnp_success(rnp_op_verify_create(&verify, ffi, input, output));
+    if (!aead_ocb_enabled()) {
+        assert_rnp_failure(rnp_op_verify_execute(verify));
+    } else {
+        assert_rnp_success(rnp_op_verify_execute(verify));
+    }
+    mode = NULL;
+    cipher = NULL;
+    valid = false;
+    assert_rnp_success(rnp_op_verify_get_protection_info(verify, &mode, &cipher, &valid));
+    assert_string_equal(mode, "aead-ocb");
+    assert_string_equal(cipher, "AES192");
     assert_true(valid == aead_ocb_enabled());
     rnp_buffer_destroy(mode);
     rnp_buffer_destroy(cipher);
@@ -4563,7 +4596,7 @@ TEST_F(rnp_tests, test_ffi_op_verify_recipients_info)
       rnp_input_from_path(&input, "data/test_messages/message.txt.enc-aead-ocb"));
     assert_rnp_success(rnp_output_to_null(&output));
     assert_rnp_success(rnp_op_verify_create(&verify, ffi, input, output));
-    if (!aead_ocb_enabled()) {
+    if (!aead_ocb_enabled() || aead_ocb_aes_only()) {
         assert_rnp_failure(rnp_op_verify_execute(verify));
     } else {
         assert_rnp_success(rnp_op_verify_execute(verify));
@@ -4601,7 +4634,7 @@ TEST_F(rnp_tests, test_ffi_op_verify_recipients_info)
     assert_rnp_success(rnp_symenc_get_s2k_iterations(symenc, &iterations));
     assert_int_equal(iterations, 30408704);
     assert_rnp_success(rnp_op_verify_get_used_symenc(verify, &symenc));
-    if (!aead_ocb_enabled()) {
+    if (!aead_ocb_enabled() || aead_ocb_aes_only()) {
         assert_null(symenc);
     } else {
         assert_non_null(symenc);
@@ -4624,6 +4657,49 @@ TEST_F(rnp_tests, test_ffi_op_verify_recipients_info)
         iterations = 0;
         assert_rnp_success(rnp_symenc_get_s2k_iterations(symenc, &iterations));
         assert_int_equal(iterations, 30408704);
+    }
+    rnp_op_verify_destroy(verify);
+    rnp_input_destroy(input);
+    rnp_output_destroy(output);
+
+    /* message with AEAD-OCB-AES: single password */
+    assert_rnp_success(
+      rnp_input_from_path(&input, "data/test_messages/message.txt.enc-aead-ocb-aes"));
+    assert_rnp_success(rnp_output_to_null(&output));
+    assert_rnp_success(rnp_op_verify_create(&verify, ffi, input, output));
+    if (!aead_ocb_enabled()) {
+        assert_rnp_failure(rnp_op_verify_execute(verify));
+    } else {
+        assert_rnp_success(rnp_op_verify_execute(verify));
+    }
+    count = 255;
+    assert_rnp_success(rnp_op_verify_get_recipient_count(verify, &count));
+    assert_int_equal(count, 0);
+    assert_rnp_success(rnp_op_verify_get_symenc_count(verify, &count));
+    assert_int_equal(count, 1);
+    assert_rnp_success(rnp_op_verify_get_symenc_at(verify, 0, &symenc));
+    assert_non_null(symenc);
+    cipher = NULL;
+    assert_rnp_success(rnp_symenc_get_cipher(symenc, &cipher));
+    assert_string_equal(cipher, "AES192");
+    rnp_buffer_destroy(cipher);
+    aead = NULL;
+    assert_rnp_success(rnp_symenc_get_aead_alg(symenc, &aead));
+    assert_string_equal(aead, "OCB");
+    rnp_buffer_destroy(aead);
+    assert_rnp_success(rnp_op_verify_get_used_symenc(verify, &symenc));
+    if (!aead_ocb_enabled()) {
+        assert_null(symenc);
+    } else {
+        assert_non_null(symenc);
+        cipher = NULL;
+        assert_rnp_success(rnp_symenc_get_cipher(symenc, &cipher));
+        assert_string_equal(cipher, "AES192");
+        rnp_buffer_destroy(cipher);
+        aead = NULL;
+        assert_rnp_success(rnp_symenc_get_aead_alg(symenc, &aead));
+        assert_string_equal(aead, "OCB");
+        rnp_buffer_destroy(aead);
     }
     rnp_op_verify_destroy(verify);
     rnp_input_destroy(input);

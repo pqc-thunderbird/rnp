@@ -60,7 +60,7 @@ build_tests() {
 
   local run=run
   case "${DIST_VERSION}" in
-    centos-8|fedora-*)
+    centos-8|centos-9|fedora-*)
       run=run_in_python_venv
       ;;
   esac
@@ -103,7 +103,7 @@ main() {
     cmakeopts+=(-G "MSYS Makefiles")
   fi
   build_rnp "${rnpsrc}"
-  make_install                  # VERBOSE=1 -- verbose flag commented out to speed up recurring CI runs. Uncomment if you are debugging CI
+  make_install VERBOSE=0
 
   if [[ ${SKIP_TESTS} = 0 ]]; then
     echo "TESTS NOT SKIPPED"

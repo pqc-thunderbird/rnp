@@ -32,6 +32,7 @@
 #include <string>
 #include <vector>
 #include <time.h>
+#include <cinttypes>
 #include <rnp/rnp_def.h>
 #include "stream-ctx.h"
 #include "stream-def.h"
@@ -1495,13 +1496,13 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
     }
 
     /* Check algorithm and key length */
-    pgp_symm_alg_t salg = (pgp_symm_alg_t) decbuf[0];
-    if (!pgp_is_sa_supported(salg)) {
-        RNP_LOG("unsupported symmetric algorithm %d", (int) salg);
+    if (!pgp_is_sa_supported(decbuf[0])) {
+        RNP_LOG("Unsupported symmetric algorithm %" PRIu8, decbuf[0]);
         return false;
     }
 
-    size_t keylen = pgp_key_size(salg);
+    pgp_symm_alg_t salg = static_cast<pgp_symm_alg_t>(decbuf[0]);
+    size_t         keylen = pgp_key_size(salg);
     if (declen != keylen + 3) {
         RNP_LOG("invalid symmetric key length");
         return false;
@@ -1593,11 +1594,10 @@ encrypted_try_password(pgp_source_encrypted_param_t *param, const char *password
             continue;
 #else
             /* v5 AEAD-encrypted session key */
-            size_t  taglen = pgp_cipher_aead_tag_len(skey.aalg);
-            uint8_t nonce[PGP_AEAD_MAX_NONCE_LEN];
-            size_t  noncelen;
-
-            if (!taglen || (keysize != skey.enckeylen - taglen)) {
+            size_t taglen = pgp_cipher_aead_tag_len(skey.aalg);
+            size_t ceklen = pgp_key_size(param->aead_hdr.ealg);
+            if (!taglen || !ceklen || (ceklen + taglen != skey.enckeylen)) {
+                RNP_LOG("CEK len/alg mismatch");
                 continue;
             }
             alg = skey.alg;
@@ -1614,17 +1614,17 @@ encrypted_try_password(pgp_source_encrypted_param_t *param, const char *password
             }
 
             /* calculate nonce */
-            noncelen = pgp_cipher_aead_nonce(skey.aalg, skey.iv, nonce, 0);
+            uint8_t nonce[PGP_AEAD_MAX_NONCE_LEN];
+            size_t  noncelen = pgp_cipher_aead_nonce(skey.aalg, skey.iv, nonce, 0);
 
             /* start cipher, decrypt key and verify tag */
-            keyavail = pgp_cipher_aead_start(&crypt, nonce, noncelen);
-            bool decres = keyavail && pgp_cipher_aead_finish(
-                                        &crypt, keybuf.data(), skey.enckey, skey.enckeylen);
-
+            keyavail =
+              pgp_cipher_aead_start(&crypt, nonce, noncelen) &&
+              pgp_cipher_aead_finish(&crypt, keybuf.data(), skey.enckey, skey.enckeylen);
             pgp_cipher_aead_destroy(&crypt);
 
             /* we have decrypted key so let's start decryption */
-            if (!keyavail || !decres) {
+            if (!keyavail) {
                 continue;
             }
 #endif

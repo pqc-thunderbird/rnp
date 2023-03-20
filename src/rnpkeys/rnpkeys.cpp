@@ -53,6 +53,7 @@ const char *usage =
   "    --expiration         Set key and subkey expiration time.\n"
   "    --cipher             Set cipher used to encrypt a secret key.\n"
   "    --hash               Set hash which is used for key derivation.\n"
+  "    --allow-weak-hash    Allow usage of a weak hash algorithm.\n"
   "  -l, --list-keys        List keys in the keyrings.\n"
   "    --secret             List secret keys instead of public ones.\n"
   "    --with-sigs          List signatures as well.\n"
@@ -71,6 +72,7 @@ const char *usage =
   "    --add-subkey         Add new subkey.\n"
   "    --check-cv25519-bits Check whether Cv25519 subkey bits are correct.\n"
   "    --fix-cv25519-bits   Fix Cv25519 subkey bits.\n"
+  "    --set-expire         Set key expiration time.\n"
   "\n"
   "Other options:\n"
   "  --homedir              Override home directory (default is ~/.rnp/).\n"
@@ -135,7 +137,9 @@ struct option options[] = {
   {"fix-cv25519-bits", no_argument, NULL, OPT_FIX_25519_BITS},
   {"check-cv25519-bits", no_argument, NULL, OPT_CHK_25519_BITS},
   {"add-subkey", no_argument, NULL, OPT_ADD_SUBKEY},
+  {"set-expire", required_argument, NULL, OPT_SET_EXPIRE},
   {"current-time", required_argument, NULL, OPT_CURTIME},
+  {"allow-weak-hash", no_argument, NULL, OPT_ALLOW_WEAK_HASH},
   {NULL, 0, NULL, 0},
 };
 
@@ -354,7 +358,7 @@ void
 print_usage(const char *usagemsg)
 {
     cli_rnp_print_praise();
-    ERR_MSG("%s", usagemsg);
+    puts(usagemsg);
 }
 
 /* do a command once for a specified file 'f' */
@@ -486,6 +490,9 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
         cfg.set_int(CFG_NUMBITS, bits);
         return true;
     }
+    case OPT_ALLOW_WEAK_HASH:
+        cfg.set_bool(CFG_WEAK_HASH, true);
+        return true;
     case OPT_HASH_ALG:
         return cli_rnp_set_hash(cfg, arg);
     case OPT_S2K_ITER: {
@@ -578,6 +585,9 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
     case OPT_ADD_SUBKEY:
         cfg.set_bool(CFG_ADD_SUBKEY, true);
         return true;
+    case OPT_SET_EXPIRE:
+        cfg.set_str(CFG_SET_KEY_EXPIRE, arg);
+        return true;
     default:
         *cmd = CMD_HELP;
         return true;
@@ -585,10 +595,9 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
 }
 
 bool
-rnpkeys_init(cli_rnp_t *rnp, const rnp_cfg &cfg)
+rnpkeys_init(cli_rnp_t &rnp, const rnp_cfg &cfg)
 {
     rnp_cfg rnpcfg;
-    bool    ret = false;
     rnpcfg.load_defaults();
     rnpcfg.set_int(CFG_NUMBITS, DEFAULT_RSA_NUMBITS);
     rnpcfg.set_str(CFG_IO_RESS, "<stdout>");
@@ -596,18 +605,18 @@ rnpkeys_init(cli_rnp_t *rnp, const rnp_cfg &cfg)
 
     if (!cli_cfg_set_keystore_info(rnpcfg)) {
         ERR_MSG("fatal: cannot set keystore info");
-        goto end;
+        return false;
     }
-    if (!rnp->init(rnpcfg)) {
+    if (!rnp.init(rnpcfg)) {
         ERR_MSG("fatal: failed to initialize rnpkeys");
-        goto end;
+        return false;
+    }
+    if (!cli_rnp_check_weak_hash(&rnp)) {
+        ERR_MSG("Weak hash algorithm detected. Pass --allow-weak-hash option if you really "
+                "want to use it.");
+        return false;
     }
     /* TODO: at some point we should check for error here */
-    (void) rnp->load_keyrings(true);
-    ret = true;
-end:
-    if (!ret) {
-        rnp->end();
-    }
-    return ret;
+    (void) rnp.load_keyrings(true);
+    return true;
 }
