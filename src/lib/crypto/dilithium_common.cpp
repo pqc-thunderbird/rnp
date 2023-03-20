@@ -54,7 +54,8 @@ pgp_dilithium_private_key_t::pgp_dilithium_private_key_t(const uint8_t *       k
 
 pgp_dilithium_private_key_t::pgp_dilithium_private_key_t(
   std::vector<uint8_t> const &key_encoded, dilithium_parameter_e param)
-    : key_encoded_(key_encoded), dilithium_param_(param)
+    : key_encoded_(Botan::secure_vector<uint8_t>(key_encoded.begin(), key_encoded.end())),
+      dilithium_param_(param)
 {
 }
 

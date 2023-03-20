@@ -36,6 +36,7 @@
 #include <vector>
 #include <repgp/repgp_def.h>
 #include "crypto/rng.h"
+#include "botan/secmem.h"
 
 enum kyber_parameter_e { kyber_768, kyber_1024 };
 
@@ -56,12 +57,11 @@ class pgp_kyber_private_key_t {
     std::vector<uint8_t>
     get_encoded() const
     {
-        return key_encoded_;
+        return Botan::unlock(key_encoded_);
     };
 
   private:
-    // TODOMTG: Use Secure Vector but return std::vector in get_encoded
-    std::vector<uint8_t> key_encoded_;
+    Botan::secure_vector<uint8_t> key_encoded_;
     kyber_parameter_e kyber_mode_;
 };
 

@@ -36,6 +36,7 @@
 #include <repgp/repgp_def.h>
 #include "crypto/rng.h"
 #include <memory>
+#include "botan/secmem.h"
 
 struct ecdh_kem_key_t; /* forward declaration */
 struct exdsa_key_t; /* forward declaration */
@@ -44,17 +45,11 @@ class ec_key_t {
 
 public:
     virtual ~ec_key_t() = 0;
-    ec_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve);
-    ec_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
+    ec_key_t(pgp_curve_t curve);
     ec_key_t() = default;
 
     static rnp_result_t generate_ecdh_kem_key_pair(rnp::RNG *rng, ecdh_kem_key_t *out, pgp_curve_t curve);
     static rnp_result_t generate_exdsa_key_pair(rnp::RNG *rng, exdsa_key_t *out, pgp_curve_t curve);
-
-    std::vector<uint8_t> get_encoded() const
-    {
-        return key_;
-    }
 
     pgp_curve_t get_curve() const 
     {
@@ -62,7 +57,6 @@ public:
     }
 
 protected:
-    std::vector<uint8_t> key_; // sec1 / native encoding
     pgp_curve_t curve_;
 };
 
@@ -85,7 +79,15 @@ public:
 
     bool is_valid() const;
 
+    std::vector<uint8_t> get_encoded() const
+    {
+        return key_;
+    }
+
     rnp_result_t encapsulate(rnp::RNG *rng, ecdh_kem_encap_result_t *result);
+
+private:
+    std::vector<uint8_t> key_;
 };
 
 
@@ -98,7 +100,15 @@ public:
     
     bool is_valid() const;
 
+    std::vector<uint8_t> get_encoded() const
+    {
+        return Botan::unlock(key_);
+    }
+
     rnp_result_t decapsulate(const std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &plaintext);
+
+private:
+    Botan::secure_vector<uint8_t> key_;
 };
 
 typedef struct ecdh_kem_key_t {
@@ -121,7 +131,15 @@ public:
 
     bool is_valid() const;
 
+    std::vector<uint8_t> get_encoded() const
+    {
+        return key_;
+    }
+
     rnp_result_t verify(const std::vector<uint8_t> &sig, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const;
+
+private:
+    std::vector<uint8_t> key_;
 };
 
 class exdsa_private_key_t : public ec_key_t {
@@ -133,7 +151,15 @@ public:
 
     bool is_valid() const;
 
+    std::vector<uint8_t> get_encoded() const
+    {
+        return Botan::unlock(key_);
+    }
+
     rnp_result_t sign(rnp::RNG *rng, std::vector<uint8_t> &sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const;
+
+private:
+    Botan::secure_vector<uint8_t> key_;
 };
 
 typedef struct exdsa_key_t {

@@ -47,28 +47,26 @@
 
 ec_key_t::~ec_key_t() {}
 
-ec_key_t::ec_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve)
-    : key_(std::vector<uint8_t>(key_buf, key_buf + key_buf_len)),
-      curve_(curve)
-{}
-
-ec_key_t::ec_key_t(std::vector<uint8_t> key, pgp_curve_t curve)
-    : key_(key),
-      curve_(curve)
+ec_key_t::ec_key_t(pgp_curve_t curve)
+    : curve_(curve)
 {}
 
 ecdh_kem_public_key_t::ecdh_kem_public_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve)
-    : ec_key_t(key_buf, key_buf_len, curve)
+    : ec_key_t(curve),
+      key_(std::vector<uint8_t>(key_buf, key_buf + key_buf_len))
 {}
 ecdh_kem_public_key_t::ecdh_kem_public_key_t(std::vector<uint8_t> key, pgp_curve_t curve)
-    : ec_key_t(key, curve)
+    : ec_key_t(curve),
+      key_(key)
 {}
 
 ecdh_kem_private_key_t::ecdh_kem_private_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve)
-    : ec_key_t(key_buf, key_buf_len, curve)
+    : ec_key_t(curve),
+      key_(key_buf, key_buf + key_buf_len)
 {}
 ecdh_kem_private_key_t::ecdh_kem_private_key_t(std::vector<uint8_t> key, pgp_curve_t curve)
-    : ec_key_t(key, curve)
+    : ec_key_t(curve),
+      key_(Botan::secure_vector<uint8_t>(key.begin(), key.end()))
 {}
 
 
@@ -80,7 +78,7 @@ ecdh_kem_public_key_t::encapsulate(rnp::RNG *rng, ecdh_kem_encap_result_t *resul
 rnp_result_t
 ecdh_kem_private_key_t::decapsulate(const std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &plaintext) 
 {
-    return ecdh_kem_decaps(plaintext, ciphertext, key_, curve_);
+    return ecdh_kem_decaps(plaintext, ciphertext, Botan::unlock(key_), curve_);
 }
 
 rnp_result_t 
@@ -101,17 +99,21 @@ ec_key_t::generate_ecdh_kem_key_pair(rnp::RNG *rng, ecdh_kem_key_t *out, pgp_cur
 
 
 exdsa_public_key_t::exdsa_public_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve)
-    : ec_key_t(key_buf, key_buf_len, curve)
+    : ec_key_t(curve),
+      key_(key_buf, key_buf + key_buf_len)
 {}
 exdsa_public_key_t::exdsa_public_key_t(std::vector<uint8_t> key, pgp_curve_t curve)
-    : ec_key_t(key, curve)
+    : ec_key_t(curve),
+      key_(key)
 {}
 
 exdsa_private_key_t::exdsa_private_key_t(uint8_t *key_buf, size_t key_buf_len, pgp_curve_t curve)
-    : ec_key_t(key_buf, key_buf_len, curve)
+    : ec_key_t(curve),
+      key_(key_buf, key_buf + key_buf_len)
 {}
 exdsa_private_key_t::exdsa_private_key_t(std::vector<uint8_t> key, pgp_curve_t curve)
-    : ec_key_t(key, curve)
+    : ec_key_t(curve),
+      key_(Botan::secure_vector<uint8_t>(key.begin(), key.end()))
 {}
 
 
@@ -144,7 +146,7 @@ exdsa_private_key_t::sign(rnp::RNG *rng, std::vector<uint8_t> &sig_out, const ui
 
     // std::unique_ptr<Botan::PK_Signer> signer;
     if(curve_ == PGP_CURVE_ED25519) {
-        return ed25519_sign_native(rng, sig_out, key_, hash, hash_len);
+        return ed25519_sign_native(rng, sig_out, Botan::unlock(key_), hash, hash_len);
 
         //Botan::secure_vector<uint8_t> sv_key(key_.data(), key_.data() + key_.size());
         //Botan::Ed25519_PrivateKey priv_key(sv_key);

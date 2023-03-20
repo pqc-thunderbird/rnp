@@ -36,6 +36,7 @@
 #include <vector>
 #include <repgp/repgp_def.h>
 #include "crypto/rng.h"
+#include "botan/secmem.h"
 
 enum dilithium_parameter_e { dilithium_L3, dilithium_L5 };
 
@@ -54,12 +55,11 @@ class pgp_dilithium_private_key_t {
     std::vector<uint8_t>
     get_encoded() const
     {
-        return key_encoded_;
+        return Botan::unlock(key_encoded_);
     };
 
   private:
-    // TODOMTG: Use Secure Vector
-    std::vector<uint8_t>  key_encoded_;
+    Botan::secure_vector<uint8_t> key_encoded_;
     dilithium_parameter_e dilithium_param_;
 };
 
