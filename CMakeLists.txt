@@ -73,10 +73,8 @@ set_property(CACHE ENABLE_IDEA PROPERTY STRINGS ${TRISTATE_VALUES})
 
 option(ENABLE_CRYPTO_REFRESH "Enable crypto-refresh support (v6)")
 option(ENABLE_PQC "Enable PQC support - requires ENABLE_CRYPTO_REFRESH")
-if(ENABLE_CRYPTO_REFRESH STREQUAL Off)
-  if(ENABLE_PQC STREQUAL On)
-    message(FATAL_ERROR "ENABLE_PQC requires ENABLE_CRYPTO_REFRESH")
-  endif()
+if((NOT ENABLE_CRYPTO_REFRESH) AND ENABLE_PQC)
+  message(FATAL_ERROR "ENABLE_PQC requires ENABLE_CRYPTO_REFRESH")
 endif()
 
 set(ENABLE_DOC Auto CACHE STRING "Enable building documentation.")
@@ -143,7 +141,12 @@ endif()
 
 # set a few other things at the top level to prevent incompatibilities
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_CXX_STANDARD 20)
+if((CRYPTO_BACKEND STREQUAL "botan") AND ENABLE_PQC)
+  # TODO: actually the logic would be to tie the C++ standard to the botan version
+  set(CMAKE_CXX_STANDARD 20)
+else()
+  set(CMAKE_CXX_STANDARD 11)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 add_definitions(-D_GNU_SOURCE)
