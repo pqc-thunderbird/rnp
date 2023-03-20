@@ -167,10 +167,8 @@ if(CRYPTO_BACKEND_BOTAN)
   # Botan supports Brainpool curves together with SECP via the ECC_GROUP define
 
   # check that AEAD is enabled and not turned off for ENABLE_CRYPTO_REFRESH
-  if(ENABLE_CRYPTO_REFRESH STREQUAL On)
-    if(ENABLE_AEAD STREQUAL Off)
-      message(FATAL_ERROR "ENABLE_CRYPTO_REFRESH requires ENABLE_AEAD, but it's either Off or Auto and got turned off")
-    endif()
+  if(ENABLE_CRYPTO_REFRESH AND (NOT ENABLE_AEAD))
+    message(FATAL_ERROR "ENABLE_CRYPTO_REFRESH requires ENABLE_AEAD, but it's either Off or Auto and got turned off")
   endif()
 
   set(CMAKE_REQUIRED_INCLUDES)
