@@ -207,7 +207,7 @@ static bool is_generic_prime_curve(pgp_curve_t curve) {
     }
 }
 
-/* TODOMTG: can try to share code with ec_generate */
+/* TODOMTG: can try to share code with ec_generate or impl. as C++ */
 static rnp_result_t ec_generate_generic_native(rnp::RNG *           rng,
                                                std::vector<uint8_t> &privkey, 
                                                std::vector<uint8_t> &pubkey,

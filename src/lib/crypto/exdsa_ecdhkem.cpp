@@ -232,7 +232,7 @@ exdsa_public_key_t::verify(const std::vector<uint8_t> &sig, const uint8_t *hash,
     //    return RNP_SUCCESS;
     //}
 
-end: 
+end:
     botan_pk_op_verify_destroy(verify_op);
     botan_pubkey_destroy(pubkey);
     botan_mp_destroy(px);

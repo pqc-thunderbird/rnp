@@ -419,7 +419,7 @@ rnp_result_t ecdh_kem_encaps(rnp::RNG *                 rng,
                              const std::vector<uint8_t> &pubkey_in,    /* public key */
                              pgp_curve_t                curve)
 {
-    // TODOMTG: can probably share code with the existing code in ecdh_load_public_key() and ecdh_encrypt_pkcs5()
+    // TODOMTG: can probably share code with the existing code in ecdh_load_public_key() and ecdh_encrypt_pkcs5() or implement as C++
     rnp_result_t ret;
     int botan_ret;
     botan_privkey_t eph_prv_key = NULL;

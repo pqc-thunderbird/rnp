@@ -200,28 +200,6 @@ pgp_kyber_ecdh_composite_key_t::pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg) {
     }
 }
 
-/* copy assignment operator is used on key materials struct and thus needs to be defined for this class as well */
-pgp_kyber_ecdh_composite_private_key_t& pgp_kyber_ecdh_composite_private_key_t::operator=(const pgp_kyber_ecdh_composite_private_key_t& other)
-{
-    pgp_kyber_ecdh_composite_key_t::operator=(other);
-    pk_alg_ = other.pk_alg_,
-    kyber_key_ = other.kyber_key_;
-    ecdh_key_ = other.ecdh_key_;
-    
-    return *this;
-}
-
-/* copy assignment operator is used on materials struct and thus needs to be defined for this class as well */
-pgp_kyber_ecdh_composite_public_key_t& pgp_kyber_ecdh_composite_public_key_t::operator=(const pgp_kyber_ecdh_composite_public_key_t& other)
-{
-    pgp_kyber_ecdh_composite_key_t::operator=(other);
-    pk_alg_ = other.pk_alg_,
-    kyber_key_ = other.kyber_key_;
-    ecdh_key_ = other.ecdh_key_;
-    
-    return *this;
-}
-
 
 pgp_kyber_ecdh_composite_private_key_t::pgp_kyber_ecdh_composite_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg):
     pk_alg_(pk_alg)

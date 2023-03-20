@@ -72,10 +72,6 @@ rnp_ctx_t::add_encryption_password(const std::string &password,
 #if defined(ENABLE_CRYPTO_REFRESH)
 bool
 rnp_ctx_t::pkeskv6_capable() {
-    /* TODOMTG:
-     * we should also check for the key features. Might need to check the primary key self sig if available etc.
-     * i.e.: Key version is PGP_V6 or SEIPDv2 feature is enabled in an appropriate signature containing the feature flag.
-     */
     for(pgp_key_t *key : recipients) {
         if(key->version() < PGP_V6) {
             return false;

@@ -482,7 +482,7 @@ typedef enum {
 } pgp_pkesk_version_t;
 typedef enum {
     PGP_SE_IP_DATA_VERSION = 1,
-    PGP_SE_IP_DATA_VERSION_2 = 2
+    PGP_SE_IP_DATA_VERSION_2 = 2 /* TODOMTG: ifdef */
 } pgp_seipd_version_t;
 
 /** Version.
@@ -497,6 +497,7 @@ typedef enum {
     PGP_V3 = 3, /* Version 3 */
     PGP_V4 = 4, /* Version 4 */
     PGP_V6 = 6  /* Version 6 (crypto refresh) */
+    /* TODOMTG: ifdef for PGP_V6 */
 } pgp_version_t;
 
 typedef enum pgp_op_t {

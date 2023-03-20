@@ -58,8 +58,7 @@ class pgp_dilithium_private_key_t {
     };
 
   private:
-    // TODOMTG: BETTER USE SECUREVECTOR HERE IN A BOTAN-SPECIFIC IMPLEMENTATIONS. HOWEVER,
-    // OTHER RNP OBJECTS DO NOT SUPPORT ANY SECURE-MEMORY TECHNIQUE
+    // TODOMTG: Use Secure Vector
     std::vector<uint8_t>  key_encoded_;
     dilithium_parameter_e dilithium_param_;
 };
@@ -95,8 +94,7 @@ class pgp_dilithium_public_key_t {
     std::vector<uint8_t>  key_encoded_;
     dilithium_parameter_e dilithium_param_;
 };
-// TODOMTG: should provide RNG as parameter. But how to get the Botan rng in this case from the
-// ffi-type rng object? (defined in botan/src/lib/ffi/ffi_rng.h)
+
 std::pair<pgp_dilithium_public_key_t, pgp_dilithium_private_key_t> dilithium_generate_keypair(
   /*rnp::RNG *rng,*/ dilithium_parameter_e dilithium_param);
 

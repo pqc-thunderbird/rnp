@@ -202,28 +202,6 @@ pgp_dilithium_exdsa_composite_public_key_t::pgp_dilithium_exdsa_composite_public
     is_initialized_ = true;
 }
 
-/* copy assignment operator is used on key materials struct and thus needs to be defined for this class as well */
-pgp_dilithium_exdsa_composite_private_key_t& pgp_dilithium_exdsa_composite_private_key_t::operator=(const pgp_dilithium_exdsa_composite_private_key_t& other)
-{
-    pgp_dilithium_exdsa_composite_key_t::operator=(other);
-    pk_alg_ = other.pk_alg_,
-    dilithium_key_ = other.dilithium_key_;
-    exdsa_key_ = other.exdsa_key_;
-    
-    return *this;
-}
-
-/* copy assignment operator is used on materials struct and thus needs to be defined for this class as well */
-pgp_dilithium_exdsa_composite_public_key_t& pgp_dilithium_exdsa_composite_public_key_t::operator=(const pgp_dilithium_exdsa_composite_public_key_t& other)
-{
-    pgp_dilithium_exdsa_composite_key_t::operator=(other);
-    pk_alg_ = other.pk_alg_,
-    dilithium_key_ = other.dilithium_key_;
-    exdsa_key_ = other.exdsa_key_;
-    
-    return *this;
-}
-
 pgp_dilithium_exdsa_composite_private_key_t::pgp_dilithium_exdsa_composite_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg):
     pk_alg_(pk_alg)
 {
@@ -319,6 +297,7 @@ pgp_dilithium_exdsa_composite_private_key_t::sign(rnp::RNG *rng, pgp_dilithium_e
 void
 pgp_dilithium_exdsa_composite_private_key_t::secure_clear() {
     // TODOMTG: securely erase the data
+    // TODO smart pointer to exdsa and dilithium private key
     is_initialized_ = false;
 }
 

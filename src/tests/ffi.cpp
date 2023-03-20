@@ -3112,7 +3112,6 @@ TEST_F(rnp_tests, test_ffi_supported_features)
 #endif
     assert_true(check_features(RNP_FEATURE_PK_ALG, features, 6 + has_sm2 + pqc_opt + crypto_refresh_opt));
     rnp_buffer_destroy(features);
-    /* TODOMTG: check for the pqc-composite variants */
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_PK_ALG, "RSA", &supported));
     assert_true(supported);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_PK_ALG, "DSA", &supported));

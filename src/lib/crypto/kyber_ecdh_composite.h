@@ -82,8 +82,6 @@ class pgp_kyber_ecdh_composite_private_key_t : public pgp_kyber_ecdh_composite_k
     pgp_kyber_ecdh_composite_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg);
     pgp_kyber_ecdh_composite_private_key_t(std::vector<uint8_t> const &ecdh_key_encoded, std::vector<uint8_t> const &kyber_key_encoded, pgp_pubkey_alg_t pk_alg);
     pgp_kyber_ecdh_composite_private_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg);
-    //pgp_kyber_ecdh_composite_private_key_t(pgp_kyber_ecdh_composite_private_key_t &other);
-    pgp_kyber_ecdh_composite_private_key_t& operator=(const pgp_kyber_ecdh_composite_private_key_t &other);
     pgp_kyber_ecdh_composite_private_key_t() = default;
 
 
@@ -119,8 +117,6 @@ class pgp_kyber_ecdh_composite_public_key_t : public pgp_kyber_ecdh_composite_ke
     pgp_kyber_ecdh_composite_public_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg);
     pgp_kyber_ecdh_composite_public_key_t(std::vector<uint8_t> const &ecdh_key_encoded, std::vector<uint8_t> const &kyber_key_encoded, pgp_pubkey_alg_t pk_alg);
     pgp_kyber_ecdh_composite_public_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg);
-    //pgp_kyber_ecdh_composite_public_key_t(pgp_kyber_ecdh_composite_public_key_t &other);
-    pgp_kyber_ecdh_composite_public_key_t& operator=(const pgp_kyber_ecdh_composite_public_key_t &other);
     pgp_kyber_ecdh_composite_public_key_t() = default;
     
     bool operator==(const pgp_kyber_ecdh_composite_public_key_t &rhs) const

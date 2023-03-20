@@ -7521,7 +7521,7 @@ add_json_public_mpis(json_object *jso, pgp_key_t *key)
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519:
     case PGP_PKA_X25519:
-        return RNP_SUCCESS; /* TODOMTG */
+        return RNP_SUCCESS; /* TODO */
 #endif 
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
@@ -7530,14 +7530,14 @@ add_json_public_mpis(json_object *jso, pgp_key_t *key)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        return RNP_SUCCESS; /* TODOMTG */
+        return RNP_SUCCESS; /* TODO */
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        return RNP_SUCCESS; /* TODOMTG */
+        return RNP_SUCCESS; /* TODO */
 #endif
     default:
         return RNP_ERROR_NOT_SUPPORTED;
@@ -7568,7 +7568,7 @@ add_json_secret_mpis(json_object *jso, pgp_key_t *key)
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519:
     case PGP_PKA_X25519:
-        return RNP_SUCCESS; /* TODOMTG */
+        return RNP_SUCCESS; /* TODO */
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
@@ -7577,7 +7577,7 @@ add_json_secret_mpis(json_object *jso, pgp_key_t *key)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        return RNP_SUCCESS; /* TODOMTG */
+        return RNP_SUCCESS; /* TODO */
 #endif
     default:
         return RNP_ERROR_NOT_SUPPORTED;
@@ -7614,7 +7614,7 @@ add_json_sig_mpis(json_object *jso, const pgp_signature_t *sig)
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519:
     case PGP_PKA_X25519:
-        return RNP_SUCCESS; /* TODOMTG */
+        return RNP_SUCCESS; /* TODO */
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
@@ -7623,7 +7623,7 @@ add_json_sig_mpis(json_object *jso, const pgp_signature_t *sig)
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        return RNP_SUCCESS; /* TODOMTG */
+        return RNP_SUCCESS; /* TODO */
 #endif
     default:
         // TODO: we could use info->unknown and add a hex string of raw data here
@@ -7879,7 +7879,7 @@ key_to_json(json_object *jso, rnp_key_handle_t handle, uint32_t flags)
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519:
     case PGP_PKA_X25519:
-        return RNP_SUCCESS; /* TODOMTG */
+        return RNP_SUCCESS; /* TODO */
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
@@ -7888,14 +7888,14 @@ key_to_json(json_object *jso, rnp_key_handle_t handle, uint32_t flags)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        return RNP_SUCCESS; /* TODOMTG */
+        return RNP_SUCCESS; /* TODO */
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        return RNP_SUCCESS; /* TODOMTG */
+        return RNP_SUCCESS; /* TODO */
 #endif
     default:
         break;

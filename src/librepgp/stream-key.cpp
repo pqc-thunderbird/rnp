@@ -1357,7 +1357,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     }
     /* v6 length field for public key material */
     if (version == PGP_V6) {
-        uint32_t material_len; // TODOMTG: unused - are there reasonable checks? (for pubkey packets (pkt.left() == material_len), for secret key packets not)
+        uint32_t material_len;
         if (!pkt.get(material_len)) {
             return RNP_ERROR_BAD_FORMAT;
         }

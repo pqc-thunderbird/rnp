@@ -60,8 +60,7 @@ class pgp_kyber_private_key_t {
     };
 
   private:
-    // TODOMTG: BETTER USE SECUREVECTOR HERE IN A BOTAN-SPECIFIC IMPLEMENTATIONS. OTHER RNP
-    // OBJECTS DO NOT SUPPORT ANY SECURE-MEMORY TECHNIQUE
+    // TODOMTG: Use Secure Vector but return std::vector in get_encoded
     std::vector<uint8_t> key_encoded_;
     kyber_parameter_e kyber_mode_;
 };
@@ -90,8 +89,7 @@ class pgp_kyber_public_key_t {
     std::vector<uint8_t> key_encoded_;
     kyber_parameter_e kyber_mode_;
 };
-// TODOMTG: should provide RNG as parameter. But how to get the Botan rng in this case from the
-// ffi-type rng object? (defined in botan/src/lib/ffi/ffi_rng.h)
+
 std::pair<pgp_kyber_public_key_t, pgp_kyber_private_key_t> kyber_generate_keypair(
   /*rnp::RNG *rng,*/ kyber_parameter_e kyber_param);
 

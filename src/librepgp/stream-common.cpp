@@ -1228,7 +1228,6 @@ dst_write_src(pgp_source_t *src, pgp_dest_t *dst, uint64_t limit)
 
 
 #if defined(ENABLE_CRYPTO_REFRESH)
-/* TODOMTG: better place to put this? (needed in stream-parse/stream-write) */
 bool have_pkesk_checksum(pgp_pubkey_alg_t alg)
 {
     switch(alg)

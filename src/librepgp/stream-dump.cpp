@@ -604,7 +604,7 @@ signature_dump_subpacket(rnp_dump_ctx_t *ctx, pgp_dest_t *dst, const pgp_sig_sub
         dst_printf(dst, "class: %d\n", (int) subpkt.fields.revocation_key.klass);
         dst_print_palg(dst, NULL, subpkt.fields.revocation_key.pkalg);
         dst_print_hex(
-          dst, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_V4_SIZE, true); // TODOMTG: subpacket deprecated for V6, MUST NOT be generated
+          dst, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_V4_SIZE, true);
         break;
     case PGP_SIG_SUBPKT_ISSUER_KEY_ID:
         dst_print_hex(dst, sname, subpkt.fields.issuer, PGP_KEY_ID_SIZE, false);
@@ -1708,7 +1708,7 @@ signature_dump_subpacket_json(rnp_dump_ctx_t *        ctx,
                obj_add_field_json(
                  obj, "algorithm", json_object_new_int(subpkt.fields.revocation_key.pkalg)) &&
                obj_add_hex_json(
-                 obj, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_V4_SIZE); // TODOMTG: subpacket deprecated for V5, MUST NOT be generated
+                 obj, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_V4_SIZE);
     case PGP_SIG_SUBPKT_ISSUER_KEY_ID:
         return obj_add_hex_json(obj, "issuer keyid", subpkt.fields.issuer, PGP_KEY_ID_SIZE);
     case PGP_SIG_SUBPKT_KEYSERV_PREFS:
@@ -1795,11 +1795,6 @@ signature_dump_subpacket_json(rnp_dump_ctx_t *        ctx,
                  obj,
                  "v5 keys",
                  json_object_new_boolean(subpkt.fields.features & PGP_KEY_FEATURE_V5));
-                 // TODOMTG: this results in failures since the cli_tests.py compare the results of the json output with pre-existing files that don't include the changes.
-               //obj_add_field_json(
-               //  obj,
-               //  "SEIPD v2",
-               //  json_object_new_boolean(subpkt.fields.features & PGP_KEY_FEATURE_SEIPDV2));
     case PGP_SIG_SUBPKT_EMBEDDED_SIGNATURE: {
         json_object *sig = json_object_new_object();
         if (!sig || !obj_add_field_json(obj, "signature", sig)) {
@@ -1968,7 +1963,7 @@ stream_dump_signature_pkt_json(rnp_dump_ctx_t *       ctx,
         break;
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519:
-        /* TODOMTG */
+        /* TODO */
         break;
 #endif
 #if defined(ENABLE_PQC)
@@ -1978,7 +1973,7 @@ stream_dump_signature_pkt_json(rnp_dump_ctx_t *       ctx,
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        /* TODOMTG */
+        /* TODO */
         break;
 #endif
     default:
@@ -2108,7 +2103,7 @@ stream_dump_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_object *pkt)
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519:
     case PGP_PKA_X25519:
-        /* TODOMTG */
+        /* TODO */
         break;
 #endif
 #if defined(ENABLE_PQC)
@@ -2118,7 +2113,7 @@ stream_dump_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_object *pkt)
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        // TODOMTG
+        // TODO
         break;
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
@@ -2126,7 +2121,7 @@ stream_dump_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_object *pkt)
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        /* TODOMTG */
+        /* TODO */
         break;
 #endif
     default:
@@ -2265,7 +2260,7 @@ stream_dump_pk_session_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_obj
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_ED25519:
     case PGP_PKA_X25519:
-        /* TODOMTG */
+        /* TODO */
         break;
 #endif
 #if defined(ENABLE_PQC)
@@ -2275,7 +2270,7 @@ stream_dump_pk_session_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_obj
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
-        // TODOMTG
+        // TODO
         break;
 #endif
     default:;
