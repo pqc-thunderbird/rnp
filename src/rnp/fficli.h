@@ -41,13 +41,17 @@ enum class Operation { EncryptOrSign, Verify, Enarmor, Dearmor, Dump };
 class cli_rnp_t {
   private:
     rnp_cfg cfg_{};
-    bool    load_keyring(bool secret);
-    bool    is_cv25519_subkey(rnp_key_handle_t handle);
-    bool    get_protection(rnp_key_handle_t handle,
-                           std::string &    hash,
-                           std::string &    cipher,
-                           size_t &         iterations);
-    bool    check_cv25519_bits(rnp_key_handle_t key, char *prot_password, bool &tweaked);
+#ifdef _WIN32
+    int    subst_argc{};
+    char **subst_argv{};
+#endif
+    bool load_keyring(bool secret);
+    bool is_cv25519_subkey(rnp_key_handle_t handle);
+    bool get_protection(rnp_key_handle_t handle,
+                        std::string &    hash,
+                        std::string &    cipher,
+                        size_t &         iterations);
+    bool check_cv25519_bits(rnp_key_handle_t key, char *prot_password, bool &tweaked);
 
   public:
     rnp_ffi_t   ffi{};
@@ -61,6 +65,12 @@ class cli_rnp_t {
     char *      reused_password{};
     bool        hidden_msg{}; /* true if hidden recipient message was displayed */
 
+    static int ret_code(bool success);
+
+    ~cli_rnp_t();
+#ifdef _WIN32
+    void substitute_args(int *argc, char ***argv);
+#endif
     bool init(const rnp_cfg &cfg);
     void end();
 
@@ -109,6 +119,8 @@ class cli_rnp_t {
     bool fix_cv25519_subkey(const std::string &key, bool checkonly = false);
 
     bool add_new_subkey(const std::string &key);
+
+    bool set_key_expire(const std::string &key);
 
     bool edit_key(const std::string &key);
 };
@@ -211,6 +223,7 @@ bool        cli_rnp_add_key(cli_rnp_t *rnp);
 bool        cli_rnp_dump_file(cli_rnp_t *rnp);
 bool        cli_rnp_armor_file(cli_rnp_t *rnp);
 bool        cli_rnp_dearmor_file(cli_rnp_t *rnp);
+bool        cli_rnp_check_weak_hash(cli_rnp_t *rnp);
 bool        cli_rnp_setup(cli_rnp_t *rnp);
 bool        cli_rnp_protect_file(cli_rnp_t *rnp);
 bool        cli_rnp_process_file(cli_rnp_t *rnp);

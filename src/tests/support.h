@@ -267,6 +267,13 @@ size_t   get_key_uids(rnp_key_handle_t key);
 bool     check_sub_valid(rnp_key_handle_t key, size_t idx, bool validity);
 bool     check_uid_valid(rnp_key_handle_t key, size_t idx, bool valid);
 bool     check_uid_primary(rnp_key_handle_t key, size_t idx, bool primary);
+void     check_loaded_keys(const char *                    format,
+                           bool                            armored,
+                           uint8_t *                       buf,
+                           size_t                          buf_len,
+                           const char *                    id_type,
+                           const std::vector<std::string> &expected_ids,
+                           bool                            secret);
 
 /* create bogus key handle with NULL pub/sec keys */
 rnp_key_handle_t bogus_key_handle(rnp_ffi_t ffi);
@@ -274,18 +281,27 @@ rnp_key_handle_t bogus_key_handle(rnp_ffi_t ffi);
 bool sm2_enabled();
 bool aead_eax_enabled();
 bool aead_ocb_enabled();
+bool aead_ocb_aes_only();
 bool twofish_enabled();
 bool idea_enabled();
 bool brainpool_enabled();
+bool blowfish_enabled();
+bool cast5_enabled();
+bool ripemd160_enabled();
 
 inline size_t
 rnp_round_up(size_t n, size_t align_to)
 {
-    if (n % align_to) {
+    if (n % align_to || n == 0) {
         n += align_to - (n % align_to);
     }
     return n;
 }
+
+/* load g10/g23 gpg key and verify that it can be
+   unprotected/protected
+*/
+bool test_load_gpg_check_key(rnp_key_store_t *pub, rnp_key_store_t *sec, const char *id);
 
 #define MD5_FROM 1325376000
 #define SHA1_DATA_FROM 1547856000
