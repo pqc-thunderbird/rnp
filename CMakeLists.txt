@@ -150,12 +150,8 @@ endif()
 
 # set a few other things at the top level to prevent incompatibilities
 set(CMAKE_C_STANDARD 99)
-if((CRYPTO_BACKEND STREQUAL "botan") AND ENABLE_PQC)
-  # TODO: actually the logic would be to tie the C++ standard to the botan version
-  set(CMAKE_CXX_STANDARD 20)
-else()
-  set(CMAKE_CXX_STANDARD 11)
-endif()
+set(CMAKE_CXX_STANDARD 20)
+
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
