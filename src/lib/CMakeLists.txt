@@ -208,12 +208,9 @@ if(CRYPTO_BACKEND_OPENSSL)
   openssl_nope(ENABLE_SM2 "it's on our roadmap, see https://github.com/rnpgp/rnp/issues/1877")
   #resolve_feature_state(ENABLE_SM2 "SM2;SM3;SM4-ECB")
   openssl_nope(ENABLE_TWOFISH "Twofish isn't and won't be supported by OpenSSL, see https://github.com/openssl/openssl/issues/2046")
-<<<<<<< HEAD
   openssl_nope(ENABLE_AEAD "it's on our roadmap, see https://github.com/rnpgp/rnp/issues/1642")
   openssl_nope(ENABLE_CRYPTO_REFRESH, "not yet implemented")
   openssl_nope(ENABLE_PQC, "not yet implemented")
-=======
->>>>>>> master
 endif()
 
 configure_file(config.h.in config.h)

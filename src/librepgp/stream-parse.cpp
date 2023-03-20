@@ -1577,10 +1577,10 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         return false;
     }
 
-<<<<<<< HEAD
     uint8_t *      decbuf_sesskey = decbuf.data();
     size_t         decbuf_sesskey_len = declen;
     pgp_symm_alg_t salg = static_cast<pgp_symm_alg_t>(decbuf[0]);
+    size_t keylen = pgp_key_size(salg);
     if (sesskey->version == PGP_PKSK_V3) {
         /* Check algorithm and key length */
         /*salg = (pgp_symm_alg_t) decbuf[0];
@@ -1592,7 +1592,6 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             RNP_LOG("Unsupported symmetric algorithm %" PRIu8, decbuf[0]);
             return false;
         }
-        size_t keylen = pgp_key_size(salg);
         if (declen != keylen + 3) { // new block from merge 2023-03-20
             RNP_LOG("invalid symmetric key length");
             return false;
@@ -1741,8 +1740,6 @@ encrypted_try_password(pgp_source_encrypted_param_t *param, const char *password
             /* v6 AEAD-encrypted session key */
             size_t taglen = pgp_cipher_aead_tag_len(skey.aalg);
             size_t ceklen = pgp_key_size(param->aead_hdr.ealg);
-            uint8_t nonce[PGP_AEAD_MAX_NONCE_LEN];
-            size_t  noncelen;
 
             //if (!taglen || (keysize != skey.enckeylen - taglen)) {
             if (!taglen || !ceklen || (ceklen + taglen != skey.enckeylen)) { // new check in upstream merge 2023-03-20
