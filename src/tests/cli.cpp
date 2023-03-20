@@ -292,12 +292,16 @@ TEST_F(rnp_tests, test_cli_g10_operations)
     assert_false(test_cli_g10_key_sign("6e2f73008f8b8d6e"));
     assert_true(test_cli_g10_key_encrypt("6e2f73008f8b8d6e"));
 
+#ifdef CRYPTO_BACKEND_BOTAN
+    /*  GnuPG extended key format requires AEAD support that is available for BOTAN backend
+       only https://github.com/rnpgp/rnp/issues/1642 (???)
+    */
     /* check new rsa/rsa key, key is SC while subkey is E. */
-    /* Now fails since we cannot parse new S-exps */
-    assert_false(test_cli_g10_key_sign("bd860a52d1899c0f"));
-    assert_false(test_cli_g10_key_encrypt("bd860a52d1899c0f"));
+    assert_true(test_cli_g10_key_sign("bd860a52d1899c0f"));
+    assert_true(test_cli_g10_key_encrypt("bd860a52d1899c0f"));
     assert_false(test_cli_g10_key_sign("8e08d46a37414996"));
-    assert_false(test_cli_g10_key_encrypt("8e08d46a37414996"));
+    assert_true(test_cli_g10_key_encrypt("8e08d46a37414996"));
+#endif
 
     /* check ed25519 key */
     assert_true(test_cli_g10_key_sign("cc786278981b0728"));
@@ -686,8 +690,8 @@ TEST_F(rnp_tests, test_cli_rnpkeys_genkey)
         auto diff_to_y2k38 = y2k38time - basetime;
         expected_diff_beyond2038_absolute = diff_to_y2k38;
     } else {
-        time_t    now = time(NULL);
-        struct tm tm2100 = *localtime(&now);
+        struct tm tm2100;
+        rnp_localtime(time(NULL), tm2100);
         tm2100.tm_hour = 0;
         tm2100.tm_min = 0;
         tm2100.tm_sec = 0;
@@ -698,14 +702,15 @@ TEST_F(rnp_tests, test_cli_rnpkeys_genkey)
         tm2100.tm_isdst = -1;
         expected_diff_beyond2038_absolute = mktime(&tm2100) - basetime;
     }
-    struct tm *timeinfo = localtime(&rawtime);
+    struct tm timeinfo;
+    rnp_localtime(rawtime, timeinfo);
     // clear hours, minutes and seconds
-    timeinfo->tm_hour = 0;
-    timeinfo->tm_min = 0;
-    timeinfo->tm_sec = 0;
-    rawtime = mktime(timeinfo);
+    timeinfo.tm_hour = 0;
+    timeinfo.tm_min = 0;
+    timeinfo.tm_sec = 0;
+    rawtime = mktime(&timeinfo);
     auto exp =
-      fmt("%d-%02d-%02d", timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
+      fmt("%d-%02d-%02d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
 
     // these should fail and not go to the keystore
     assert_int_not_equal(key_generate(GENKEYS, "expiration_negative@rnp", "-1"), 0);

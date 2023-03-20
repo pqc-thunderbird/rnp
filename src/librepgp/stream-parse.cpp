@@ -35,6 +35,7 @@
 #include <string>
 #include <vector>
 #include <time.h>
+#include <cinttypes>
 #include <rnp/rnp_def.h>
 #include "stream-ctx.h"
 #include "stream-def.h"
@@ -1576,19 +1577,26 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         return false;
     }
 
-    pgp_symm_alg_t salg;
     uint8_t *      decbuf_sesskey = decbuf.data();
     size_t         decbuf_sesskey_len = declen;
-    size_t         keylen;
+    pgp_symm_alg_t salg = static_cast<pgp_symm_alg_t>(decbuf[0]);
+    size_t keylen = pgp_key_size(salg);
     if (sesskey->version == PGP_PKSK_V3) {
         /* Check algorithm and key length */
-        salg = (pgp_symm_alg_t) decbuf[0];
+        /*salg = (pgp_symm_alg_t) decbuf[0];
         if (!pgp_is_sa_supported(salg)) {
             RNP_LOG("unsupported symmetric algorithm %d", (int) salg);
             return false;
+        }*/
+        if (!pgp_is_sa_supported(decbuf[0])) {
+            RNP_LOG("Unsupported symmetric algorithm %" PRIu8, decbuf[0]);
+            return false;
+        }
+        if (declen != keylen + 3) { // new block from merge 2023-03-20
+            RNP_LOG("invalid symmetric key length");
+            return false;
         }
 
-        keylen = pgp_key_size(salg);
 
 #if defined(ENABLE_CRYPTO_REFRESH)
         if(sesskey->alg == PGP_PKA_X25519) {
@@ -1730,11 +1738,12 @@ encrypted_try_password(pgp_source_encrypted_param_t *param, const char *password
             continue;
 #else
             /* v6 AEAD-encrypted session key */
-            size_t  taglen = pgp_cipher_aead_tag_len(skey.aalg);
-            uint8_t nonce[PGP_AEAD_MAX_NONCE_LEN];
-            size_t  noncelen;
+            size_t taglen = pgp_cipher_aead_tag_len(skey.aalg);
+            size_t ceklen = pgp_key_size(param->aead_hdr.ealg);
 
-            if (!taglen || (keysize != skey.enckeylen - taglen)) {
+            //if (!taglen || (keysize != skey.enckeylen - taglen)) {
+            if (!taglen || !ceklen || (ceklen + taglen != skey.enckeylen)) { // new check in upstream merge 2023-03-20
+                RNP_LOG("CEK len/alg mismatch");
                 continue;
             }
             alg = skey.alg;
@@ -1751,17 +1760,17 @@ encrypted_try_password(pgp_source_encrypted_param_t *param, const char *password
             }
 
             /* calculate nonce */
-            noncelen = pgp_cipher_aead_nonce(skey.aalg, skey.iv, nonce, 0);
+            uint8_t nonce[PGP_AEAD_MAX_NONCE_LEN];
+            size_t  noncelen = pgp_cipher_aead_nonce(skey.aalg, skey.iv, nonce, 0);
 
             /* start cipher, decrypt key and verify tag */
-            keyavail = pgp_cipher_aead_start(&crypt, nonce, noncelen);
-            bool decres = keyavail && pgp_cipher_aead_finish(
-                                        &crypt, keybuf.data(), skey.enckey, skey.enckeylen);
-
+            keyavail =
+              pgp_cipher_aead_start(&crypt, nonce, noncelen) &&
+              pgp_cipher_aead_finish(&crypt, keybuf.data(), skey.enckey, skey.enckeylen);
             pgp_cipher_aead_destroy(&crypt);
 
             /* we have decrypted key so let's start decryption */
-            if (!keyavail || !decres) {
+            if (!keyavail) {
                 continue;
             }
 #endif
