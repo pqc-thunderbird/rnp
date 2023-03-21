@@ -136,108 +136,59 @@ ec_key_t::generate_exdsa_key_pair(rnp::RNG *rng, exdsa_key_t *out, pgp_curve_t c
 rnp_result_t
 exdsa_private_key_t::sign(rnp::RNG *rng, std::vector<uint8_t> &sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const
 {
-    botan_privkey_t    privkey = NULL;
-    botan_pk_op_sign_t sign_op = NULL;
-    rnp_result_t res = RNP_SUCCESS;
-    botan_mp_t x = NULL;
-
-    // std::unique_ptr<Botan::PK_Signer> signer;
     if(curve_ == PGP_CURVE_ED25519) {
-        return ed25519_sign_native(rng, sig_out, Botan::unlock(key_), hash, hash_len);
-
-        //Botan::secure_vector<uint8_t> sv_key(key_.data(), key_.data() + key_.size());
-        //Botan::Ed25519_PrivateKey priv_key(sv_key);
-        //if(!priv_key.check_key(rng, false)) { return 5; }
-        //signer = std::make_unique<Botan::PK_Signer>(priv_key, rng, "Pure");
+        Botan::Ed25519_PrivateKey priv_key(key_);
+        if(!priv_key.check_key(*(rng->obj()), false)) { 
+            return RNP_ERROR_SIGNING_FAILED; 
+        }
+        auto signer = Botan::PK_Signer(priv_key, *(rng->obj()), "Pure");
+        sig_out = signer.sign_message(hash, hash_len, *(rng->obj()));
     }
     else {
-        res = RNP_ERROR_SIGNING_FAILED;
         const ec_curve_desc_t *ec_desc = get_curve_desc(curve_);
-        const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
-        sig_out.resize(2*curve_order);
-        size_t sig_len = 2*curve_order;
-        if (botan_mp_init(&x)) { goto end; } 
-        if (botan_mp_from_bin(x, key_.data(), key_.size())) { goto end; }
-        if (botan_privkey_load_ecdsa(&privkey, x, ec_desc->botan_name)) { goto end; }
-        if (botan_pk_op_sign_create(&sign_op, privkey, ecdsa_padding_str_for(hash_alg), 0)) { goto end; }
-        if (botan_pk_op_sign_update(sign_op, hash, hash_len)) { goto end; }
-        if (botan_pk_op_sign_finish(sign_op, rng->handle(), sig_out.data(), &sig_len)) { goto end; }
-
-        res = RNP_SUCCESS;
-
-        //const ec_curve_desc_t *ec_desc = get_curve_desc(curve_);
-        //Botan::BigInt scalar(key_);
-        //Botan::ECDSA_PrivateKey priv_key(null_rng, Botan::EC_Group(ec_desc->botan_name), scalar);
-        //if(!priv_key.check_key(rng, false)) { return 5; }
-        //signer = std::make_unique<Botan::PK_Signer>(priv_key, rng, ecdsa_padding_str_for(hash_alg));
+        Botan::ECDSA_PrivateKey priv_key(*(rng->obj()), Botan::EC_Group(ec_desc->botan_name), Botan::BigInt(key_));
+        if(!priv_key.check_key(*(rng->obj()), false)) { 
+            return RNP_ERROR_SIGNING_FAILED;
+        }
+        auto signer = Botan::PK_Signer(priv_key, *(rng->obj()), ecdsa_padding_str_for(hash_alg));
+        sig_out = signer.sign_message(hash, hash_len, *(rng->obj()));
     }
-
-    //sig_out->signature = signer.get()->sign_message(hash, hash_len, rng);
-
-end:
-    botan_pk_op_sign_destroy(sign_op);
-    botan_privkey_destroy(privkey);
-    botan_mp_destroy(x);
-
-    return res;
-    // return RNP_SUCCESS;
+   return RNP_SUCCESS;
 }
 
 rnp_result_t
 exdsa_public_key_t::verify(const std::vector<uint8_t> &sig, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const
 {
-    rnp_result_t res = RNP_SUCCESS;
-    botan_pk_op_verify_t verify_op = NULL;
-    botan_pubkey_t pubkey = NULL;
-    botan_mp_t px = NULL;
-    botan_mp_t py = NULL;
-
-    std::unique_ptr<Botan::PK_Verifier> verifier;
+    Botan::Null_RNG null_rng;
     if(curve_ == PGP_CURVE_ED25519) {
-        return ed25519_verify_native(sig, key_, hash, hash_len);
-
-        //Botan::Ed25519_PublicKey pub_key(key_);
-        //if(pub_key.check_key(rng, false)) { 
-        //    return RNP_ERROR_BAD_PARAMETERS; 
+        Botan::Ed25519_PublicKey pub_key(key_);
+        // TODOMTG: somehow pubkey check_key fails
+        //if(pub_key.check_key(null_rng, false)) { 
+        //    return RNP_ERROR_VERIFICATION_FAILED; 
         //}
-        //verifier = std::make_unique<Botan::PK_Verifier>(pub_key, "Pure");
+        auto verifier = Botan::PK_Verifier(pub_key, "Pure");
+        if(verifier.verify_message(hash, hash_len, sig.data(), sig.size())) {
+            return RNP_SUCCESS;
+        }
     }
     else {
-        res = RNP_ERROR_VERIFICATION_FAILED;
+        // format: 04 | X | Y
         const ec_curve_desc_t *ec_desc = get_curve_desc(curve_);
+        Botan::EC_Group group(ec_desc->botan_name);
         const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
-        if (botan_mp_init(&px)) { goto end; } 
-        if (botan_mp_init(&py)) { goto end; } 
-        if (botan_mp_from_bin(px, key_.data() + 1, curve_order)) { goto end; }
-        if (botan_mp_from_bin(py, key_.data() + 1 + curve_order, curve_order)) { goto end; }
-        if (botan_pubkey_load_ecdsa(&pubkey, px, py, ec_desc->botan_name)) { goto end; }
-        if (botan_pk_op_verify_create(&verify_op, pubkey, ecdsa_padding_str_for(hash_alg), 0)) { goto end; }
-        if (botan_pk_op_verify_update(verify_op, hash, hash_len)) { goto end; }
-        if (botan_pk_op_verify_finish(verify_op, sig.data(), sig.size())) { goto end; }
-        res = RNP_SUCCESS;
-
-        // // format: 04 | X | Y
-        // const ec_curve_desc_t *ec_desc = get_curve_desc(curve_);
-        // Botan::EC_Group group(ec_desc->botan_name);
-        // const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
-        // Botan::BigInt x(key_.data() + 1, curve_order);
-        // Botan::BigInt y(key_.data() + 1 + curve_order, curve_order);
-        // Botan::ECDSA_PublicKey pub_key(group, group.point(x, y));
-        // Botan::System_RNG rng; if(pub_key.check_key(rng, false)) { return 5; }
-        // verifier = std::make_unique<Botan::PK_Verifier>(pub_key, ecdsa_padding_str_for(hash_alg));
+        Botan::BigInt x(key_.data() + 1, curve_order);
+        Botan::BigInt y(key_.data() + 1 + curve_order, curve_order);
+        Botan::ECDSA_PublicKey pub_key(group, group.point(x, y));
+        // TODOMTG: somehow pubkey check_key fails
+        //if(pub_key.check_key(null_rng, false)) { 
+        //    return RNP_ERROR_VERIFICATION_FAILED; 
+        //}
+        auto verifier = Botan::PK_Verifier(pub_key, ecdsa_padding_str_for(hash_alg));
+        if(verifier.verify_message(hash, hash_len, sig.data(), sig.size())) {
+            return RNP_SUCCESS;
+        }
     }
-    //if(verifier.get()->verify_message(hash, hash_len, sig->signature.data(), sig->signature.size())) {
-    //    return RNP_SUCCESS;
-    //}
-
-end:
-    botan_pk_op_verify_destroy(verify_op);
-    botan_pubkey_destroy(pubkey);
-    botan_mp_destroy(px);
-    botan_mp_destroy(py);
-    return res;
-
-    // return RNP_ERROR_VERIFICATION_FAILED; 
+    return RNP_ERROR_VERIFICATION_FAILED; 
 }
 
 bool
