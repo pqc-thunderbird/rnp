@@ -60,6 +60,12 @@ class pgp_kyber_private_key_t {
         return Botan::unlock(key_encoded_);
     };
 
+    kyber_parameter_e
+    param() const
+    {
+        return kyber_mode_;
+    }
+
   private:
     Botan::secure_vector<uint8_t> key_encoded_;
     kyber_parameter_e kyber_mode_;

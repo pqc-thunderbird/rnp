@@ -214,10 +214,25 @@ pgp_dilithium_exdsa_composite_private_key_t::pgp_dilithium_exdsa_composite_priva
     parse_component_keys(key_encoded);
 }
 
+/* copy assignment operator is used on key materials struct and thus needs to be defined for this class as well */
+pgp_dilithium_exdsa_composite_private_key_t& pgp_dilithium_exdsa_composite_private_key_t::operator=(const pgp_dilithium_exdsa_composite_private_key_t& other)
+{
+    pgp_dilithium_exdsa_composite_key_t::operator=(other);
+    pk_alg_ = other.pk_alg_;
+    if(other.is_initialized() && other.dilithium_key_)
+    {
+        dilithium_key_ = std::make_unique<pgp_dilithium_private_key_t>(pgp_dilithium_private_key_t(other.dilithium_key_->get_encoded(), other.dilithium_key_->param()));
+    }
+    if(other.is_initialized() && other.exdsa_key_)
+    {
+        exdsa_key_ = std::make_unique<exdsa_private_key_t>(exdsa_private_key_t(other.exdsa_key_->get_encoded(), other.exdsa_key_->get_curve()));
+    }
+
+    return *this;
+}
+
 pgp_dilithium_exdsa_composite_private_key_t::pgp_dilithium_exdsa_composite_private_key_t(std::vector<uint8_t> const &exdsa_key_encoded, std::vector<uint8_t> const &dilithium_key_encoded, pgp_pubkey_alg_t pk_alg)
-    : pk_alg_(pk_alg),
-      dilithium_key_(dilithium_key_encoded, pk_alg_to_dilithium_id(pk_alg)),
-      exdsa_key_(exdsa_key_encoded, pk_alg_to_curve_id(pk_alg))
+    : pk_alg_(pk_alg)
 {
     if(exdsa_curve_privkey_size(pk_alg_to_curve_id(pk_alg)) != exdsa_key_encoded.size()
         || dilithium_privkey_size(pk_alg_to_dilithium_id(pk_alg)) != dilithium_key_encoded.size())
@@ -225,6 +240,9 @@ pgp_dilithium_exdsa_composite_private_key_t::pgp_dilithium_exdsa_composite_priva
         RNP_LOG("exdsa or dilithium key length mismatch");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);  
     }
+
+    dilithium_key_ = std::make_unique<pgp_dilithium_private_key_t>(pgp_dilithium_private_key_t(dilithium_key_encoded, pk_alg_to_dilithium_id(pk_alg)));
+    exdsa_key_ = std::make_unique<exdsa_private_key_t>(exdsa_private_key_t(exdsa_key_encoded, pk_alg_to_curve_id(pk_alg)));
     is_initialized_ = true;
 }
 
@@ -248,8 +266,8 @@ pgp_dilithium_exdsa_composite_private_key_t::parse_component_keys(std::vector<ui
     pgp_curve_t curve = pk_alg_to_curve_id(pk_alg_);
     size_t split_at = exdsa_curve_privkey_size(pk_alg_to_curve_id(pk_alg_));
 
-    dilithium_key_ = pgp_dilithium_private_key_t(key_encoded.data() + split_at, key_encoded.size() - split_at, dilithium_param);
-    exdsa_key_ = exdsa_private_key_t(key_encoded.data(), split_at, curve);
+    dilithium_key_ = std::make_unique<pgp_dilithium_private_key_t>(pgp_dilithium_private_key_t(key_encoded.data() + split_at, key_encoded.size() - split_at, dilithium_param));
+    exdsa_key_ = std::make_unique<exdsa_private_key_t>(exdsa_private_key_t(key_encoded.data(), split_at, curve));
 
     is_initialized_ = true;
 }
@@ -258,8 +276,8 @@ std::vector<uint8_t>
 pgp_dilithium_exdsa_composite_private_key_t::get_encoded() const {
     initialized_or_throw();
     std::vector<uint8_t> result;
-    std::vector<uint8_t> exdsa_key_encoded = exdsa_key_.get_encoded();
-    std::vector<uint8_t> dilithium_key_encoded = dilithium_key_.get_encoded();
+    std::vector<uint8_t> exdsa_key_encoded = exdsa_key_->get_encoded();
+    std::vector<uint8_t> dilithium_key_encoded = dilithium_key_->get_encoded();
 
     result.insert(result.end(), std::begin(exdsa_key_encoded), std::end(exdsa_key_encoded));
     result.insert(result.end(), std::begin(dilithium_key_encoded), std::end(dilithium_key_encoded));
@@ -276,13 +294,13 @@ pgp_dilithium_exdsa_composite_private_key_t::sign(rnp::RNG *rng, pgp_dilithium_e
     rnp_result_t ret;
     
     try {
-        dilithium_sig = dilithium_key_.sign(msg, msg_len);
+        dilithium_sig = dilithium_key_->sign(msg, msg_len);
     }
     catch (const std::exception &e) {
         RNP_LOG("%s", e.what());
         return RNP_ERROR_SIGNING_FAILED;
     }
-    ret = exdsa_key_.sign(rng, exdsa_sig, msg, msg_len, hash_alg);
+    ret = exdsa_key_->sign(rng, exdsa_sig, msg, msg_len, hash_alg);
     if(ret != RNP_SUCCESS) {
         RNP_LOG("exdsa sign failed");
         return RNP_ERROR_SIGNING_FAILED;
@@ -296,8 +314,9 @@ pgp_dilithium_exdsa_composite_private_key_t::sign(rnp::RNG *rng, pgp_dilithium_e
 
 void
 pgp_dilithium_exdsa_composite_private_key_t::secure_clear() {
-    // TODOMTG: securely erase the data
-    // TODO smart pointer to exdsa and dilithium private key
+    // private key buffer is stored in a secure_vector and will be securely erased by the destructor.
+    dilithium_key_.reset();
+    exdsa_key_.reset();
     is_initialized_ = false;
 }
 
@@ -382,7 +401,7 @@ pgp_dilithium_exdsa_composite_private_key_t::is_valid() const {
     if(!is_initialized()) {
         return false;
     }
-    return(exdsa_key_.is_valid() && dilithium_key_.is_valid());
+    return(exdsa_key_->is_valid() && dilithium_key_->is_valid());
 }
 
 rnp_result_t dilithium_exdsa_validate_key(rnp::RNG *rng, const pgp_dilithium_exdsa_key_t *key, bool secret) 

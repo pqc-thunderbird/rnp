@@ -51,6 +51,12 @@ class pgp_dilithium_private_key_t {
 
     bool is_valid() const;
 
+    dilithium_parameter_e
+    param() const
+    {
+        return dilithium_param_;
+    }
+
     std::vector<uint8_t> sign(const uint8_t *msg, size_t msg_len) const;
     std::vector<uint8_t>
     get_encoded() const

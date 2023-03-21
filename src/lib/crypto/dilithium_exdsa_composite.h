@@ -80,6 +80,7 @@ class pgp_dilithium_exdsa_composite_private_key_t : public pgp_dilithium_exdsa_c
     pgp_dilithium_exdsa_composite_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg);
     pgp_dilithium_exdsa_composite_private_key_t(std::vector<uint8_t> const &exdsa_key_encoded, std::vector<uint8_t> const &dilithium_key_encoded, pgp_pubkey_alg_t pk_alg);
     pgp_dilithium_exdsa_composite_private_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg);
+    pgp_dilithium_exdsa_composite_private_key_t& operator=(const pgp_dilithium_exdsa_composite_private_key_t &other);
     pgp_dilithium_exdsa_composite_private_key_t() = default;
 
 
@@ -103,10 +104,10 @@ class pgp_dilithium_exdsa_composite_private_key_t : public pgp_dilithium_exdsa_c
     pgp_pubkey_alg_t pk_alg_;
 
     /* dilithium part */
-    pgp_dilithium_private_key_t dilithium_key_;
+    std::unique_ptr<pgp_dilithium_private_key_t> dilithium_key_;
 
     /* ecc part*/
-    exdsa_private_key_t exdsa_key_;
+    std::unique_ptr<exdsa_private_key_t> exdsa_key_;
 };
 
 
