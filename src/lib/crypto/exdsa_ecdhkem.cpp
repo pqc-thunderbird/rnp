@@ -39,7 +39,6 @@
 #include <botan/pubkey.h>
 #include <botan/ecdsa.h>
 #include <botan/ed25519.h>
-#include <botan/system_rng.h>
 
 // TODO: remove when ffi is removed
 #include <botan/ffi.h>
@@ -137,8 +136,6 @@ ec_key_t::generate_exdsa_key_pair(rnp::RNG *rng, exdsa_key_t *out, pgp_curve_t c
 rnp_result_t
 exdsa_private_key_t::sign(rnp::RNG *rng, std::vector<uint8_t> &sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const
 {
-    //Botan::System_RNG rng;
-    //Botan::Null_RNG null_rng;
     botan_privkey_t    privkey = NULL;
     botan_pk_op_sign_t sign_op = NULL;
     rnp_result_t res = RNP_SUCCESS;
@@ -200,7 +197,6 @@ exdsa_public_key_t::verify(const std::vector<uint8_t> &sig, const uint8_t *hash,
         return ed25519_verify_native(sig, key_, hash, hash_len);
 
         //Botan::Ed25519_PublicKey pub_key(key_);
-        //Botan::System_RNG rng; 
         //if(pub_key.check_key(rng, false)) { 
         //    return RNP_ERROR_BAD_PARAMETERS; 
         //}

@@ -57,14 +57,13 @@ pgp_dilithium_exdsa_composite_key_t::gen_keypair(rnp::RNG *rng, pgp_dilithium_ex
         return res;
     }
 
-    auto dilithium_key_pair = dilithium_generate_keypair(dilithium_id);
+    auto dilithium_key_pair = dilithium_generate_keypair(rng, dilithium_id);
 
     key->priv = pgp_dilithium_exdsa_composite_private_key_t(exdsa_key_pair.priv.get_encoded(), dilithium_key_pair.second.get_encoded(), alg);
     key->pub = pgp_dilithium_exdsa_composite_public_key_t(exdsa_key_pair.pub.get_encoded(), dilithium_key_pair.first.get_encoded(), alg);
 
     return RNP_SUCCESS;
 }
-
 
 size_t
 pgp_dilithium_exdsa_composite_key_t::exdsa_curve_privkey_size(pgp_curve_t curve) {
@@ -294,7 +293,7 @@ pgp_dilithium_exdsa_composite_private_key_t::sign(rnp::RNG *rng, pgp_dilithium_e
     rnp_result_t ret;
     
     try {
-        dilithium_sig = dilithium_key_->sign(msg, msg_len);
+        dilithium_sig = dilithium_key_->sign(rng, msg, msg_len);
     }
     catch (const std::exception &e) {
         RNP_LOG("%s", e.what());

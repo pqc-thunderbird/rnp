@@ -60,7 +60,7 @@ pgp_kyber_ecdh_composite_key_t::gen_keypair(rnp::RNG *rng, pgp_kyber_ecdh_key_t 
         return res;
     }
 
-    auto kyber_key_pair = kyber_generate_keypair(kyber_id);
+    auto kyber_key_pair = kyber_generate_keypair(rng, kyber_id);
 
     key->priv = pgp_kyber_ecdh_composite_private_key_t(ecdh_key_pair.priv.get_encoded(), kyber_key_pair.second.get_encoded(), alg);
     key->pub = pgp_kyber_ecdh_composite_public_key_t(ecdh_key_pair.pub.get_encoded(), kyber_key_pair.first.get_encoded(), alg);
@@ -273,7 +273,7 @@ pgp_kyber_ecdh_composite_private_key_t::parse_component_keys(std::vector<uint8_t
 
 
 rnp_result_t
-pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, const pgp_kyber_ecdh_encrypted_t *enc, const std::vector<uint8_t> &encoded_pubkey)
+pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, size_t *out_len, const pgp_kyber_ecdh_encrypted_t *enc, const std::vector<uint8_t> &encoded_pubkey)
 {
     initialized_or_throw();
     rnp_result_t res;
@@ -296,7 +296,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(uint8_t *out, size_t *out_len, c
     
     // Compute (kyberKeyShare) := kyberKem.decap(kyberCipherText, kyberPrivateKey)
     std::vector<uint8_t> kyber_encapsulated_keyshare = std::vector<uint8_t>(enc->composite_ciphertext.begin() + ecdh_curve_ephemeral_size(curve), enc->composite_ciphertext.end());
-    kyber_keyshare = kyber_key_->decapsulate(kyber_encapsulated_keyshare.data(), kyber_encapsulated_keyshare.size());
+    kyber_keyshare = kyber_key_->decapsulate(rng, kyber_encapsulated_keyshare.data(), kyber_encapsulated_keyshare.size());
     if(res) {
         RNP_LOG("error when decrypting kyber-ecdh encrypted session key");
         return res;
@@ -409,7 +409,7 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     }
 
     // Compute (kyberCipherText, kyberKeyShare) := kyberKem.encap(kyberPublicKey)
-    kyber_encap_result_t kyber_encap = kyber_key_.encapsulate();
+    kyber_encap_result_t kyber_encap = kyber_key_.encapsulate(rng);
 
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
     std::vector<uint8_t> kek;

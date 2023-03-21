@@ -31,7 +31,6 @@
 #include "dilithium.h"
 #include "botan/dilithium.h"
 #include <botan/dilithium.h>
-#include <botan/system_rng.h>
 #include <botan/pubkey.h>
 
 using namespace Botan;
@@ -52,7 +51,7 @@ rnp_dilithium_param_to_botan_dimension(dilithium_parameter_e mode)
 } // namespace
 
 std::vector<uint8_t>
-pgp_dilithium_private_key_t::sign(const uint8_t *msg, size_t msg_len) const
+pgp_dilithium_private_key_t::sign(rnp::RNG *rng, const uint8_t *msg, size_t msg_len) const
 {
     secure_vector<uint8_t> priv_sv(key_encoded_.data(),
                                    key_encoded_.data() + key_encoded_.size());
@@ -62,9 +61,8 @@ pgp_dilithium_private_key_t::sign(const uint8_t *msg, size_t msg_len) const
       DilithiumFlavor::Deterministic,
       DilithiumKeyEncoding::Raw);
 
-    System_RNG           rng;
-    auto                 signer = Botan::PK_Signer(priv_key, rng, "");
-    std::vector<uint8_t> signature = signer.sign_message(msg, msg_len, rng);
+    auto                 signer = Botan::PK_Signer(priv_key, *rng->obj(), "");
+    std::vector<uint8_t> signature = signer.sign_message(msg, msg_len, *rng->obj());
     // std::vector<uint8_t> signature;
 
     return signature;
@@ -87,10 +85,9 @@ pgp_dilithium_public_key_t::verify_signature(const uint8_t *msg,
 
 std::pair<pgp_dilithium_public_key_t, pgp_dilithium_private_key_t>
 dilithium_generate_keypair(
-  /*rnp::RNG *rng,*/ dilithium_parameter_e dilithium_param)
+  rnp::RNG *rng, dilithium_parameter_e dilithium_param)
 {
-    System_RNG           rng;
-    Dilithium_PrivateKey priv_key(rng,
+    Dilithium_PrivateKey priv_key(*rng->obj(),
                                   rnp_dilithium_param_to_botan_dimension(dilithium_param),
                                   DilithiumFlavor::Deterministic);
 

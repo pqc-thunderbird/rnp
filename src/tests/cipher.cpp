@@ -641,7 +641,7 @@ TEST_F(rnp_tests, kyber_ecdh_roundtrip)
         assert_rnp_success(pgp_fingerprint(key_fpr, key));
 
         assert_rnp_success(key.material.kyber_ecdh.pub.encrypt(&global_ctx.rng, &enc, plaintext, plaintext_len));
-        assert_rnp_success(key.material.kyber_ecdh.priv.decrypt(result, &result_len, &enc, key.material.kyber_ecdh.pub.get_encoded()));
+        assert_rnp_success(key.material.kyber_ecdh.priv.decrypt(&global_ctx.rng, result, &result_len, &enc, key.material.kyber_ecdh.pub.get_encoded()));
 
         assert_int_equal(plaintext_len, result_len);
         assert_int_equal(memcmp(plaintext, result, result_len), 0);

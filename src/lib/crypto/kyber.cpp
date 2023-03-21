@@ -32,7 +32,6 @@
 
 #include <botan/kyber.h>
 #include <botan/pubkey.h>
-#include <botan/system_rng.h>
 #include <utility>
 #include <vector>
 
@@ -61,10 +60,9 @@ key_share_size_from_kyber_param(kyber_parameter_e param)
 } // namespace
 
 std::pair<pgp_kyber_public_key_t, pgp_kyber_private_key_t>
-kyber_generate_keypair(/*rnp::RNG *rng,*/ kyber_parameter_e kyber_param)
+kyber_generate_keypair(rnp::RNG *rng, kyber_parameter_e kyber_param)
 {
-    System_RNG       rng;
-    Kyber_PrivateKey kyber_priv(rng, rnp_kyber_param_to_botan_kyber_mode(kyber_param));
+    Kyber_PrivateKey kyber_priv(*rng->obj(), rnp_kyber_param_to_botan_kyber_mode(kyber_param));
     kyber_priv.set_binary_encoding(KyberKeyEncoding::Raw);
     secure_vector<uint8_t>      encoded_private_key = kyber_priv.private_key_bits();
     std::unique_ptr<Public_Key> kyber_pub = kyber_priv.public_key();
@@ -77,17 +75,16 @@ kyber_generate_keypair(/*rnp::RNG *rng,*/ kyber_parameter_e kyber_param)
 }
 
 kyber_encap_result_t
-pgp_kyber_public_key_t::encapsulate()
+pgp_kyber_public_key_t::encapsulate(rnp::RNG *rng)
 {
-    System_RNG      rng;
     Kyber_PublicKey decoded_kyber_pub(
       key_encoded_, rnp_kyber_param_to_botan_kyber_mode(kyber_mode_), KyberKeyEncoding::Raw);
 
-    PK_KEM_Encryptor       kem_enc(decoded_kyber_pub, rng, "Raw", "base");
+    PK_KEM_Encryptor       kem_enc(decoded_kyber_pub, *rng->obj(), "Raw", "base");
     secure_vector<uint8_t> encap_key;           // this has to go over the wire
     secure_vector<uint8_t> data_encryption_key; // this is the key used for
     // encryption of the payload data
-    kem_enc.encrypt(encap_key, data_encryption_key, key_share_size_from_kyber_param(kyber_mode_), rng);
+    kem_enc.encrypt(encap_key, data_encryption_key, key_share_size_from_kyber_param(kyber_mode_), *rng->obj());
     kyber_encap_result_t result;
     result.ciphertext.insert(
       result.ciphertext.end(), encap_key.data(), encap_key.data() + encap_key.size());
@@ -98,14 +95,13 @@ pgp_kyber_public_key_t::encapsulate()
 }
 
 std::vector<uint8_t>
-pgp_kyber_private_key_t::decapsulate(const uint8_t *ciphertext, size_t ciphertext_len)
+pgp_kyber_private_key_t::decapsulate(rnp::RNG *rng, const uint8_t *ciphertext, size_t ciphertext_len)
 {
-    System_RNG             rng;
     secure_vector<uint8_t> key_sv(key_encoded_.data(),
                                   key_encoded_.data() + key_encoded_.size());
     Kyber_PrivateKey       decoded_kyber_priv(
       key_sv, rnp_kyber_param_to_botan_kyber_mode(kyber_mode_), KyberKeyEncoding::Raw);
-    PK_KEM_Decryptor       kem_dec(decoded_kyber_priv, rng, "Raw", "base");
+    PK_KEM_Decryptor       kem_dec(decoded_kyber_priv, *rng->obj(), "Raw", "base");
     secure_vector<uint8_t> dec_shared_key = kem_dec.decrypt(ciphertext, ciphertext_len, key_share_size_from_kyber_param(kyber_mode_));
     return std::vector<uint8_t>(dec_shared_key.data(),
                                 dec_shared_key.data() + dec_shared_key.size());

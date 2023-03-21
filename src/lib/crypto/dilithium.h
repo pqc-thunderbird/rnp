@@ -57,7 +57,7 @@ class pgp_dilithium_private_key_t {
         return dilithium_param_;
     }
 
-    std::vector<uint8_t> sign(const uint8_t *msg, size_t msg_len) const;
+    std::vector<uint8_t> sign(rnp::RNG *rng, const uint8_t *msg, size_t msg_len) const;
     std::vector<uint8_t>
     get_encoded() const
     {
@@ -102,6 +102,6 @@ class pgp_dilithium_public_key_t {
 };
 
 std::pair<pgp_dilithium_public_key_t, pgp_dilithium_private_key_t> dilithium_generate_keypair(
-  /*rnp::RNG *rng,*/ dilithium_parameter_e dilithium_param);
+  rnp::RNG *rng, dilithium_parameter_e dilithium_param);
 
 #endif

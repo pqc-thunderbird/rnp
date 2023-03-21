@@ -53,7 +53,7 @@ class pgp_kyber_private_key_t {
 
     bool is_valid() const;
 
-    std::vector<uint8_t> decapsulate(const uint8_t *ciphertext, size_t ciphertext_len);
+    std::vector<uint8_t> decapsulate(rnp::RNG *rng, const uint8_t *ciphertext, size_t ciphertext_len);
     std::vector<uint8_t>
     get_encoded() const
     {
@@ -76,7 +76,7 @@ class pgp_kyber_public_key_t {
     pgp_kyber_public_key_t(const uint8_t *key_encoded, size_t key_encoded_len, kyber_parameter_e mode);
     pgp_kyber_public_key_t(std::vector<uint8_t> const &key_encoded, kyber_parameter_e mode);
     pgp_kyber_public_key_t() = default;
-    kyber_encap_result_t encapsulate();
+    kyber_encap_result_t encapsulate(rnp::RNG *rng);
 
     bool operator==(const pgp_kyber_public_key_t &rhs) const 
     {
@@ -97,6 +97,6 @@ class pgp_kyber_public_key_t {
 };
 
 std::pair<pgp_kyber_public_key_t, pgp_kyber_private_key_t> kyber_generate_keypair(
-  /*rnp::RNG *rng,*/ kyber_parameter_e kyber_param);
+  rnp::RNG *rng, kyber_parameter_e kyber_param);
 
 #endif

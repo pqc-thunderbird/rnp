@@ -28,7 +28,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if defined(ENABLE_CRYPTO_REFRESH)
+#include "config.h"
+#if defined(ENABLE_PQC)
 
 #include "rnp_tests.h"
 #include <array>
@@ -42,28 +43,27 @@ TEST_F(rnp_tests, test_kyber_key_function)
     for(kyber_parameter_e param : params)
     {
 
-    auto public_and_private_key = kyber_generate_keypair(param);
+    auto public_and_private_key = kyber_generate_keypair(&global_ctx.rng, param);
 
-    kyber_encap_result_t encap_res = public_and_private_key.first.encapsulate();
+    kyber_encap_result_t encap_res = public_and_private_key.first.encapsulate(&global_ctx.rng);
     
-    std::vector<uint8_t> decrypted = public_and_private_key.second.decapsulate(encap_res.ciphertext.data(), encap_res.ciphertext.size());
+    std::vector<uint8_t> decrypted = public_and_private_key.second.decapsulate(&global_ctx.rng, encap_res.ciphertext.data(), encap_res.ciphertext.size());
     assert_int_equal(encap_res.symmetric_key.size(), decrypted.size());
     assert_memory_equal(encap_res.symmetric_key.data(), decrypted.data(), decrypted.size());
 
     }
 }
 
-
 TEST_F(rnp_tests, test_dilithium_key_function)
 {
     dilithium_parameter_e params[2] = {dilithium_L3, dilithium_L5};
     for (dilithium_parameter_e param : params) {
-        auto public_and_private_key = dilithium_generate_keypair(param);
+        auto public_and_private_key = dilithium_generate_keypair(&global_ctx.rng, param);
 
         std::array<uint8_t, 5> msg{'H', 'e', 'l', 'l', 'o'};
 
         std::vector<uint8_t> signature =
-          public_and_private_key.second.sign(msg.data(), msg.size());
+          public_and_private_key.second.sign(&global_ctx.rng, msg.data(), msg.size());
 
         assert_true(public_and_private_key.first.verify_signature(
           msg.data(), msg.size(), signature.data(), signature.size()));
