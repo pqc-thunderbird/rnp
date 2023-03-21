@@ -33,7 +33,8 @@
 #include "types.h"
 #include "ecdh_utils.h"
 #include "kmac.hpp"
-#include <botan/ffi.h>
+#include <botan/rfc3394.h>
+#include <botan/symkey.h>
 
 pgp_kyber_ecdh_composite_key_t::~pgp_kyber_ecdh_composite_key_t() {}
 
@@ -280,7 +281,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, siz
     std::vector<uint8_t> ecdh_keyshare;
     std::vector<uint8_t> kyber_keyshare;
 
-    if( ((enc->wrapped_sesskey.size() % 8) != 0) && (enc->wrapped_sesskey.size() > 8)) {
+    if( ((enc->wrapped_sesskey.size() % 8) != 0) || (enc->wrapped_sesskey.size() < 16)) {
         RNP_LOG("invalid wrapped AES key length (size is a multiple of 8 octets with 8 octets integrity check)");
         return RNP_ERROR_BAD_PARAMETERS;
     }
@@ -303,15 +304,25 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, siz
     }
 
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
-    std::vector<uint8_t> kek;
+    std::vector<uint8_t> kek_vec;
     auto kmac = rnp::KMAC256::create();
-    kmac->compute(ecdh_keyshare, kyber_keyshare, pk_alg(), encoded_pubkey, kek);
+    kmac->compute(ecdh_keyshare, kyber_keyshare, pk_alg(), encoded_pubkey, kek_vec);
+    Botan::SymmetricKey kek(kek_vec);
 
     // Compute sessionKey := AESKeyUnwrap(KEK, C) with AES-256 as per [RFC3394], aborting if the 64 bit integrity check fails
-    if(botan_key_unwrap3394(enc->wrapped_sesskey.data(), enc->wrapped_sesskey.size(), kek.data(), kek.size(), out, out_len)) {
-        RNP_LOG("error when unwrapping encrypted session key");
+    Botan::secure_vector<uint8_t> tmp_out;
+    try {
+        tmp_out = Botan::rfc3394_keyunwrap(Botan::secure_vector<uint8_t>(enc->wrapped_sesskey.begin(), enc->wrapped_sesskey.end()), kek);
+    } catch (const std::exception &e) {
+        RNP_LOG("Keyunwrap failed: %s", e.what());
         return RNP_ERROR_DECRYPT_FAILED;
     }
+
+    if(*out_len < tmp_out.size()) {
+        RNP_LOG("buffer for decryption result too small");
+        return RNP_ERROR_DECRYPT_FAILED;
+    }
+    memcpy(out, tmp_out.data(), *out_len);
 
     return RNP_SUCCESS;
 }
@@ -412,16 +423,16 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     kyber_encap_result_t kyber_encap = kyber_key_.encapsulate(rng);
 
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
-    std::vector<uint8_t> kek;
+    std::vector<uint8_t> kek_vec;
     auto kmac = rnp::KMAC256::create();
-    kmac->compute(ecdh_encap.symmetric_key, kyber_encap.symmetric_key, pk_alg(), get_encoded(), kek);
+    kmac->compute(ecdh_encap.symmetric_key, kyber_encap.symmetric_key, pk_alg(), get_encoded(), kek_vec);
+    Botan::SymmetricKey kek(kek_vec);
 
     // Compute C := AESKeyWrap(KEK, sessionKey) with AES-256 as per [RFC3394] that includes a 64 bit integrity check
-    size_t c_len = ((session_key_len + 7)/8 + 1) * 8; // RFC3394 "Outputs:     Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}."
-    out->wrapped_sesskey.resize(c_len);
-
-    if (botan_key_wrap3394(session_key, session_key_len, kek.data(), kek.size(), out->wrapped_sesskey.data(), &c_len)) {
-        RNP_LOG("error when doing AES key wrap");
+    try {
+        out->wrapped_sesskey = Botan::unlock(Botan::rfc3394_keywrap(Botan::secure_vector<uint8_t>(session_key, session_key+session_key_len), kek));
+    } catch (const std::exception &e) {
+        RNP_LOG("Keywrap failed: %s", e.what());
         return RNP_ERROR_ENCRYPT_FAILED;
     }
     
