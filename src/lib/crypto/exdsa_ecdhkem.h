@@ -39,7 +39,9 @@
 #include "botan/secmem.h"
 #include <botan/pubkey.h>
 #include <botan/ecdsa.h>
+#include <botan/ecdh.h>
 #include <botan/ed25519.h>
+#include <botan/curve25519.h>
 
 
 struct ecdh_kem_key_t; /* forward declaration */
@@ -109,9 +111,12 @@ public:
         return Botan::unlock(key_);
     }
 
-    rnp_result_t decapsulate(const std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &plaintext);
+    rnp_result_t decapsulate(rnp::RNG *rng, const std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &plaintext);
 
 private:
+    Botan::ECDH_PrivateKey botan_key_ecdh(rnp::RNG *rng) const;
+    Botan::Curve25519_PrivateKey botan_key_x25519() const;
+
     Botan::secure_vector<uint8_t> key_;
 };
 

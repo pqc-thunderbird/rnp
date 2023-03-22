@@ -34,7 +34,6 @@
 
 #include <botan/pubkey.h>
 #include <botan/ed25519.h>
-#include "botan/ffi.h"
 #include <cassert>
 
 
@@ -55,14 +54,11 @@ rnp_result_t generate_ed25519_native(rnp::RNG *           rng,
 
 rnp_result_t ed25519_sign_native(rnp::RNG *rng, std::vector<uint8_t> &sig_out, const std::vector<uint8_t> &key, const uint8_t *hash, size_t hash_len)
 {
-        Botan::Ed25519_PrivateKey priv_key(Botan::secure_vector<uint8_t>(key.begin(), key.end()));
-        if(!priv_key.check_key(*(rng->obj()), false)) { 
-            return RNP_ERROR_SIGNING_FAILED; 
-        }
-        auto signer = Botan::PK_Signer(priv_key, *(rng->obj()), "Pure");
-        sig_out = signer.sign_message(hash, hash_len, *(rng->obj()));
-        
-        return RNP_SUCCESS;
+    Botan::Ed25519_PrivateKey priv_key(Botan::secure_vector<uint8_t>(key.begin(), key.end()));
+    auto signer = Botan::PK_Signer(priv_key, *(rng->obj()), "Pure");
+    sig_out = signer.sign_message(hash, hash_len, *(rng->obj()));
+    
+    return RNP_SUCCESS;
 }
 
 rnp_result_t ed25519_verify_native(const std::vector<uint8_t> &sig, const std::vector<uint8_t> &key, const uint8_t *hash, size_t hash_len)
@@ -72,20 +68,21 @@ rnp_result_t ed25519_verify_native(const std::vector<uint8_t> &sig, const std::v
     if(verifier.verify_message(hash, hash_len, sig.data(), sig.size())) {
         return RNP_SUCCESS;
     }
+    return RNP_ERROR_VERIFICATION_FAILED;
 }
 
 rnp_result_t
 ed25519_validate_key_native(rnp::RNG *rng, const pgp_ed25519_key_t *key, bool secret)
 {
     Botan::Ed25519_PublicKey pub_key(key->pub);
-    if(!pub_key.check_key(*(rng->obj()), false)) { 
-        return RNP_ERROR_BAD_PARAMETERS; 
+    if(!pub_key.check_key(*(rng->obj()), false)) {
+        return RNP_ERROR_BAD_PARAMETERS;
     }
 
     if(secret) {
         Botan::Ed25519_PrivateKey priv_key(Botan::secure_vector<uint8_t>(key->priv.begin(), key->priv.end()));
-        if(!priv_key.check_key(*(rng->obj()), false)) { 
-            return RNP_ERROR_SIGNING_FAILED; 
+        if(!priv_key.check_key(*(rng->obj()), false)) {
+            return RNP_ERROR_SIGNING_FAILED;
         }
     }
 

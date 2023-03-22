@@ -50,7 +50,7 @@ TEST_F(rnp_tests, test_ecdh_kem_direct)
 
         /* kem encaps / decaps */
         assert_rnp_success(ecdh_kem_encaps(&global_ctx.rng, ciphertext, plaintext, pubkey_buf, curve));
-        assert_rnp_success(ecdh_kem_decaps(plaintext2, ciphertext, privkey_buf, curve));
+        assert_rnp_success(ecdh_kem_decaps(&global_ctx.rng, plaintext2, ciphertext, privkey_buf, curve));
 
         /* both parties should have the same key share */
         assert_int_equal(plaintext.size(), plaintext2.size());
@@ -72,11 +72,17 @@ TEST_F(rnp_tests, test_ecdh_kem_class)
         /* kem encaps / decaps */
         ecdh_kem_encap_result_t encap;
         assert_rnp_success(key_pair.pub.encapsulate(&global_ctx.rng, &encap));
-        assert_rnp_success(key_pair.priv.decapsulate(encap.ciphertext, plaintext));
+        assert_rnp_success(key_pair.priv.decapsulate(&global_ctx.rng, encap.ciphertext, plaintext));
 
         /* both parties should have the same key share */
         assert_int_equal(plaintext.size(), encap.symmetric_key.size());
         assert_memory_equal(plaintext.data(), encap.symmetric_key.data(), plaintext.size());
+
+        /* test invalid ciphertext */
+        encap.ciphertext.data()[4] += 1;
+        if(curve != PGP_CURVE_25519) {
+            assert_throw(key_pair.priv.decapsulate(&global_ctx.rng, encap.ciphertext, plaintext));
+        }
     }
 }
 

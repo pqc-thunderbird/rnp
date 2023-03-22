@@ -36,6 +36,7 @@
 #include "logging.h"
 #include "string.h"
 #include "utils.h"
+#include <cassert>
 
 ec_key_t::~ec_key_t() {}
 
@@ -61,16 +62,60 @@ ecdh_kem_private_key_t::ecdh_kem_private_key_t(std::vector<uint8_t> key, pgp_cur
       key_(Botan::secure_vector<uint8_t>(key.begin(), key.end()))
 {}
 
+Botan::ECDH_PrivateKey
+ecdh_kem_private_key_t::botan_key_ecdh(rnp::RNG *rng) const
+{
+    assert(curve_ >= PGP_CURVE_NIST_P_256 && curve_ <= PGP_CURVE_P256K1);
+    const ec_curve_desc_t *ec_desc = get_curve_desc(curve_);
+    Botan::ECDH_PrivateKey priv_key(*(rng->obj()), Botan::EC_Group(ec_desc->botan_name), Botan::BigInt(key_));
+    return priv_key;
+}
 
-rnp_result_t
-ecdh_kem_public_key_t::encapsulate(rnp::RNG *rng, ecdh_kem_encap_result_t *result) {
-    return ecdh_kem_encaps(rng, result->ciphertext, result->symmetric_key, key_, curve_);
+Botan::Curve25519_PrivateKey
+ecdh_kem_private_key_t::botan_key_x25519() const
+{
+    assert(curve_ == PGP_CURVE_25519);
+    Botan::Curve25519_PrivateKey priv_key(key_);
+    return priv_key;
 }
 
 rnp_result_t
-ecdh_kem_private_key_t::decapsulate(const std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &plaintext) 
+ecdh_kem_public_key_t::encapsulate(rnp::RNG *rng, ecdh_kem_encap_result_t *result) {
+    if (curve_ == PGP_CURVE_25519) {
+        Botan::Curve25519_PrivateKey eph_prv_key(*(rng->obj()));
+        result->ciphertext = eph_prv_key.public_value();
+        Botan::PK_Key_Agreement key_agreement(eph_prv_key, *(rng->obj()), "Raw");
+        result->symmetric_key = Botan::unlock(key_agreement.derive_key(0, key_).bits_of());
+    } else {
+        const ec_curve_desc_t *curve_desc = get_curve_desc(curve_);
+        if (!curve_desc) {
+            RNP_LOG("unknown curve");
+            return RNP_ERROR_NOT_SUPPORTED;
+        }
+
+        Botan::EC_Group domain(curve_desc->botan_name);
+        Botan::ECDH_PrivateKey eph_prv_key(*(rng->obj()), domain);
+        Botan::PK_Key_Agreement key_agreement(eph_prv_key, *(rng->obj()), "Raw");
+        result->ciphertext = eph_prv_key.public_value();
+        result->symmetric_key = Botan::unlock(key_agreement.derive_key(0, key_).bits_of());
+    }
+    return RNP_SUCCESS;
+}
+
+rnp_result_t
+ecdh_kem_private_key_t::decapsulate(rnp::RNG *rng, const std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &plaintext)
 {
-    return ecdh_kem_decaps(plaintext, ciphertext, Botan::unlock(key_), curve_);
+    Botan::Null_RNG null_rng;
+    if (curve_ == PGP_CURVE_25519) {
+        Botan::Curve25519_PrivateKey priv_key = botan_key_x25519();
+        Botan::PK_Key_Agreement key_agreement(priv_key, *(rng->obj()), "Raw");
+        plaintext = Botan::unlock(key_agreement.derive_key(0, ciphertext).bits_of());
+    } else {
+        Botan::ECDH_PrivateKey priv_key = botan_key_ecdh(rng);
+        Botan::PK_Key_Agreement key_agreement(priv_key, *(rng->obj()), "Raw");
+        plaintext = Botan::unlock(key_agreement.derive_key(0, ciphertext).bits_of());
+    }
+    return RNP_SUCCESS;
 }
 
 rnp_result_t 

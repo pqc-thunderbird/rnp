@@ -30,6 +30,7 @@
 
 #include "x25519.h"
 #include "ecdh.h"
+#include "exdsa_ecdhkem.h"
 #include "hkdf.hpp"
 #include "botan/ffi.h"
 #include "utils.h"
@@ -119,7 +120,8 @@ rnp_result_t x25519_native_encrypt(rnp::RNG *                 rng,
     return RNP_SUCCESS;
 }
 
-rnp_result_t x25519_native_decrypt(const std::vector<uint8_t>   &privkey,
+rnp_result_t x25519_native_decrypt(rnp::RNG *                   rng,
+                                   const std::vector<uint8_t>   &privkey,
                                    const pgp_x25519_encrypted_t *encrypted,
                                    uint8_t                      *decbuf,
                                    size_t                       *decbuf_len)
@@ -138,7 +140,7 @@ rnp_result_t x25519_native_decrypt(const std::vector<uint8_t>   &privkey,
         return RNP_ERROR_BAD_FORMAT;
     }
 
-    ret = ecdh_kem_decaps(shared_key, encrypted->eph_key, privkey, PGP_CURVE_25519);
+    ret = ecdh_kem_decaps(rng, shared_key, encrypted->eph_key, privkey, PGP_CURVE_25519);
     if(ret) {
         RNP_LOG("Error when doing X25519 key agreement");
         return RNP_ERROR_ENCRYPT_FAILED;

@@ -126,7 +126,8 @@ rnp_result_t ecdh_kem_encaps(rnp::RNG *                 rng,
                              pgp_curve_t curve);
 
 /* used for kyber-ecdh composite: only do the private operation and no KDF and key wrap*/
-rnp_result_t ecdh_kem_decaps(std::vector<uint8_t>       &plaintext,  /* plaintext shared secret */
+rnp_result_t ecdh_kem_decaps(rnp::RNG *                 rng,
+                             std::vector<uint8_t>       &plaintext,  /* plaintext shared secret */
                              const std::vector<uint8_t> &ciphertext, /* encrypted shared secret */
                              const std::vector<uint8_t> &privkey_in,  /* private key */
                              pgp_curve_t curve);

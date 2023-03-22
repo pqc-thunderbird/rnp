@@ -289,7 +289,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, siz
     // Compute (eccKeyShare) := eccKem.decap(eccCipherText, eccPrivateKey)
     pgp_curve_t curve = pk_alg_to_curve_id(pk_alg_);
     std::vector<uint8_t> ecdh_encapsulated_keyshare = std::vector<uint8_t>(enc->composite_ciphertext.data(), enc->composite_ciphertext.data() + ecdh_curve_ephemeral_size(curve));
-    res = ecdh_key_->decapsulate(ecdh_encapsulated_keyshare, ecdh_keyshare);
+    res = ecdh_key_->decapsulate(rng, ecdh_encapsulated_keyshare, ecdh_keyshare);
     if(res) {
         RNP_LOG("error when decrypting kyber-ecdh encrypted session key");
         return res;
