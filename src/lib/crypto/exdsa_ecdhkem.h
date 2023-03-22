@@ -66,11 +66,6 @@ protected:
     pgp_curve_t curve_;
 };
 
-typedef struct ecdh_kem_encap_result_t {
-    std::vector<uint8_t> ciphertext;
-    std::vector<uint8_t> symmetric_key;
-} ecdh_kem_encap_result_t;
-
 class ecdh_kem_public_key_t : public ec_key_t {
 
 public:
@@ -90,7 +85,7 @@ public:
         return key_;
     }
 
-    rnp_result_t encapsulate(rnp::RNG *rng, ecdh_kem_encap_result_t *result);
+    rnp_result_t encapsulate(rnp::RNG *rng, std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &symmetric_key);
 
 private:
     std::vector<uint8_t> key_;

@@ -322,6 +322,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, siz
         RNP_LOG("buffer for decryption result too small");
         return RNP_ERROR_DECRYPT_FAILED;
     }
+    *out_len = tmp_out.size();
     memcpy(out, tmp_out.data(), *out_len);
 
     return RNP_SUCCESS;
@@ -405,7 +406,8 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     initialized_or_throw();
 
     rnp_result_t res;
-    ecdh_kem_encap_result_t ecdh_encap;
+    std::vector<uint8_t> ecdh_ciphertext;
+    std::vector<uint8_t> ecdh_symmetric_key;
 
     if((session_key_len % 8) != 0) {
         RNP_LOG("AES key wrap requires a multiple of 8 octets as input key");
@@ -413,7 +415,7 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     }
 	
     // Compute (eccCipherText, eccKeyShare) := eccKem.encap(eccPublicKey)
-    res = ecdh_key_.encapsulate(rng, &ecdh_encap);
+    res = ecdh_key_.encapsulate(rng, ecdh_ciphertext, ecdh_symmetric_key);
     if(res) {
         RNP_LOG("error when encapsulating with ECDH");
         return res;
@@ -425,7 +427,7 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
     std::vector<uint8_t> kek_vec;
     auto kmac = rnp::KMAC256::create();
-    kmac->compute(ecdh_encap.symmetric_key, kyber_encap.symmetric_key, pk_alg(), get_encoded(), kek_vec);
+    kmac->compute(ecdh_symmetric_key, kyber_encap.symmetric_key, pk_alg(), get_encoded(), kek_vec);
     Botan::SymmetricKey kek(kek_vec);
 
     // Compute C := AESKeyWrap(KEK, sessionKey) with AES-256 as per [RFC3394] that includes a 64 bit integrity check
@@ -436,7 +438,7 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
         return RNP_ERROR_ENCRYPT_FAILED;
     }
     
-    out->composite_ciphertext.assign(ecdh_encap.ciphertext.data(), ecdh_encap.ciphertext.data() + ecdh_encap.ciphertext.size());
+    out->composite_ciphertext.assign(ecdh_ciphertext.begin(), ecdh_ciphertext.end());
     out->composite_ciphertext.insert(out->composite_ciphertext.end(), kyber_encap.ciphertext.begin(), kyber_encap.ciphertext.end());
     return RNP_SUCCESS;
 }

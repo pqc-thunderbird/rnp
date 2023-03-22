@@ -29,11 +29,10 @@
  */
 
 #include "x25519.h"
-#include "ecdh.h"
 #include "exdsa_ecdhkem.h"
 #include "hkdf.hpp"
-#include "botan/ffi.h"
 #include "utils.h"
+#include "botan/rfc3394.h"
 
 static void x25519_hkdf(std::vector<uint8_t> &derived_key, const std::vector<uint8_t> &shared_key) 
 {
@@ -55,34 +54,11 @@ rnp_result_t generate_x25519_native(rnp::RNG *           rng,
                                     std::vector<uint8_t> &privkey, 
                                     std::vector<uint8_t> &pubkey)
 {
-    const char *botan_name = "Curve25519";
-    const pgp_curve_t curve = PGP_CURVE_25519;
-    const ec_curve_desc_t *ec_desc = get_curve_desc(curve);
-    const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
-    botan_privkey_t botan_priv = NULL;
-    botan_pubkey_t botan_pub = NULL;
-    rnp_result_t ret = RNP_SUCCESS;
+    Botan::Curve25519_PrivateKey priv_key(*(rng->obj()));
+    pubkey = priv_key.public_value();
+    privkey = Botan::unlock(priv_key.get_x());
 
-    privkey.resize(curve_order);
-    pubkey.resize(curve_order);
-
-    int botan_ret = botan_privkey_create(&botan_priv, botan_name, NULL, rng->handle());
-    botan_ret |= botan_privkey_export_pubkey(&botan_pub, botan_priv);
-    botan_ret |= botan_privkey_x25519_get_privkey(botan_priv, privkey.data());
-    botan_ret |= botan_pubkey_x25519_get_pubkey(botan_pub, pubkey.data());
-    if(botan_ret) {
-        RNP_LOG("error when generating x25519 key");
-        ret = RNP_ERROR_GENERIC;
-    }
-    if(!botan_pub || botan_pubkey_check_key(botan_pub, rng->handle(), 0)) { 
-        RNP_LOG("No valid public key created");
-        return RNP_ERROR_KEY_GENERATION;
-    }
-    
-    botan_privkey_destroy(botan_priv);
-    botan_pubkey_destroy(botan_pub);
-
-    return ret;
+    return RNP_SUCCESS;
 }
 
 rnp_result_t x25519_native_encrypt(rnp::RNG *                 rng,
@@ -100,20 +76,21 @@ rnp_result_t x25519_native_encrypt(rnp::RNG *                 rng,
         return RNP_ERROR_BAD_FORMAT;
     }
 
-    ret = ecdh_kem_encaps(rng, encrypted->eph_key, shared_key, pubkey, PGP_CURVE_25519);
-    if(ret || encrypted->eph_key.size() != 32) {
-        RNP_LOG("Error when doing X25519 key agreement");
-        return RNP_ERROR_ENCRYPT_FAILED;
+    /* encapsulation */
+    ecdh_kem_public_key_t ecdhkem_pubkey(pubkey, PGP_CURVE_25519);
+    ret = ecdhkem_pubkey.encapsulate(rng, encrypted->eph_key, shared_key);
+    if(ret != RNP_SUCCESS) {
+        RNP_LOG("encapsulation failed");
+        return ret; 
     }
 
     x25519_hkdf(derived_key, shared_key);
 
-    /* The resulting key is used to encrypt the session key with AES-128 keywrap, defined in {{RFC3394}}. */
-    size_t c_len = ((in_len + 7)/8 + 1) * 8; // RFC3394 "Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}."
-    encrypted->enc_sess_key.resize(c_len);
-
-    if (botan_key_wrap3394(in, in_len, derived_key.data(), derived_key.size(), encrypted->enc_sess_key.data(), &c_len)) {
-        RNP_LOG("error when doing AES key wrap");
+    Botan::SymmetricKey kek(derived_key);
+    try {
+        encrypted->enc_sess_key = Botan::unlock(Botan::rfc3394_keywrap(Botan::secure_vector<uint8_t>(in, in+in_len), kek));
+    } catch (const std::exception &e) {
+        RNP_LOG("Keywrap failed: %s", e.what());
         return RNP_ERROR_ENCRYPT_FAILED;
     }
 
@@ -140,18 +117,24 @@ rnp_result_t x25519_native_decrypt(rnp::RNG *                   rng,
         return RNP_ERROR_BAD_FORMAT;
     }
 
-    ret = ecdh_kem_decaps(rng, shared_key, encrypted->eph_key, privkey, PGP_CURVE_25519);
-    if(ret) {
-        RNP_LOG("Error when doing X25519 key agreement");
-        return RNP_ERROR_ENCRYPT_FAILED;
+    /* decapsulate */
+    ecdh_kem_private_key_t ecdhkem_privkey(privkey, PGP_CURVE_25519);
+    ret = ecdhkem_privkey.decapsulate(rng, encrypted->eph_key, shared_key);
+    if(ret != RNP_SUCCESS) {
+        RNP_LOG("decapsulation failed");
+        return ret; 
     }
 
     x25519_hkdf(derived_key, shared_key);
 
-    if (botan_key_unwrap3394(encrypted->enc_sess_key.data(), encrypted->enc_sess_key.size(), derived_key.data(), derived_key.size(), decbuf, decbuf_len)) {
-        RNP_LOG("error when doing AES key unwrap");
-        return RNP_ERROR_ENCRYPT_FAILED;
+    Botan::SymmetricKey kek(derived_key);
+    auto tmp_out = Botan::rfc3394_keyunwrap(Botan::secure_vector<uint8_t>(encrypted->enc_sess_key.begin(), encrypted->enc_sess_key.end()), kek);
+    if(*decbuf_len < tmp_out.size()) {
+        RNP_LOG("buffer for decryption result too small");
+        return RNP_ERROR_DECRYPT_FAILED;
     }
+    *decbuf_len = tmp_out.size();
+    memcpy(decbuf, tmp_out.data(), tmp_out.size());
 
     return RNP_SUCCESS;
 }
@@ -159,30 +142,19 @@ rnp_result_t x25519_native_decrypt(rnp::RNG *                   rng,
 rnp_result_t
 x25519_validate_key_native(rnp::RNG *rng, const pgp_x25519_key_t *key, bool secret)
 {
-    botan_pubkey_t  bpkey = NULL;
-    botan_privkey_t bskey = NULL;
-    rnp_result_t    ret = RNP_ERROR_BAD_PARAMETERS;
+    bool valid_pub;
+    bool valid_priv;
 
-    if (botan_pubkey_load_x25519(&bpkey, key->pub.data())) {
-        goto done;
-    }
-    if (botan_pubkey_check_key(bpkey, rng->handle(), 0)) {
-        goto done;
+    Botan::Ed25519_PublicKey pub_key(key->priv);
+    valid_pub = pub_key.check_key(*(rng->obj()), false);
+
+    if(secret) {
+        Botan::Ed25519_PrivateKey priv_key(Botan::secure_vector<uint8_t>(key->priv.begin(), key->priv.end()));
+        valid_priv = priv_key.check_key(*(rng->obj()), false);
+    } else {
+        valid_priv = true;
     }
 
-    if (!secret) {
-        ret = RNP_SUCCESS;
-        goto done;
-    }
-    if(botan_privkey_load_x25519(&bskey, key->priv.data())){
-        goto done;
-    }
-    if (botan_privkey_check_key(bskey, rng->handle(), 0)) {
-        goto done;
-    }
-    ret = RNP_SUCCESS;
-done:
-    botan_privkey_destroy(bskey);
-    botan_pubkey_destroy(bpkey);
-    return ret;
+    // check key returns true for successful check
+    return (valid_pub && valid_priv) ? RNP_SUCCESS : RNP_ERROR_BAD_PARAMETERS;
 }

@@ -413,41 +413,4 @@ rnp_result_t exdsa_gen_keypair_native(rnp::RNG *         rng,
     return ec_generate_native(rng, privkey, pubkey, curve, alg);
 }
 
-rnp_result_t ecdh_kem_encaps(rnp::RNG *                 rng,
-                             std::vector<uint8_t>       &ciphertext,   /* encrypted shared secret (eph. pubkey) */
-                             std::vector<uint8_t>       &plaintext,    /* plaintext / shared secret / key share */
-                             const std::vector<uint8_t> &pubkey_in,    /* public key */
-                             pgp_curve_t                curve)
-{
-    ecdh_kem_public_key_t pubkey(pubkey_in, curve);
-    ecdh_kem_encap_result_t encap_result;
-    
-    rnp_result_t ret = pubkey.encapsulate(rng, &encap_result);
-    if(ret) {
-        RNP_LOG("encapsulation failed");
-        return ret; 
-    }
-
-    ciphertext = encap_result.ciphertext;
-    plaintext = encap_result.symmetric_key;
-
-    return RNP_SUCCESS;
-}
-
-rnp_result_t ecdh_kem_decaps(rnp::RNG * rng,
-                             std::vector<uint8_t>       &plaintext,  /* plaintext shared secret */
-                             const std::vector<uint8_t> &ciphertext, /* encrypted shared secret */
-                             const std::vector<uint8_t> &privkey_in, /* private key */
-                             pgp_curve_t curve) 
-{
-    ecdh_kem_private_key_t privkey(privkey_in, curve);
-    
-    rnp_result_t ret = privkey.decapsulate(rng, ciphertext, plaintext);
-    if(ret) {
-        RNP_LOG("decapsulation failed");
-        return ret; 
-    }
-
-    return RNP_SUCCESS;
-}
 #endif
