@@ -99,13 +99,13 @@ dilithium_generate_keypair(
 }
 
 bool
-pgp_dilithium_public_key_t::is_valid() const {
+pgp_dilithium_public_key_t::is_valid(rnp::RNG *rng) const {
     /* TODOMTG load and check in botan */
     return true;
 }
 
 bool
-pgp_dilithium_private_key_t::is_valid() const {
+pgp_dilithium_private_key_t::is_valid(rnp::RNG *rng) const {
     /* TODOMTG load and check in botan */
     return true;
 }

@@ -49,7 +49,7 @@ class pgp_dilithium_private_key_t {
                                 dilithium_parameter_e       param);
     pgp_dilithium_private_key_t() = default;
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
     dilithium_parameter_e
     param() const
@@ -88,7 +88,7 @@ class pgp_dilithium_public_key_t {
                           const uint8_t *signature,
                           size_t         signature_len) const;
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
     std::vector<uint8_t>
     get_encoded() const

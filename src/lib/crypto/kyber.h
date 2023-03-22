@@ -51,7 +51,7 @@ class pgp_kyber_private_key_t {
     pgp_kyber_private_key_t(std::vector<uint8_t> const &key_encoded, kyber_parameter_e mode);
     pgp_kyber_private_key_t() = default;
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
     std::vector<uint8_t> decapsulate(rnp::RNG *rng, const uint8_t *ciphertext, size_t ciphertext_len);
     std::vector<uint8_t>
@@ -83,7 +83,7 @@ class pgp_kyber_public_key_t {
       return (kyber_mode_ == rhs.kyber_mode_) && (key_encoded_ == rhs.key_encoded_);
     }
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
     std::vector<uint8_t>
     get_encoded() const

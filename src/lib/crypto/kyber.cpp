@@ -108,13 +108,13 @@ pgp_kyber_private_key_t::decapsulate(rnp::RNG *rng, const uint8_t *ciphertext, s
 }
 
 bool
-pgp_kyber_public_key_t::is_valid() const {
+pgp_kyber_public_key_t::is_valid(rnp::RNG *rng) const {
     /* TODOMTG load and check in botan */
     return true;
 }
 
 bool
-pgp_kyber_private_key_t::is_valid() const {
+pgp_kyber_private_key_t::is_valid(rnp::RNG *rng) const {
     /* TODOMTG load and check in botan */
     return true;
 }

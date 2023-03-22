@@ -388,28 +388,28 @@ pgp_dilithium_exdsa_composite_public_key_t::verify(const pgp_dilithium_exdsa_sig
 }
 
 bool
-pgp_dilithium_exdsa_composite_public_key_t::is_valid() const {
+pgp_dilithium_exdsa_composite_public_key_t::is_valid(rnp::RNG *rng) const {
     if(!is_initialized()) {
         return false;
     }
-    return(exdsa_key_.is_valid() && dilithium_key_.is_valid());
+    return(exdsa_key_.is_valid(rng) && dilithium_key_.is_valid(rng));
 }
 
 bool
-pgp_dilithium_exdsa_composite_private_key_t::is_valid() const {
+pgp_dilithium_exdsa_composite_private_key_t::is_valid(rnp::RNG *rng) const {
     if(!is_initialized()) {
         return false;
     }
-    return(exdsa_key_->is_valid() && dilithium_key_->is_valid());
+    return(exdsa_key_->is_valid(rng) && dilithium_key_->is_valid(rng));
 }
 
 rnp_result_t dilithium_exdsa_validate_key(rnp::RNG *rng, const pgp_dilithium_exdsa_key_t *key, bool secret) 
 {
     bool valid;
 
-    valid = key->pub.is_valid();
+    valid = key->pub.is_valid(rng);
     if(secret) {
-        valid = valid && key->priv.is_valid();
+        valid = valid && key->priv.is_valid(rng);
     }
     if(!valid) {
         return RNP_ERROR_GENERIC;

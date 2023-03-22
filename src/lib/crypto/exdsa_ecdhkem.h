@@ -37,6 +37,10 @@
 #include "crypto/rng.h"
 #include <memory>
 #include "botan/secmem.h"
+#include <botan/pubkey.h>
+#include <botan/ecdsa.h>
+#include <botan/ed25519.h>
+
 
 struct ecdh_kem_key_t; /* forward declaration */
 struct exdsa_key_t; /* forward declaration */
@@ -77,7 +81,7 @@ public:
       return (curve_ == rhs.curve_) && (key_ == rhs.key_);
     }
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
     std::vector<uint8_t> get_encoded() const
     {
@@ -98,7 +102,7 @@ public:
     ecdh_kem_private_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
     ecdh_kem_private_key_t() = default;
     
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
     std::vector<uint8_t> get_encoded() const
     {
@@ -129,7 +133,7 @@ public:
       return (curve_ == rhs.curve_) && (key_ == rhs.key_);
     }
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
     std::vector<uint8_t> get_encoded() const
     {
@@ -139,6 +143,8 @@ public:
     rnp_result_t verify(const std::vector<uint8_t> &sig, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const;
 
 private:
+    Botan::ECDSA_PublicKey botan_key() const;
+
     std::vector<uint8_t> key_;
 };
 
@@ -149,7 +155,7 @@ public:
     exdsa_private_key_t(std::vector<uint8_t> key_buf, pgp_curve_t curve);
     exdsa_private_key_t() = default;
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
     std::vector<uint8_t> get_encoded() const
     {
@@ -159,6 +165,8 @@ public:
     rnp_result_t sign(rnp::RNG *rng, std::vector<uint8_t> &sig_out, const uint8_t *hash, size_t hash_len, pgp_hash_alg_t hash_alg) const;
 
 private:
+    Botan::ECDSA_PrivateKey botan_key(rnp::RNG *rng) const;
+
     Botan::secure_vector<uint8_t> key_;
 };
 

@@ -93,7 +93,7 @@ class pgp_dilithium_exdsa_composite_private_key_t : public pgp_dilithium_exdsa_c
       return pk_alg_;
     }
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
     void secure_clear();
 
     static size_t encoded_size(pgp_pubkey_alg_t pk_alg);
@@ -132,7 +132,7 @@ class pgp_dilithium_exdsa_composite_public_key_t : public pgp_dilithium_exdsa_co
       return pk_alg_;
     }
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
     static size_t encoded_size(pgp_pubkey_alg_t pk_alg);
 
   private:

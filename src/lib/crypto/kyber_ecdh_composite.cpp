@@ -454,28 +454,28 @@ pgp_kyber_ecdh_composite_public_key_t::get_encoded() const {
 };
 
 bool
-pgp_kyber_ecdh_composite_public_key_t::is_valid() const {
+pgp_kyber_ecdh_composite_public_key_t::is_valid(rnp::RNG *rng) const {
     if(!is_initialized()) {
         return false;
     }
-    return(ecdh_key_.is_valid() && kyber_key_.is_valid());
+    return(ecdh_key_.is_valid(rng) && kyber_key_.is_valid(rng));
 }
 
 bool
-pgp_kyber_ecdh_composite_private_key_t::is_valid() const {
+pgp_kyber_ecdh_composite_private_key_t::is_valid(rnp::RNG *rng) const {
     if(!is_initialized()) {
         return false;
     }
-    return(ecdh_key_->is_valid() && kyber_key_->is_valid());
+    return(ecdh_key_->is_valid(rng) && kyber_key_->is_valid(rng));
 }
 
 
 rnp_result_t kyber_ecdh_validate_key(rnp::RNG *rng, const pgp_kyber_ecdh_key_t *key, bool secret) {
     bool valid;
 
-    valid = key->pub.is_valid();
+    valid = key->pub.is_valid(rng);
     if(secret) {
-        valid = valid && key->priv.is_valid();
+        valid = valid && key->priv.is_valid(rng);
     }
     if(!valid) {
         return RNP_ERROR_GENERIC;
