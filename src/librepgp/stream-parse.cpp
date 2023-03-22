@@ -1592,11 +1592,6 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
             RNP_LOG("Unsupported symmetric algorithm %" PRIu8, decbuf[0]);
             return false;
         }
-        if (declen != keylen + 3) { // new block from merge 2023-03-20
-            RNP_LOG("invalid symmetric key length");
-            return false;
-        }
-
 
 #if defined(ENABLE_CRYPTO_REFRESH)
         if(sesskey->alg == PGP_PKA_X25519) {
