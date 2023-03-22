@@ -29,9 +29,7 @@
  */
 
 #include "dilithium.h"
-#include "botan/dilithium.h"
-#include <botan/dilithium.h>
-#include <botan/pubkey.h>
+#include <cassert>
 
 using namespace Botan;
 using namespace std;
@@ -53,13 +51,8 @@ rnp_dilithium_param_to_botan_dimension(dilithium_parameter_e mode)
 std::vector<uint8_t>
 pgp_dilithium_private_key_t::sign(rnp::RNG *rng, const uint8_t *msg, size_t msg_len) const
 {
-    secure_vector<uint8_t> priv_sv(key_encoded_.data(),
-                                   key_encoded_.data() + key_encoded_.size());
-    Dilithium_PrivateKey   priv_key(
-      priv_sv,
-      rnp_dilithium_param_to_botan_dimension(this->dilithium_param_),
-      DilithiumFlavor::Deterministic,
-      DilithiumKeyEncoding::Raw);
+    assert(is_initialized_);
+    auto priv_key = botan_key();
 
     auto                 signer = Botan::PK_Signer(priv_key, *rng->obj(), "");
     std::vector<uint8_t> signature = signer.sign_message(msg, msg_len, *rng->obj());
@@ -68,16 +61,35 @@ pgp_dilithium_private_key_t::sign(rnp::RNG *rng, const uint8_t *msg, size_t msg_
     return signature;
 }
 
+Dilithium_PublicKey
+pgp_dilithium_public_key_t::botan_key() const
+{
+    return Dilithium_PublicKey(key_encoded_,
+                                rnp_dilithium_param_to_botan_dimension(dilithium_param_),
+                                DilithiumFlavor::Deterministic,
+                                DilithiumKeyEncoding::Raw);
+}
+
+Dilithium_PrivateKey
+pgp_dilithium_private_key_t::botan_key() const
+{
+    secure_vector<uint8_t> priv_sv(key_encoded_.data(),
+                                   key_encoded_.data() + key_encoded_.size());
+    return Dilithium_PrivateKey(
+      priv_sv,
+      rnp_dilithium_param_to_botan_dimension(this->dilithium_param_),
+      DilithiumFlavor::Deterministic,
+      DilithiumKeyEncoding::Raw);
+}
+
 bool
 pgp_dilithium_public_key_t::verify_signature(const uint8_t *msg,
                                              size_t         msg_len,
                                              const uint8_t *signature,
                                              size_t         signature_len) const
 {
-    Dilithium_PublicKey pub_key(key_encoded_,
-                                rnp_dilithium_param_to_botan_dimension(dilithium_param_),
-                                DilithiumFlavor::Deterministic,
-                                DilithiumKeyEncoding::Raw);
+    assert(is_initialized_);
+    auto pub_key = botan_key();
 
     auto verificator = Botan::PK_Verifier(pub_key, "");
     return verificator.verify_message(msg, msg_len, signature, signature_len);
@@ -100,12 +112,20 @@ dilithium_generate_keypair(
 
 bool
 pgp_dilithium_public_key_t::is_valid(rnp::RNG *rng) const {
-    /* TODOMTG load and check in botan */
-    return true;
+    if(!is_initialized_) {
+        return false;
+    }
+
+    auto key = botan_key(); 
+    return key.check_key(*(rng->obj()), false);
 }
 
 bool
 pgp_dilithium_private_key_t::is_valid(rnp::RNG *rng) const {
-    /* TODOMTG load and check in botan */
-    return true;
+    if(!is_initialized_) {
+        return false;
+    }
+
+    auto key = botan_key(); 
+    return key.check_key(*(rng->obj()), false);
 }

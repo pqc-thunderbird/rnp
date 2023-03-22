@@ -67,16 +67,35 @@ ecdh_kem_private_key_t::botan_key_ecdh(rnp::RNG *rng) const
 {
     assert(curve_ >= PGP_CURVE_NIST_P_256 && curve_ <= PGP_CURVE_P256K1);
     const ec_curve_desc_t *ec_desc = get_curve_desc(curve_);
-    Botan::ECDH_PrivateKey priv_key(*(rng->obj()), Botan::EC_Group(ec_desc->botan_name), Botan::BigInt(key_));
-    return priv_key;
+    return Botan::ECDH_PrivateKey(*(rng->obj()), Botan::EC_Group(ec_desc->botan_name), Botan::BigInt(key_));
 }
+
+Botan::ECDH_PublicKey
+ecdh_kem_public_key_t::botan_key_ecdh(rnp::RNG *rng) const
+{
+    assert(curve_ >= PGP_CURVE_NIST_P_256 && curve_ <= PGP_CURVE_P256K1);
+
+    const ec_curve_desc_t *ec_desc = get_curve_desc(curve_);
+    Botan::EC_Group group(ec_desc->botan_name);
+    const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
+    Botan::BigInt x(key_.data() + 1, curve_order);
+    Botan::BigInt y(key_.data() + 1 + curve_order, curve_order);
+    return Botan::ECDH_PublicKey(group, group.point(x, y));
+}
+
 
 Botan::Curve25519_PrivateKey
 ecdh_kem_private_key_t::botan_key_x25519() const
 {
     assert(curve_ == PGP_CURVE_25519);
-    Botan::Curve25519_PrivateKey priv_key(key_);
-    return priv_key;
+    return Botan::Curve25519_PrivateKey(key_);
+}
+
+Botan::Curve25519_PublicKey
+ecdh_kem_public_key_t::botan_key_x25519() const
+{
+    assert(curve_ == PGP_CURVE_25519);
+    return Botan::Curve25519_PublicKey(key_);
 }
 
 rnp_result_t
@@ -187,9 +206,7 @@ exdsa_public_key_t::botan_key() const
     const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
     Botan::BigInt x(key_.data() + 1, curve_order);
     Botan::BigInt y(key_.data() + 1 + curve_order, curve_order);
-    Botan::ECDSA_PublicKey pub_key(group, group.point(x, y));
-
-    return pub_key;
+    return Botan::ECDSA_PublicKey(group, group.point(x, y));
 }
 
 /* NOTE hash_alg unused for ed25519/x25519 curves */
@@ -240,20 +257,30 @@ exdsa_private_key_t::is_valid(rnp::RNG *rng) const {
         Botan::Ed25519_PrivateKey priv_key(key_);
         return priv_key.check_key(*(rng->obj()), false);
     } else {
-        Botan::ECDSA_PrivateKey priv_key = botan_key(rng);
+        auto priv_key = botan_key(rng);
         return priv_key.check_key(*(rng->obj()), false);
     }
 }
 
 bool
 ecdh_kem_public_key_t::is_valid(rnp::RNG *rng) const {
-    /* TODOMTG load and check in botan */
-    return true;
+    if(curve_ == PGP_CURVE_25519) {
+        auto pub_key = botan_key_x25519();
+        return pub_key.check_key(*(rng->obj()), false);
+    } else {
+        auto pub_key = botan_key_ecdh(rng);
+        return pub_key.check_key(*(rng->obj()), false);
+    }
 }
 
 bool 
 ecdh_kem_private_key_t::is_valid(rnp::RNG *rng) const {
-    /* TODOMTG load and check in botan */
-    return true;
+    if(curve_ == PGP_CURVE_25519) {
+        auto priv_key = botan_key_x25519();
+        return priv_key.check_key(*(rng->obj()), false);
+    } else {
+        auto priv_key = botan_key_ecdh(rng);
+        return priv_key.check_key(*(rng->obj()), false);
+    }
 }
 

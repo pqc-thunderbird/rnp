@@ -29,11 +29,9 @@
  */
 
 #include "kyber.h"
-
-#include <botan/kyber.h>
-#include <botan/pubkey.h>
 #include <utility>
 #include <vector>
+#include <cassert>
 
 using namespace Botan;
 using namespace std;
@@ -74,11 +72,25 @@ kyber_generate_keypair(rnp::RNG *rng, kyber_parameter_e kyber_param)
                                                   kyber_param));
 }
 
+Kyber_PublicKey
+pgp_kyber_public_key_t::botan_key() const
+{
+    return Kyber_PublicKey(key_encoded_, rnp_kyber_param_to_botan_kyber_mode(kyber_mode_), KyberKeyEncoding::Raw);
+}
+
+Kyber_PrivateKey
+pgp_kyber_private_key_t::botan_key() const
+{
+    secure_vector<uint8_t> key_sv(key_encoded_.data(),
+                                  key_encoded_.data() + key_encoded_.size());
+    return Kyber_PrivateKey(key_sv, rnp_kyber_param_to_botan_kyber_mode(kyber_mode_), KyberKeyEncoding::Raw);  
+}
+
 kyber_encap_result_t
 pgp_kyber_public_key_t::encapsulate(rnp::RNG *rng)
 {
-    Kyber_PublicKey decoded_kyber_pub(
-      key_encoded_, rnp_kyber_param_to_botan_kyber_mode(kyber_mode_), KyberKeyEncoding::Raw);
+    assert(is_initialized_);
+    auto decoded_kyber_pub = botan_key();
 
     PK_KEM_Encryptor       kem_enc(decoded_kyber_pub, *rng->obj(), "Raw", "base");
     secure_vector<uint8_t> encap_key;           // this has to go over the wire
@@ -97,10 +109,8 @@ pgp_kyber_public_key_t::encapsulate(rnp::RNG *rng)
 std::vector<uint8_t>
 pgp_kyber_private_key_t::decapsulate(rnp::RNG *rng, const uint8_t *ciphertext, size_t ciphertext_len)
 {
-    secure_vector<uint8_t> key_sv(key_encoded_.data(),
-                                  key_encoded_.data() + key_encoded_.size());
-    Kyber_PrivateKey       decoded_kyber_priv(
-      key_sv, rnp_kyber_param_to_botan_kyber_mode(kyber_mode_), KyberKeyEncoding::Raw);
+    assert(is_initialized_);
+    auto decoded_kyber_priv = botan_key();
     PK_KEM_Decryptor       kem_dec(decoded_kyber_priv, *rng->obj(), "Raw", "base");
     secure_vector<uint8_t> dec_shared_key = kem_dec.decrypt(ciphertext, ciphertext_len, key_share_size_from_kyber_param(kyber_mode_));
     return std::vector<uint8_t>(dec_shared_key.data(),
@@ -109,12 +119,20 @@ pgp_kyber_private_key_t::decapsulate(rnp::RNG *rng, const uint8_t *ciphertext, s
 
 bool
 pgp_kyber_public_key_t::is_valid(rnp::RNG *rng) const {
-    /* TODOMTG load and check in botan */
-    return true;
+    if(!is_initialized_) {
+        return false;
+    }
+
+    auto key = botan_key(); 
+    return key.check_key(*(rng->obj()), false);
 }
 
 bool
 pgp_kyber_private_key_t::is_valid(rnp::RNG *rng) const {
-    /* TODOMTG load and check in botan */
-    return true;
+    if(!is_initialized_) {
+        return false;
+    }
+
+    auto key = botan_key(); 
+    return key.check_key(*(rng->obj()), false);
 }

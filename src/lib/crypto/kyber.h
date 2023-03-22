@@ -36,7 +36,8 @@
 #include <vector>
 #include <repgp/repgp_def.h>
 #include "crypto/rng.h"
-#include "botan/secmem.h"
+#include <botan/kyber.h>
+#include <botan/pubkey.h>
 
 enum kyber_parameter_e { kyber_768, kyber_1024 };
 
@@ -67,6 +68,9 @@ class pgp_kyber_private_key_t {
     }
 
   private:
+    Botan::Kyber_PrivateKey botan_key() const;
+
+    bool is_initialized_ = false;
     Botan::secure_vector<uint8_t> key_encoded_;
     kyber_parameter_e kyber_mode_;
 };
@@ -92,6 +96,9 @@ class pgp_kyber_public_key_t {
     };
 
   private:
+    Botan::Kyber_PublicKey botan_key() const;
+
+    bool is_initialized_ = false;
     std::vector<uint8_t> key_encoded_;
     kyber_parameter_e kyber_mode_;
 };

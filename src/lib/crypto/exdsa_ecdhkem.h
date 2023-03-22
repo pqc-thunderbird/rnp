@@ -88,6 +88,9 @@ public:
     rnp_result_t encapsulate(rnp::RNG *rng, std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &symmetric_key);
 
 private:
+    Botan::ECDH_PublicKey botan_key_ecdh(rnp::RNG *rng) const;
+    Botan::Curve25519_PublicKey botan_key_x25519() const;
+
     std::vector<uint8_t> key_;
 };
 
