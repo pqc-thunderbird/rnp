@@ -2791,14 +2791,14 @@ pgp_key_material_t::bits() const
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384: 
-        return 0; /* TODOMTG: public key length */
+        return 8  * kyber_ecdh.pub.get_encoded().size(); /* public key length */
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        return 0; /* TODOMTG: public key length*/
+        return 8 * dilithium_exdsa.pub.get_encoded().size(); /* public key length*/
 #endif
     default:
         RNP_LOG("Unknown public key alg: %d", (int) alg);

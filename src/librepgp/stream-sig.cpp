@@ -385,9 +385,11 @@ pgp_sig_subpkt_t::parse()
             fields.issuer_fp.len = len - 1;
         }
         break;
-    case PGP_SIG_SUBPKT_PREFERRED_AEAD_CIPHERSUITE:
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_SIG_SUBPKT_PREFERRED_AEAD_CIPHERSUITES:
         // TODOMTG: handle better
         break;
+#endif
     case PGP_SIG_SUBPKT_PRIVATE_100:
     case PGP_SIG_SUBPKT_PRIVATE_101:
     case PGP_SIG_SUBPKT_PRIVATE_102:

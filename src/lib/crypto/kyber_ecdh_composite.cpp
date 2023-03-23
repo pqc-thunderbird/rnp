@@ -74,7 +74,7 @@ pgp_kyber_ecdh_composite_key_t::ecdh_curve_privkey_size(pgp_curve_t curve) {
     switch(curve) {
         case PGP_CURVE_25519:
             return 32;
-        /* TODOMTG */
+        /* TODO */
         // case PGP_CURVE_X448:
         //   return 56;
         case PGP_CURVE_NIST_P_256:
@@ -96,7 +96,7 @@ pgp_kyber_ecdh_composite_key_t::ecdh_curve_pubkey_size(pgp_curve_t curve) {
     switch(curve) {
         case PGP_CURVE_25519:
             return 32;
-        /* TODOMTG */
+        /* TODO */
         //  case PGP_CURVE_X448:
         //    return 56;
         case PGP_CURVE_NIST_P_256:
@@ -118,7 +118,7 @@ pgp_kyber_ecdh_composite_key_t::ecdh_curve_ephemeral_size(pgp_curve_t curve) {
     switch(curve) {
         case PGP_CURVE_25519:
             return 32;
-        /* TODOMTG */
+        /* TODO */
         //  case PGP_CURVE_X448:
         //    return 56;
         case PGP_CURVE_NIST_P_256:
@@ -140,7 +140,7 @@ pgp_kyber_ecdh_composite_key_t::ecdh_curve_keyshare_size(pgp_curve_t curve) {
     switch(curve) {
         case PGP_CURVE_25519:
             return 32;
-        /* TODOMTG */
+        /* TODO */
         //  case PGP_CURVE_X448:
         //    return 56;
         case PGP_CURVE_NIST_P_256:

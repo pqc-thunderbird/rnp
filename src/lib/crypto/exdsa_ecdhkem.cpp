@@ -124,7 +124,6 @@ ecdh_kem_public_key_t::encapsulate(rnp::RNG *rng, std::vector<uint8_t> &cipherte
 rnp_result_t
 ecdh_kem_private_key_t::decapsulate(rnp::RNG *rng, const std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &plaintext)
 {
-    Botan::Null_RNG null_rng;
     if (curve_ == PGP_CURVE_25519) {
         Botan::Curve25519_PrivateKey priv_key = botan_key_x25519();
         Botan::PK_Key_Agreement key_agreement(priv_key, *(rng->obj()), "Raw");

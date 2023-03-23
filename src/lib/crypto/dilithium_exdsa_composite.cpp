@@ -38,7 +38,7 @@ void
 pgp_dilithium_exdsa_composite_key_t::initialized_or_throw() const {
     if(!is_initialized()) {
         RNP_LOG("Trying to use uninitialized dilithium-exdsa key");
-        throw rnp::rnp_exception(RNP_ERROR_GENERIC);  /* TODO better return error */
+        throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
     }
 }
 
@@ -70,7 +70,7 @@ pgp_dilithium_exdsa_composite_key_t::exdsa_curve_privkey_size(pgp_curve_t curve)
     switch(curve) {
         case PGP_CURVE_ED25519:
             return 32;
-        /* TODOMTG */
+        /* TODO */
         // case PGP_CURVE_ED448:
         //   return 56;
         case PGP_CURVE_NIST_P_256:
@@ -92,7 +92,7 @@ pgp_dilithium_exdsa_composite_key_t::exdsa_curve_pubkey_size(pgp_curve_t curve) 
     switch(curve) {
         case PGP_CURVE_ED25519:
             return 32;
-        /* TODOMTG */
+        /* TODO */
         //  case PGP_CURVE_ED448:
         //    return 56;
         case PGP_CURVE_NIST_P_256:
@@ -114,7 +114,7 @@ pgp_dilithium_exdsa_composite_key_t::exdsa_curve_signature_size(pgp_curve_t curv
     switch(curve) {
         case PGP_CURVE_ED25519:
             return 64;
-        /* TODOMTG */
+        /* TODO */
         //  case PGP_CURVE_ED448:
         //    return 114;
         case PGP_CURVE_NIST_P_256:
@@ -168,7 +168,7 @@ pgp_dilithium_exdsa_composite_key_t::pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg)
       case PGP_PKA_DILITHIUM5_P384:
         return PGP_CURVE_NIST_P_384;
       case PGP_PKA_DILITHIUM5_ED448:
-        return PGP_CURVE_UNKNOWN; /* TODOMTG: Not yet implemented */
+        throw rnp::rnp_exception(RNP_ERROR_NOT_IMPLEMENTED); /* TODO: Not yet implemented */
       default:
         RNP_LOG("invalid PK alg given");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS); 
