@@ -60,10 +60,12 @@ signature_init(const pgp_key_pkt_t &key, const pgp_signature_t &sig)
 {
     auto hash = rnp::Hash::create(sig.halg);
 
+#if defined(ENABLE_CRYPTO_REFRESH)
     if (key.version == PGP_V6)
     {
         hash->add(sig.salt, sig.salt_size);
     }
+#endif
 
     if (key.material.alg == PGP_PKA_SM2) {
 #if defined(ENABLE_SM2)

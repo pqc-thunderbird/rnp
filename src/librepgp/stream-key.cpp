@@ -1330,7 +1330,14 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     tag = (pgp_pkt_type_t) atag;
     /* version */
     uint8_t ver = 0;
-    if (!pkt.get(ver) || (ver < PGP_V2) || (ver > PGP_V6) || ver == 0x05) { // v5 / 0x05 currently not implemented
+    if (!pkt.get(ver) || (ver < PGP_V2) || ((ver > PGP_V4) &&
+#if defined(ENABLE_CRYPTO_REFRESH)
+     (ver != PGP_V6)
+#else
+    true
+#endif
+    )
+    ) {
         RNP_LOG("wrong key packet version");
         return RNP_ERROR_BAD_FORMAT;
     }
@@ -1355,6 +1362,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
         RNP_LOG("wrong v3 pk algorithm");
         return RNP_ERROR_BAD_FORMAT;
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
     /* v6 length field for public key material */
     if (version == PGP_V6) {
         uint32_t material_len;
@@ -1362,6 +1370,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
             return RNP_ERROR_BAD_FORMAT;
         }
     }
+#endif
     /* algorithm specific fields */
     switch (alg) {
     case PGP_PKA_RSA:
@@ -1478,13 +1487,16 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
             RNP_LOG("failed to read key protection");
             return RNP_ERROR_BAD_FORMAT;
         }
+#if defined(ENABLE_CRYPTO_REFRESH)
         if(version == PGP_V6 && usage == 255) {
             RNP_LOG("Error when parsing S2K usage: A version 6 packet MUST NOT use the value 255.");
             return RNP_ERROR_BAD_FORMAT;
         }
+#endif
         sec_protection.s2k.usage = (pgp_s2k_usage_t) usage;
         sec_protection.cipher_mode = PGP_CIPHER_MODE_CFB;
 
+#if defined(ENABLE_CRYPTO_REFRESH)
         if(version == PGP_V6 && sec_protection.s2k.usage != PGP_S2KU_NONE) {
             // V6 packages contain the count of the optional 1-byte parameters
             uint8_t s2k_params_count;
@@ -1492,6 +1504,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
                 RNP_LOG("failed to read key protection");
             }
         }
+#endif
 
         switch (sec_protection.s2k.usage) {
         case PGP_S2KU_NONE:
@@ -1499,6 +1512,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
         case PGP_S2KU_ENCRYPTED:
         case PGP_S2KU_ENCRYPTED_AND_HASHED: {
             /* we have s2k */
+#if defined(ENABLE_CRYPTO_REFRESH)
             if (version == PGP_V6) {
                 // V6 packages contain the count of the optional 1-byte parameters
                 uint8_t s2k_params_count;
@@ -1506,6 +1520,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
                     RNP_LOG("failed to read key protection");
                 }
             }
+#endif
             uint8_t salg = 0;
             if (!pkt.get(salg) || !pkt.get(sec_protection.s2k)) {
                 RNP_LOG("failed to read key protection");
@@ -1626,7 +1641,13 @@ void
 pgp_key_pkt_t::fill_hashed_data()
 {
     /* we don't have a need to write v2-v3 signatures */
-    if (version != PGP_V4 && version != PGP_V6) {
+    if (version != PGP_V4 &&
+#if defined(ENABLE_CRYPTO_REFRESH)
+    (version != PGP_V6)
+#else
+    true
+#endif
+    ) {
         RNP_LOG("unknown key version %d", (int) version);
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
@@ -1639,9 +1660,11 @@ pgp_key_pkt_t::fill_hashed_data()
     /* Algorithm specific fields */
     pgp_packet_body_t alg_spec_fields(PGP_PKT_RESERVED);
     make_alg_spec_fields_for_public_key(alg_spec_fields);
+#if defined(ENABLE_CRYPTO_REFRESH)
     if(version == PGP_V6) {
         hbody.add_uint32(alg_spec_fields.size());
     }
+#endif
     hbody.add(alg_spec_fields.data(), alg_spec_fields.size());
 
     hashed_data = (uint8_t *) malloc(hbody.size());
