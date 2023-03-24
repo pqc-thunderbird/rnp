@@ -1564,13 +1564,16 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
+    {
+        pgp_key_t key(*seckey);
         declen = decbuf.size();
-        err = keymaterial->kyber_ecdh.priv.decrypt(&ctx.rng, decbuf.data(), &declen, &encmaterial.kyber_ecdh, keymaterial->kyber_ecdh.pub.get_encoded());
+        err = keymaterial->kyber_ecdh.priv.decrypt(&ctx.rng, decbuf.data(), &declen, &encmaterial.kyber_ecdh, key.subkey_pkt_hash());
         if (err != RNP_SUCCESS) {
             RNP_LOG("Kyber ECC decryption failure");
             return false;
         }
         break;
+    }
 #endif
     default:
         RNP_LOG("unsupported public key algorithm %d\n", seckey->alg);

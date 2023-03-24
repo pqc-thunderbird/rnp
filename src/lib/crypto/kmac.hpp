@@ -54,7 +54,7 @@ class KMAC256 {
     std::vector<uint8_t> domSeparation() const;
     std::vector<uint8_t> customizationString() const;
     std::vector<uint8_t> counter() const;
-    std::vector<uint8_t> fixedInfo(const std::vector<uint8_t> &encoded_pubkey, pgp_pubkey_alg_t alg_id);
+    std::vector<uint8_t> fixedInfo(const std::vector<uint8_t> &subkey_pkt_hash, pgp_pubkey_alg_t alg_id);
     std::vector<uint8_t> encKeyShares(const std::vector<uint8_t> &ecc_key_share,
                                       const std::vector<uint8_t> &kyber_key_share,
                                       const std::vector<uint8_t> &encoded_pubkey,
@@ -69,7 +69,7 @@ class KMAC256 {
     virtual void compute(const std::vector<uint8_t> &ecc_key_share,
                          const std::vector<uint8_t> &kyber_key_share,
                          const pgp_pubkey_alg_t     alg_id,
-                         const std::vector<uint8_t> &encoded_pubkey,
+                         const std::vector<uint8_t> &subkey_pkt_hash,
                          std::vector<uint8_t>       &out) = 0;
 
     virtual ~KMAC256();

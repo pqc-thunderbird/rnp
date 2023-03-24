@@ -67,9 +67,7 @@ KMAC256::counter() const
     return counter_;
 }
 
-/* TODOMTG: this will likely change soon
-    -> we implement "encoded public key" instead of "encryption sub-key packet"
-
+/* 
     //   Input:
     //   algID - the algorithm ID encoded as octet
     //   publicKey - the recipient's encryption sub-key packet
@@ -78,19 +76,10 @@ KMAC256::counter() const
     fixedInfo = algID || SHA3-256(publicKey)
 */
 std::vector<uint8_t>
-KMAC256::fixedInfo(const std::vector<uint8_t> &encoded_pubkey, pgp_pubkey_alg_t alg_id)
+KMAC256::fixedInfo(const std::vector<uint8_t> &subkey_pkt_hash, pgp_pubkey_alg_t alg_id)
 {
-    pgp_hash_alg_t hash_alg = PGP_HASH_SHA3_256;
-    
-    /* hash public key */
-    auto hash = rnp::Hash::create(hash_alg);
-    std::vector<uint8_t> digest(Hash::size(hash_alg));
-    hash->add(encoded_pubkey);
-    hash->finish(digest.data());
-
-    // return algID || SHA3-256(publicKey)
-    std::vector<uint8_t> result(digest);
-    result.push_back(static_cast<uint8_t>(alg_id));
+    std::vector<uint8_t> result(subkey_pkt_hash);
+    result.insert(result.begin(), (static_cast<uint8_t>(alg_id)));;
     return result;
 }
 

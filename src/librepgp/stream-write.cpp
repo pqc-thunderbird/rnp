@@ -554,7 +554,9 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     pkey.alg = userkey->alg();
     /* set key_id (used for PKESK v3) and fingerprint (used for PKESK v6) */
     pkey.key_id = userkey->keyid();
+#if defined(ENABLE_CRYPTO_REFRESH)
     pkey.fp = userkey->fp();
+#endif
     
     /* Encrypt the session key */
     rnp::secure_array<uint8_t, PGP_MAX_KEY_SIZE + 3> enckey;
@@ -689,7 +691,8 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         ret = userkey->material().kyber_ecdh.pub.encrypt(&handler->ctx->ctx->rng,
                                                         &material.kyber_ecdh,
                                                         enckey.data(),
-                                                        enckey_len);
+                                                        enckey_len,
+                                                        userkey->subkey_pkt_hash());
         if (ret) {
             RNP_LOG("Kyber ECC Encrypt failed");
             return ret;

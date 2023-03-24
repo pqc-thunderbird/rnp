@@ -35,6 +35,7 @@
 #include "kmac.hpp"
 #include <botan/rfc3394.h>
 #include <botan/symkey.h>
+#include <cassert>
 
 pgp_kyber_ecdh_composite_key_t::~pgp_kyber_ecdh_composite_key_t() {}
 
@@ -274,9 +275,10 @@ pgp_kyber_ecdh_composite_private_key_t::parse_component_keys(std::vector<uint8_t
 
 
 rnp_result_t
-pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, size_t *out_len, const pgp_kyber_ecdh_encrypted_t *enc, const std::vector<uint8_t> &encoded_pubkey)
+pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, size_t *out_len, const pgp_kyber_ecdh_encrypted_t *enc, const std::vector<uint8_t> &subkey_pkt_hash)
 {
     initialized_or_throw();
+    assert(subkey_pkt_hash.size() == rnp::Hash::size(PGP_HASH_SHA3_256));
     rnp_result_t res;
     std::vector<uint8_t> ecdh_keyshare;
     std::vector<uint8_t> kyber_keyshare;
@@ -306,7 +308,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, siz
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
     std::vector<uint8_t> kek_vec;
     auto kmac = rnp::KMAC256::create();
-    kmac->compute(ecdh_keyshare, kyber_keyshare, pk_alg(), encoded_pubkey, kek_vec);
+    kmac->compute(ecdh_keyshare, kyber_keyshare, pk_alg(), subkey_pkt_hash, kek_vec);
     Botan::SymmetricKey kek(kek_vec);
 
     // Compute sessionKey := AESKeyUnwrap(KEK, C) with AES-256 as per [RFC3394], aborting if the 64 bit integrity check fails
@@ -401,9 +403,10 @@ pgp_kyber_ecdh_composite_public_key_t::parse_component_keys(std::vector<uint8_t>
 }
 
 rnp_result_t
-pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_encrypted_t *out, const uint8_t *session_key, size_t session_key_len)
+pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_encrypted_t *out, const uint8_t *session_key, size_t session_key_len, const std::vector<uint8_t> &subkey_pkt_hash)
 {
     initialized_or_throw();
+    assert(subkey_pkt_hash.size() == rnp::Hash::size(PGP_HASH_SHA3_256));
 
     rnp_result_t res;
     std::vector<uint8_t> ecdh_ciphertext;
@@ -427,7 +430,7 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
     std::vector<uint8_t> kek_vec;
     auto kmac = rnp::KMAC256::create();
-    kmac->compute(ecdh_symmetric_key, kyber_encap.symmetric_key, pk_alg(), get_encoded(), kek_vec);
+    kmac->compute(ecdh_symmetric_key, kyber_encap.symmetric_key, pk_alg(), subkey_pkt_hash, kek_vec);
     Botan::SymmetricKey kek(kek_vec);
 
     // Compute C := AESKeyWrap(KEK, sessionKey) with AES-256 as per [RFC3394] that includes a 64 bit integrity check

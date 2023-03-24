@@ -70,9 +70,9 @@ class pgp_kyber_private_key_t {
   private:
     Botan::Kyber_PrivateKey botan_key() const;
 
-    bool is_initialized_ = false;
     Botan::secure_vector<uint8_t> key_encoded_;
     kyber_parameter_e kyber_mode_;
+    bool is_initialized_ = false;
 };
 
 class pgp_kyber_public_key_t {
@@ -98,9 +98,9 @@ class pgp_kyber_public_key_t {
   private:
     Botan::Kyber_PublicKey botan_key() const;
 
-    bool is_initialized_ = false;
     std::vector<uint8_t> key_encoded_;
     kyber_parameter_e kyber_mode_;
+    bool is_initialized_ = false;
 };
 
 std::pair<pgp_kyber_public_key_t, pgp_kyber_private_key_t> kyber_generate_keypair(
