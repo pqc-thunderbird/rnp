@@ -1307,7 +1307,7 @@ pgp_signature_t::parse_v4v6(pgp_packet_body_t &pkt)
     halg = (pgp_hash_alg_t) buf[2];
     /* hashed subpackets length */
     
-    uint8_t splen_buf[PGP_SIG_HASHED_AREA_SIZE_OCTETS_V6]; // large enough to hold V4 and V6 lengths
+    uint8_t splen_buf[PGP_MAX_SIG_HASHED_AREA_SIZE_OCTETS]; // large enough to hold V4 and V6 lengths
     unsigned splen;
     size_t splen_size;
 

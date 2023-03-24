@@ -96,8 +96,12 @@
 
 /* Size of the fingerprint */
 #define PGP_FINGERPRINT_V4_SIZE 20
-#define PGP_FINGERPRINT_V6_SIZE 32
-#define PGP_MAX_FINGERPRINT_SIZE PGP_FINGERPRINT_V6_SIZE
+#if defined(ENABLE_CRYPTO_REFRESH)
+    #define PGP_FINGERPRINT_V6_SIZE 32
+    #define PGP_MAX_FINGERPRINT_SIZE PGP_FINGERPRINT_V6_SIZE
+#else
+    #define PGP_MAX_FINGERPRINT_SIZE PGP_FINGERPRINT_V4_SIZE
+#endif
 #define PGP_MAX_FINGERPRINT_HEX_SIZE (PGP_MAX_FINGERPRINT_SIZE * 2) + 1
 
 /* SEIPDv2 salt length */
@@ -111,11 +115,20 @@
 #define PGP_MARKER_LEN 3
 
 /* V6 Signature Salt */
-#define PGP_MAX_SALT_SIZE_V6_SIG 32
+#if defined(ENABLE_CRYPTO_REFRESH)
+    #define PGP_MAX_SALT_SIZE_V6_SIG 32
+#endif
 
 /* size of length for hashed/unhashed subpacket data*/
 #define PGP_SIG_HASHED_AREA_SIZE_OCTETS_V4 2
-#define PGP_SIG_HASHED_AREA_SIZE_OCTETS_V6 4
+
+#if defined(ENABLE_CRYPTO_REFRESH)
+    #define PGP_SIG_HASHED_AREA_SIZE_OCTETS_V6 4
+    #define PGP_MAX_SIG_HASHED_AREA_SIZE_OCTETS PGP_SIG_HASHED_AREA_SIZE_OCTETS_V6
+#else
+    #define PGP_MAX_SIG_HASHED_AREA_SIZE_OCTETS PGP_SIG_HASHED_AREA_SIZE_OCTETS_V4
+#endif
+
 
 /** Old Packet Format Lengths.
  * Defines the meanings of the 2 bits for length type in the

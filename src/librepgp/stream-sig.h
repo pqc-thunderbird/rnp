@@ -61,9 +61,11 @@ typedef struct pgp_signature_t {
     /* common v4 and v6 fields */
     std::vector<pgp_sig_subpkt_t> subpkts;
 
+  #if defined(ENABLE_CRYPTO_REFRESH)
     /* v6 - only fields */
     uint8_t salt[PGP_MAX_SALT_SIZE_V6_SIG];
     uint8_t salt_size;
+  #endif
 
     pgp_signature_t()
         : type_(PGP_SIG_BINARY), version(PGP_VUNKNOWN), palg(PGP_PKA_NOTHING),
