@@ -35,6 +35,8 @@
 #if defined(ENABLE_CRYPTO_REFRESH)
 #include "x25519.h"
 #include "ed25519.h"
+#include "botan/bigint.h"
+#include "botan/ecdh.h"
 #include <cassert>
 #endif
 
