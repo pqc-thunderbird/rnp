@@ -274,6 +274,43 @@ pgp_kyber_ecdh_composite_private_key_t::parse_component_keys(std::vector<uint8_t
 }
 
 
+namespace
+{
+    std::vector<uint8_t> hashed_ecc_keyshare(const std::vector<uint8_t> &key_share, const std::vector<uint8_t> &ciphertext, pgp_pubkey_alg_t alg_id)
+    {
+        /* SHA3-256(X || eccCipherText) or SHA3-256(X || eccCipherText) depending on algorithm */
+
+        std::vector<uint8_t> digest;
+        pgp_hash_alg_t hash_alg;
+
+        switch(alg_id)
+        {
+            case PGP_PKA_KYBER768_X25519:
+            case PGP_PKA_KYBER768_BP256:
+            case PGP_PKA_KYBER768_P256:
+                hash_alg = PGP_HASH_SHA3_256;
+                break;
+            case PGP_PKA_KYBER1024_X448:
+            case PGP_PKA_KYBER1024_P384:
+            case PGP_PKA_KYBER1024_BP384:
+                hash_alg = PGP_HASH_SHA3_512;
+                break;
+            default:
+                RNP_LOG("key combiner does not support this algorithm");
+                throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
+        }
+
+        auto hash = rnp::Hash::create(hash_alg);
+        hash->add(key_share);
+        hash->add(ciphertext);
+
+        digest.resize(rnp::Hash::size(hash_alg));
+        hash->finish(digest.data());
+
+        return digest;
+    }
+}
+
 rnp_result_t
 pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, size_t *out_len, const pgp_kyber_ecdh_encrypted_t *enc, const std::vector<uint8_t> &subkey_pkt_hash)
 {
@@ -281,6 +318,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, siz
     assert(subkey_pkt_hash.size() == rnp::Hash::size(PGP_HASH_SHA3_256));
     rnp_result_t res;
     std::vector<uint8_t> ecdh_keyshare;
+    std::vector<uint8_t> hashed_ecdh_keyshare;
     std::vector<uint8_t> kyber_keyshare;
 
     if( ((enc->wrapped_sesskey.size() % 8) != 0) || (enc->wrapped_sesskey.size() < 16)) {
@@ -296,6 +334,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, siz
         RNP_LOG("error when decrypting kyber-ecdh encrypted session key");
         return res;
     }
+    hashed_ecdh_keyshare = hashed_ecc_keyshare(ecdh_keyshare, ecdh_encapsulated_keyshare, pk_alg_);
     
     // Compute (kyberKeyShare) := kyberKem.decap(kyberCipherText, kyberPrivateKey)
     std::vector<uint8_t> kyber_encapsulated_keyshare = std::vector<uint8_t>(enc->composite_ciphertext.begin() + ecdh_curve_ephemeral_size(curve), enc->composite_ciphertext.end());
@@ -308,7 +347,7 @@ pgp_kyber_ecdh_composite_private_key_t::decrypt(rnp::RNG *rng, uint8_t *out, siz
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
     std::vector<uint8_t> kek_vec;
     auto kmac = rnp::KMAC256::create();
-    kmac->compute(ecdh_keyshare, kyber_keyshare, pk_alg(), subkey_pkt_hash, kek_vec);
+    kmac->compute(hashed_ecdh_keyshare, ecdh_encapsulated_keyshare, kyber_keyshare, kyber_encapsulated_keyshare, pk_alg(), subkey_pkt_hash, kek_vec);
     Botan::SymmetricKey kek(kek_vec);
 
     // Compute sessionKey := AESKeyUnwrap(KEK, C) with AES-256 as per [RFC3394], aborting if the 64 bit integrity check fails
@@ -411,6 +450,7 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     rnp_result_t res;
     std::vector<uint8_t> ecdh_ciphertext;
     std::vector<uint8_t> ecdh_symmetric_key;
+    std::vector<uint8_t> ecdh_hashed_symmetric_key;
 
     if((session_key_len % 8) != 0) {
         RNP_LOG("AES key wrap requires a multiple of 8 octets as input key");
@@ -423,6 +463,7 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
         RNP_LOG("error when encapsulating with ECDH");
         return res;
     }
+    ecdh_hashed_symmetric_key = hashed_ecc_keyshare(ecdh_symmetric_key, ecdh_ciphertext, pk_alg_);
 
     // Compute (kyberCipherText, kyberKeyShare) := kyberKem.encap(kyberPublicKey)
     kyber_encap_result_t kyber_encap = kyber_key_.encapsulate(rng);
@@ -430,7 +471,7 @@ pgp_kyber_ecdh_composite_public_key_t::encrypt(rnp::RNG *rng, pgp_kyber_ecdh_enc
     // Compute KEK := multiKeyCombine(eccKeyShare, kyberKeyShare, fixedInfo) as defined in Section 4.2.2
     std::vector<uint8_t> kek_vec;
     auto kmac = rnp::KMAC256::create();
-    kmac->compute(ecdh_symmetric_key, kyber_encap.symmetric_key, pk_alg(), subkey_pkt_hash, kek_vec);
+    kmac->compute(ecdh_hashed_symmetric_key, ecdh_ciphertext, kyber_encap.symmetric_key, kyber_encap.ciphertext, pk_alg(), subkey_pkt_hash, kek_vec);
     Botan::SymmetricKey kek(kek_vec);
 
     // Compute C := AESKeyWrap(KEK, sessionKey) with AES-256 as per [RFC3394] that includes a 64 bit integrity check

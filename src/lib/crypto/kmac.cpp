@@ -84,21 +84,31 @@ KMAC256::fixedInfo(const std::vector<uint8_t> &subkey_pkt_hash, pgp_pubkey_alg_t
 }
 
 std::vector<uint8_t>
-KMAC256::encKeyShares(const std::vector<uint8_t> &ecc_key_share,
-                      const std::vector<uint8_t> &kyber_key_share,
-                      const std::vector<uint8_t> &encoded_pubkey,
-                      pgp_pubkey_alg_t alg_id) 
+KMAC256::encData(const std::vector<uint8_t> &ecc_key_share,
+                 const std::vector<uint8_t> &ecc_ciphertext,
+                 const std::vector<uint8_t> &kyber_key_share,
+                 const std::vector<uint8_t> &kyber_ciphertext,
+                 const std::vector<uint8_t> &subkey_pkt_hash,
+                 pgp_pubkey_alg_t alg_id) 
 {
-    std::vector<uint8_t> result;
+    std::vector<uint8_t> enc_data;
     std::vector<uint8_t> counter_vec = counter();
-    std::vector<uint8_t> fixedInfo_vec = fixedInfo(encoded_pubkey, alg_id);
+    std::vector<uint8_t> fixedInfo_vec = fixedInfo(subkey_pkt_hash, alg_id);
 
-    result.insert(result.end(), counter_vec.begin(), counter_vec.end());
-    result.insert(result.end(), ecc_key_share.begin(), ecc_key_share.end());
-    result.insert(result.end(), kyber_key_share.begin(), kyber_key_share.end());
-    result.insert(result.end(), fixedInfo_vec.begin(), fixedInfo_vec.end());
+    /* draft-wussler-openpgp-pqc-01:
 
-    return result;
+        eccKemData = eccKeyShare || eccCipherText
+        kyberKemData = kyberKeyShare || kyberCipherText
+        encData = counter || eccKemData || kyberKemData || fixedInfo
+    */
+    enc_data.insert(enc_data.end(), counter_vec.begin(), counter_vec.end());
+    enc_data.insert(enc_data.end(), ecc_key_share.begin(), ecc_key_share.end());
+    enc_data.insert(enc_data.end(), ecc_ciphertext.begin(), ecc_ciphertext.end());
+    enc_data.insert(enc_data.end(), kyber_key_share.begin(), kyber_key_share.end());
+    enc_data.insert(enc_data.end(), kyber_ciphertext.begin(), kyber_ciphertext.end());
+    enc_data.insert(enc_data.end(), fixedInfo_vec.begin(), fixedInfo_vec.end());
+
+    return enc_data;
 }
 
 
