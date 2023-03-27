@@ -628,6 +628,10 @@ TEST_F(rnp_tests, kyber_ecdh_roundtrip)
     uint8_t              result[32] = {0};
     size_t               result_len = sizeof(result);
 
+    for(size_t i = 0; i < plaintext_len; i++) {
+        plaintext[i] = i; // assures that we do not have a special case with all-zeroes
+    }
+
     for (size_t i = 0; i < ARRAY_SIZE(algs); i++) {
         rnp_keygen_crypto_params_t key_desc;
         key_desc.key_alg = algs[i];
