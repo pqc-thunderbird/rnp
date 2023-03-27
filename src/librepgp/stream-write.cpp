@@ -563,23 +563,25 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     uint8_t *sesskey = enckey.data(); /* pointer to the actual session key */
     size_t   enckey_len = keylen;
 
+    pkey.salg = param->ctx->ealg;
+
 #if defined(ENABLE_CRYPTO_REFRESH)
     if (pkey.version == PGP_PKSK_V3) {
-#endif
-        enckey[0] = param->ctx->ealg;
-        size_t opt_padding = 0;
-#if defined(ENABLE_CRYPTO_REFRESH)
-
-        /* add 7 zero-bytes for X25519 */
-        if(pkey.alg == PGP_PKA_X25519) {
-            opt_padding = 7;
-            memset(&enckey[1], 0, opt_padding);
+        size_t key_offset;
+        if(do_encrypt_pkesk_v3_alg_id(pkey.alg)) {
+            /* for pre-crypto-refresh algorithms, algorithm ID is part of the session key */
+            key_offset = 1;
+            enckey[0] = pkey.salg;
+        } else {
+            key_offset = 0;
         }
-
+#else
+        enckey[0] = pkey.salg;
+        size_t key_offset = 1;
 #endif
-        memcpy(&enckey[1 + opt_padding], key, keylen);
-        sesskey += 1 + opt_padding;
-        enckey_len += 1 + opt_padding;
+        memcpy(&enckey[key_offset], key, keylen);
+        sesskey += key_offset;
+        enckey_len += key_offset;
 #if defined(ENABLE_CRYPTO_REFRESH)
     }
     else { // PGP_PKSK_V6

@@ -145,11 +145,11 @@ x25519_validate_key_native(rnp::RNG *rng, const pgp_x25519_key_t *key, bool secr
     bool valid_pub;
     bool valid_priv;
 
-    Botan::Ed25519_PublicKey pub_key(key->priv);
+    Botan::Curve25519_PublicKey pub_key(key->priv);
     valid_pub = pub_key.check_key(*(rng->obj()), false);
 
     if(secret) {
-        Botan::Ed25519_PrivateKey priv_key(Botan::secure_vector<uint8_t>(key->priv.begin(), key->priv.end()));
+        Botan::Curve25519_PrivateKey priv_key(Botan::secure_vector<uint8_t>(key->priv.begin(), key->priv.end()));
         valid_priv = priv_key.check_key(*(rng->obj()), false);
     } else {
         valid_priv = true;
