@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: true
 
       - name: Install Packages (cpp)
         if: ${{ matrix.language == 'cpp' }}
@@ -64,7 +66,7 @@ jobs:
         run: |
           pwd
           mkdir rnp-build; pushd rnp-build
-          cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH="${BOTAN_INSTALL}" -DDOWNLOAD_GTEST=Off -DDOWNLOAD_RUBYRNP=Off -DDOWNLOAD_SEXP=ON
+          cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH="${BOTAN_INSTALL}" -DDOWNLOAD_GTEST=Off -DDOWNLOAD_RUBYRNP=Off
           make -j2
 
       - name: Perform CodeQL Analysis

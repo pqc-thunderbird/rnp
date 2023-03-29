@@ -123,6 +123,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: true
 
       - name: Setup noncacheable dependencies
         run: |
@@ -159,7 +161,6 @@ jobs:
 
   package-source:
     runs-on: ubuntu-latest
-#    needs: tests
     container: ${{ matrix.env.container }}
     timeout-minutes: 30
     strategy:
@@ -175,11 +176,17 @@ jobs:
     env:  ${{ matrix.env }}
 
     steps:
+      - name: Install prerequisites for prerequisites
+        if: matrix.env.container == 'centos:7'
+        run:  yum -y install http://opensource.wandisco.com/centos/7/git/x86_64/wandisco-git-release-7-2.noarch.rpm
+
       - name: Install prerequisites
         run:  yum -y install git sudo rpm-build
 
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: true
 
       - name: Setup noncacheable dependencies
         run: |
@@ -187,7 +194,7 @@ jobs:
           ci/install_noncacheable_dependencies.sh
 
       - name: Configure
-        run: cmake -B build -DDOWNLOAD_SEXP=ON -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF
+        run: cmake -B build -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF
 
       - name: Package SRPM
         run:  cpack -B build/SRPM -G RPM --config build/CPackSourceConfig.cmake
@@ -253,22 +260,10 @@ jobs:
         if: matrix.env.container == 'centos:7'
         run: bash -c "echo \"$(cut -f 2- -d ' ' /opt/rh/rh-ruby30/enable)\"">> $GITHUB_ENV
 
-      - name: Checkout sexp
-        uses: actions/checkout@v3
-        with:
-          repository: rnpgp/sexp
-          path: sexp
-
-      - name: Build and install sexp
-        run: |
-          cmake sexp -Bsexp/build -DWITH_SEXP_TESTS=OFF -DWITH_SEXP_CLI=OFF -DCMAKE_INSTALL_PREFIX=/usr
-          cmake --build sexp/build --config Release
-          cmake --install sexp/build
-
       - name: Build rnp
         run: |
           cmake ~/rpmbuild/SOURCES -B ~/rpmbuild/SOURCES/BUILD -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF \
-                                   -DDOWNLOAD_SEXP=OFF -DCMAKE_INSTALL_PREFIX=/usr
+                                   -DCMAKE_INSTALL_PREFIX=/usr
           cmake --build ~/rpmbuild/SOURCES/BUILD --config Release
 
       - name: Package rpm
