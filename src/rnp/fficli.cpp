@@ -2802,6 +2802,8 @@ cli_rnp_encrypt_and_sign(const rnp_cfg &cfg,
         }
     }
 
+    
+
     /* adding encrypting keys if pk-encryption is used */
     if (cfg.get_bool(CFG_ENCRYPT_PK)) {
         std::vector<std::string> keynames = cfg.get_list(CFG_RECIPIENTS);
@@ -2820,6 +2822,13 @@ cli_rnp_encrypt_and_sign(const rnp_cfg &cfg,
             }
         }
     }
+
+#if defined(ENABLE_CRYPTO_REFRESH)
+    /* enable or disable v6 PKESK creation*/
+    if (!cfg.get_bool(CFG_V3_PKESK_ONLY)) {
+        rnp_op_encrypt_enable_pkesk_v6(op);
+    }
+#endif
 
     /* adding signatures if encrypt-and-sign is used */
     if (cfg.get_bool(CFG_SIGN_NEEDED)) {
