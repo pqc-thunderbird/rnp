@@ -20,12 +20,9 @@
 : "${RECOMMENDED_PYTHON_VERSION:=3.9.2}"
 : "${RECOMMENDED_RUBY_VERSION:=3.1.1}"
 
-: "${RECOMMENDED_SEXP_VERSION:=0.7.0}"
-
 : "${CMAKE_VERSION:=${RECOMMENDED_CMAKE_VERSION}}"
 : "${BOTAN_VERSION:=${RECOMMENDED_BOTAN_VERSION}}"
 : "${JSONC_VERSION:=${RECOMMENDED_JSONC_VERSION}}"
-: "${SEXP_VERSION:=${RECOMMENDED_SEXP_VERSION}}"
 : "${PYTHON_VERSION:=${RECOMMENDED_PYTHON_VERSION}}"
 : "${RUBY_VERSION:=${RECOMMENDED_RUBY_VERSION}}"
 
@@ -255,6 +252,7 @@ linux_install_centos7() {
 }
 
 linux_install_centos8() {
+  "${SUDO}" "${YUM}" -y -q install 'dnf-command(config-manager)'
   "${SUDO}" "${YUM}" config-manager --set-enabled powertools
   "${SUDO}" "${YUM}" module reset ruby -y
   yum_prepare_repos epel-release

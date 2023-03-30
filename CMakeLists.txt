@@ -150,13 +150,7 @@ endif()
 
 # set a few other things at the top level to prevent incompatibilities
 set(CMAKE_C_STANDARD 99)
-if((CRYPTO_BACKEND STREQUAL "botan") AND ENABLE_PQC)
-  # TODO: actually the logic would be to tie the C++ standard to the botan version
-  set(CMAKE_CXX_STANDARD 20)
-else()
-  set(CMAKE_CXX_STANDARD 11)
-endif()
-
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 add_definitions(-D_GNU_SOURCE)
@@ -189,15 +183,6 @@ if (ENABLE_DOC)
   include(AdocMan)
 endif()
 
-
-#download and build sexp library
-if(DOWNLOAD_SEXP)
-  message(STATUS "Downloading SEXP library")
-  include(DownloadSexp)
-else(DOWNLOAD_SEXP)
-  find_package(Sexp)
-endif(DOWNLOAD_SEXP)
-
 # everything else is in subdirs
 add_subdirectory(src/examples)
 if (ENABLE_FUZZERS)
@@ -205,6 +190,12 @@ if (ENABLE_FUZZERS)
   add_compile_options(-DFUZZERS_ENABLED=1)
 endif()
 add_subdirectory(src/common)
+
+set(WITH_SEXP_CLI OFF)
+set(WITH_SEXP_TESTS OFF)
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME development)
+add_subdirectory(src/libsexp EXCLUDE_FROM_ALL)
+
 add_subdirectory(src/lib)
 add_subdirectory(src/rnp)
 add_subdirectory(src/rnpkeys)
@@ -224,6 +215,7 @@ if (BUILD_TESTING)
   endif()
   add_subdirectory(src/tests)
 endif()
+
 
 # cpack packaging (RPM etc)
 include(cmake/packaging.cmake)
