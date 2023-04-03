@@ -37,9 +37,9 @@
 static void x25519_hkdf(std::vector<uint8_t> &derived_key, const std::vector<uint8_t> &shared_key) 
 {
     /* The shared secret is passed to HKDF (see {{RFC5869}}) using SHA256, and the UTF-8-encoded string "OpenPGP X25519" as the info parameter. */
-    const std::vector<uint8_t> info = {'O', 'p', 'e', 'n', 'P', 'G', 'P', ' ', 'X', '2', '5', '5', '1', '9'};
+    static const std::vector<uint8_t> info = {'O', 'p', 'e', 'n', 'P', 'G', 'P', ' ', 'X', '2', '5', '5', '1', '9'};
     auto kdf = rnp::Hkdf::create(PGP_HASH_SHA256);
-    derived_key.resize(16); // 128-bit AES key wrap
+    derived_key.resize(pgp_key_size(PGP_SA_AES_128)); // 128-bit AES key wrap
 
     kdf->extract_expand(NULL, 0, // no salt
                        shared_key.data(),
@@ -107,7 +107,8 @@ rnp_result_t x25519_native_decrypt(rnp::RNG *                   rng,
     std::vector<uint8_t> shared_key;
     std::vector<uint8_t> derived_key;
 
-    if(encrypted->eph_key.size() != 32) {
+    static const size_t x25519_pubkey_size = 32;
+    if(encrypted->eph_key.size() != x25519_pubkey_size) {
         RNP_LOG("Wrong ephemeral public key size");
         return RNP_ERROR_BAD_FORMAT;
     }
