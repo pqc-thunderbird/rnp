@@ -628,20 +628,25 @@ TEST_F(rnp_tests, kyber_ecdh_roundtrip)
     uint8_t              result[32] = {0};
     size_t               result_len = sizeof(result);
 
+    for(size_t i = 0; i < plaintext_len; i++) {
+        plaintext[i] = i; // assures that we do not have a special case with all-zeroes
+    }
+
     for (size_t i = 0; i < ARRAY_SIZE(algs); i++) {
         rnp_keygen_crypto_params_t key_desc;
         key_desc.key_alg = algs[i];
         key_desc.hash_alg = PGP_HASH_SHA512;
         key_desc.ctx = &global_ctx;
 
-        pgp_key_pkt_t key;
-        assert_true(pgp_generate_seckey(key_desc, key, true));
+        pgp_key_pkt_t key_pkt;
+        assert_true(pgp_generate_seckey(key_desc, key_pkt, true));
 
         pgp_fingerprint_t key_fpr = {};
-        assert_rnp_success(pgp_fingerprint(key_fpr, key));
+        assert_rnp_success(pgp_fingerprint(key_fpr, key_pkt));
 
-        assert_rnp_success(key.material.kyber_ecdh.pub.encrypt(&global_ctx.rng, &enc, plaintext, plaintext_len));
-        assert_rnp_success(key.material.kyber_ecdh.priv.decrypt(result, &result_len, &enc, key.material.kyber_ecdh.pub.get_encoded()));
+        pgp_key_t key(key_pkt);
+        assert_rnp_success(key_pkt.material.kyber_ecdh.pub.encrypt(&global_ctx.rng, &enc, plaintext, plaintext_len, key.subkey_pkt_hash()));
+        assert_rnp_success(key_pkt.material.kyber_ecdh.priv.decrypt(&global_ctx.rng, result, &result_len, &enc, key.subkey_pkt_hash()));
 
         assert_int_equal(plaintext_len, result_len);
         assert_int_equal(memcmp(plaintext, result, result_len), 0);

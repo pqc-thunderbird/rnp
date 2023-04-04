@@ -35,7 +35,7 @@
 
 namespace rnp {
 class KMAC256 {
-  /* KDF for PQC key combiner according to https://datatracker.ietf.org/doc/html/draft-wussler-openpgp-pqc-00 and NIST SP800 56C */
+  /* KDF for PQC key combiner according to https://datatracker.ietf.org/doc/html/draft-wussler-openpgp-pqc-01 */
 
   protected:
     /*  The value of domSeparation is the UTF-8 encoding of the string "OpenPGPV5CompositeKDF" and MUST be the following octet sequence:
@@ -54,11 +54,13 @@ class KMAC256 {
     std::vector<uint8_t> domSeparation() const;
     std::vector<uint8_t> customizationString() const;
     std::vector<uint8_t> counter() const;
-    std::vector<uint8_t> fixedInfo(const std::vector<uint8_t> &encoded_pubkey, pgp_pubkey_alg_t alg_id);
-    std::vector<uint8_t> encKeyShares(const std::vector<uint8_t> &ecc_key_share,
-                                      const std::vector<uint8_t> &kyber_key_share,
-                                      const std::vector<uint8_t> &encoded_pubkey,
-                                      pgp_pubkey_alg_t alg_id);
+    std::vector<uint8_t> fixedInfo(const std::vector<uint8_t> &subkey_pkt_hash, pgp_pubkey_alg_t alg_id);
+    std::vector<uint8_t> encData(const std::vector<uint8_t> &ecc_key_share,
+                                 const std::vector<uint8_t> &ecc_ciphertext,
+                                 const std::vector<uint8_t> &kyber_key_share,
+                                 const std::vector<uint8_t> &kyber_ciphertext,
+                                 const std::vector<uint8_t> &subkey_pkt_hash,
+                                 pgp_pubkey_alg_t alg_id);
 
     KMAC256() {};
 
@@ -67,9 +69,11 @@ class KMAC256 {
 
     /* KMAC interface for OpenPGP PQC composite algorithms */
     virtual void compute(const std::vector<uint8_t> &ecc_key_share,
+                         const std::vector<uint8_t> &ecc_key_ciphertext,
                          const std::vector<uint8_t> &kyber_key_share,
+                         const std::vector<uint8_t> &kyber_ciphertext,
                          const pgp_pubkey_alg_t     alg_id,
-                         const std::vector<uint8_t> &encoded_pubkey,
+                         const std::vector<uint8_t> &subkey_pkt_hash,
                          std::vector<uint8_t>       &out) = 0;
 
     virtual ~KMAC256();

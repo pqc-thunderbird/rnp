@@ -1067,6 +1067,11 @@ pgp_pk_sesskey_t::write(pgp_dest_t &dst) const
     }
 #endif
     pktbody.add_byte(alg);
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if((version == PGP_PKSK_V3) && !do_encrypt_pkesk_v3_alg_id(alg)) {
+        pktbody.add_byte(salg); /* added as plaintext */
+    }
+#endif
     pktbody.add(material_buf.data(), material_buf.size());
     pktbody.write(dst);
 }
@@ -1141,6 +1146,16 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
         return RNP_ERROR_BAD_FORMAT;
     }
     alg = (pgp_pubkey_alg_t) bt;
+
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if((version == PGP_PKSK_V3) && !do_encrypt_pkesk_v3_alg_id(alg)) {
+        if (!pkt.get(bt)) {
+            RNP_LOG("failed to get salg");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+    }
+    salg = (pgp_symm_alg_t) bt;
+#endif
 
     /* raw signature material */
     if (!pkt.left()) {

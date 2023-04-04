@@ -35,33 +35,11 @@
 
 #if defined(ENABLE_CRYPTO_REFRESH)
 
-TEST_F(rnp_tests, test_ecdh_kem_direct)
-{
-    std::vector<uint8_t> pubkey_buf;
-    std::vector<uint8_t> privkey_buf;
-    std::vector<uint8_t> ciphertext;
-    std::vector<uint8_t> plaintext;
-    std::vector<uint8_t> plaintext2;
-
-    pgp_curve_t curve_list[] = {PGP_CURVE_NIST_P_256, PGP_CURVE_NIST_P_384, PGP_CURVE_NIST_P_521, PGP_CURVE_BP256, PGP_CURVE_BP384, PGP_CURVE_BP512, PGP_CURVE_25519};
-
-    for (auto curve : curve_list) {
-        ecdh_kem_gen_keypair_native(&global_ctx.rng, privkey_buf, pubkey_buf, curve);
-
-        /* kem encaps / decaps */
-        assert_rnp_success(ecdh_kem_encaps(&global_ctx.rng, ciphertext, plaintext, pubkey_buf, curve));
-        assert_rnp_success(ecdh_kem_decaps(plaintext2, ciphertext, privkey_buf, curve));
-
-        /* both parties should have the same key share */
-        assert_int_equal(plaintext.size(), plaintext2.size());
-        assert_memory_equal(plaintext.data(), plaintext2.data(), plaintext.size());
-    }
-}
-
-TEST_F(rnp_tests, test_ecdh_kem_class)
+TEST_F(rnp_tests, test_ecdh_kem)
 {
     std::vector<uint8_t> ciphertext;
-    std::vector<uint8_t> plaintext;
+    std::vector<uint8_t> symmetric_key;
+    std::vector<uint8_t> symmetric_key2;
     ecdh_kem_key_t key_pair;
     pgp_curve_t curve_list[] = {PGP_CURVE_NIST_P_256, PGP_CURVE_NIST_P_384, PGP_CURVE_NIST_P_521, PGP_CURVE_BP256, PGP_CURVE_BP384, PGP_CURVE_BP512, PGP_CURVE_25519};
 
@@ -70,13 +48,18 @@ TEST_F(rnp_tests, test_ecdh_kem_class)
         assert_rnp_success(ec_key_t::generate_ecdh_kem_key_pair(&global_ctx.rng, &key_pair, curve));
 
         /* kem encaps / decaps */
-        ecdh_kem_encap_result_t encap;
-        assert_rnp_success(key_pair.pub.encapsulate(&global_ctx.rng, &encap));
-        assert_rnp_success(key_pair.priv.decapsulate(encap.ciphertext, plaintext));
+        assert_rnp_success(key_pair.pub.encapsulate(&global_ctx.rng, ciphertext, symmetric_key));
+        assert_rnp_success(key_pair.priv.decapsulate(&global_ctx.rng, ciphertext, symmetric_key2));
 
         /* both parties should have the same key share */
-        assert_int_equal(plaintext.size(), encap.symmetric_key.size());
-        assert_memory_equal(plaintext.data(), encap.symmetric_key.data(), plaintext.size());
+        assert_int_equal(symmetric_key.size(), symmetric_key2.size());
+        assert_memory_equal(symmetric_key.data(), symmetric_key2.data(), symmetric_key.size());
+
+        /* test invalid ciphertext */
+        ciphertext.data()[4] += 1;
+        if(curve != PGP_CURVE_25519) { // Curve25519 accepts any 32-byte array
+            assert_throw(key_pair.priv.decapsulate(&global_ctx.rng, ciphertext, symmetric_key));
+        }
     }
 }
 

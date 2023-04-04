@@ -166,10 +166,12 @@ typedef struct pgp_pk_sesskey_t {
 
     /* v3 PKESK */
     pgp_key_id_t         key_id{};
+    pgp_symm_alg_t       salg;
 
+#if defined(ENABLE_CRYPTO_REFRESH)
     /* v6 PKESK */
     pgp_fingerprint_t    fp{};
-
+#endif
 
     void         write(pgp_dest_t &dst) const;
     rnp_result_t parse(pgp_source_t &src);

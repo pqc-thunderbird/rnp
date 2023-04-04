@@ -35,6 +35,9 @@
 #if defined(ENABLE_CRYPTO_REFRESH)
 #include "x25519.h"
 #include "ed25519.h"
+#include "botan/bigint.h"
+#include "botan/ecdh.h"
+#include <cassert>
 #endif
 
 static id_str_pair ec_algo_to_botan[] = {
@@ -207,7 +210,6 @@ static bool is_generic_prime_curve(pgp_curve_t curve) {
     }
 }
 
-/* TODOMTG: can try to share code with ec_generate or impl. as C++ */
 static rnp_result_t ec_generate_generic_native(rnp::RNG *           rng,
                                                std::vector<uint8_t> &privkey, 
                                                std::vector<uint8_t> &pubkey,
@@ -219,73 +221,25 @@ static rnp_result_t ec_generate_generic_native(rnp::RNG *           rng,
         return RNP_ERROR_BAD_PARAMETERS;
     }
 
-    rnp_result_t ret = RNP_SUCCESS;
-
-    botan_privkey_t botan_priv = NULL;
-    botan_pubkey_t  botan_pub = NULL;
-
-    bignum_t *      px = NULL;
-    bignum_t *      py = NULL;
-    bignum_t *      x = NULL;
-    size_t offset;
-
     const ec_curve_desc_t *ec_desc = get_curve_desc(curve);
     const size_t curve_order = BITS_TO_BYTES(ec_desc->bitlen);
 
-    const char *ec_algo = id_str_pair::lookup(ec_algo_to_botan, alg, NULL);
-    assert(ec_algo);
+    Botan::ECDH_PrivateKey privkey_botan(*(rng->obj()), Botan::EC_Group(ec_desc->botan_name));
+    Botan::BigInt pub_x = privkey_botan.public_point().get_affine_x();
+    Botan::BigInt pub_y = privkey_botan.public_point().get_affine_y();
+    Botan::BigInt x = privkey_botan.private_value();
 
-    pubkey.resize(2 * curve_order + 1);
-    privkey.resize(curve_order);
+    // pubkey: 0x04 || X || Y
+    pubkey = Botan::unlock(Botan::BigInt::encode_fixed_length_int_pair(pub_x, pub_y, curve_order)); // zero-pads to the given size
+    pubkey.insert(pubkey.begin(), 0x04);
 
-    if (botan_privkey_create(&botan_priv, ec_algo, ec_desc->botan_name, rng->handle()) 
-        || botan_privkey_export_pubkey(&botan_pub, botan_priv))
-    {
-        RNP_LOG("error when generating EC key");
-        ret = RNP_ERROR_GENERIC;
-        goto end;
-    }
+    privkey = std::vector<uint8_t>(curve_order);
+    x.binary_encode(privkey.data(), privkey.size()); // zero-pads to the given size
 
-    px = bn_new();
-    py = bn_new();
-    x = bn_new();
-    if (botan_pubkey_get_field(BN_HANDLE_PTR(px), botan_pub, "public_x")
-        || botan_pubkey_get_field(BN_HANDLE_PTR(py), botan_pub, "public_y")
-        || botan_privkey_get_field(BN_HANDLE_PTR(x), botan_priv, "x"))
-    {
-        RNP_LOG("error when generating EC key");
-        ret = RNP_ERROR_GENERIC;
-        goto end;
-    }
+    assert(pubkey.size() == 2 * curve_order + 1);
+    assert(privkey.size() == curve_order);
 
-    pubkey.data()[0] = 0x04;
-
-    /* if the px/py/x elements are less than curve order, we have to zero-pad them */
-    offset =  curve_order - bn_num_bytes(*px);
-    if (offset) {
-        memset(&pubkey.data()[1], 0, offset);
-    }
-    bn_bn2bin(px, &pubkey.data()[1 + offset]);
-    offset =  curve_order - bn_num_bytes(*py);
-    if (offset) {
-        memset(&pubkey.data()[1 + curve_order], 0, offset);
-    }
-    bn_bn2bin(py, &pubkey.data()[1 + curve_order + offset]);
-
-    offset =  curve_order - bn_num_bytes(*x);
-    if (offset) {
-        memset(privkey.data(), 0, offset);
-    }
-    bn_bn2bin(x, privkey.data() + offset);
-
-end:
-        botan_privkey_destroy(botan_priv);
-        botan_pubkey_destroy(botan_pub);
-        bn_free(px);
-        bn_free(py);
-        bn_free(x);
-
-        return ret;
+    return RNP_SUCCESS;
 }
 
 rnp_result_t ec_generate_native(rnp::RNG *           rng,

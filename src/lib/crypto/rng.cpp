@@ -35,6 +35,13 @@ RNG::RNG(Type type)
     if (botan_rng_init(&botan_rng, type == Type::DRBG ? "user" : NULL)) {
         throw rnp::rnp_exception(RNP_ERROR_RNG);
     }
+
+    if(type == Type::DRBG) {
+        botan_rng_obj.reset(new Botan::AutoSeeded_RNG);
+    }
+    else {
+        botan_rng_obj.reset(new Botan::System_RNG);
+    }
 }
 
 RNG::~RNG()
@@ -55,5 +62,11 @@ struct botan_rng_struct *
 RNG::handle()
 {
     return botan_rng;
+}
+
+Botan::RandomNumberGenerator *
+RNG::obj() const
+{
+    return botan_rng_obj.get();
 }
 } // namespace rnp

@@ -67,9 +67,7 @@ KMAC256::counter() const
     return counter_;
 }
 
-/* TODOMTG: this will likely change soon
-    -> we implement "encoded public key" instead of "encryption sub-key packet"
-
+/* 
     //   Input:
     //   algID - the algorithm ID encoded as octet
     //   publicKey - the recipient's encryption sub-key packet
@@ -78,38 +76,39 @@ KMAC256::counter() const
     fixedInfo = algID || SHA3-256(publicKey)
 */
 std::vector<uint8_t>
-KMAC256::fixedInfo(const std::vector<uint8_t> &encoded_pubkey, pgp_pubkey_alg_t alg_id)
+KMAC256::fixedInfo(const std::vector<uint8_t> &subkey_pkt_hash, pgp_pubkey_alg_t alg_id)
 {
-    pgp_hash_alg_t hash_alg = PGP_HASH_SHA3_256;
-    
-    /* hash public key */
-    auto hash = rnp::Hash::create(hash_alg);
-    std::vector<uint8_t> digest(Hash::size(hash_alg));
-    hash->add(encoded_pubkey);
-    hash->finish(digest.data());
-
-    // return algID || SHA3-256(publicKey)
-    std::vector<uint8_t> result(digest);
-    result.push_back(static_cast<uint8_t>(alg_id));
+    std::vector<uint8_t> result(subkey_pkt_hash);
+    result.insert(result.begin(), (static_cast<uint8_t>(alg_id)));;
     return result;
 }
 
 std::vector<uint8_t>
-KMAC256::encKeyShares(const std::vector<uint8_t> &ecc_key_share,
-                      const std::vector<uint8_t> &kyber_key_share,
-                      const std::vector<uint8_t> &encoded_pubkey,
-                      pgp_pubkey_alg_t alg_id) 
+KMAC256::encData(const std::vector<uint8_t> &ecc_key_share,
+                 const std::vector<uint8_t> &ecc_ciphertext,
+                 const std::vector<uint8_t> &kyber_key_share,
+                 const std::vector<uint8_t> &kyber_ciphertext,
+                 const std::vector<uint8_t> &subkey_pkt_hash,
+                 pgp_pubkey_alg_t alg_id) 
 {
-    std::vector<uint8_t> result;
+    std::vector<uint8_t> enc_data;
     std::vector<uint8_t> counter_vec = counter();
-    std::vector<uint8_t> fixedInfo_vec = fixedInfo(encoded_pubkey, alg_id);
+    std::vector<uint8_t> fixedInfo_vec = fixedInfo(subkey_pkt_hash, alg_id);
 
-    result.insert(result.end(), counter_vec.begin(), counter_vec.end());
-    result.insert(result.end(), ecc_key_share.begin(), ecc_key_share.end());
-    result.insert(result.end(), kyber_key_share.begin(), kyber_key_share.end());
-    result.insert(result.end(), fixedInfo_vec.begin(), fixedInfo_vec.end());
+    /* draft-wussler-openpgp-pqc-01:
 
-    return result;
+        eccKemData = eccKeyShare || eccCipherText
+        kyberKemData = kyberKeyShare || kyberCipherText
+        encData = counter || eccKemData || kyberKemData || fixedInfo
+    */
+    enc_data.insert(enc_data.end(), counter_vec.begin(), counter_vec.end());
+    enc_data.insert(enc_data.end(), ecc_key_share.begin(), ecc_key_share.end());
+    enc_data.insert(enc_data.end(), ecc_ciphertext.begin(), ecc_ciphertext.end());
+    enc_data.insert(enc_data.end(), kyber_key_share.begin(), kyber_key_share.end());
+    enc_data.insert(enc_data.end(), kyber_ciphertext.begin(), kyber_ciphertext.end());
+    enc_data.insert(enc_data.end(), fixedInfo_vec.begin(), fixedInfo_vec.end());
+
+    return enc_data;
 }
 
 

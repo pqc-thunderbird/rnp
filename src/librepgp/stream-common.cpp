@@ -1246,4 +1246,10 @@ bool have_pkesk_checksum(pgp_pubkey_alg_t alg)
             return true;
     }
 }
+
+bool do_encrypt_pkesk_v3_alg_id(pgp_pubkey_alg_t alg)
+{
+    /* matches the same algorithms */
+    return have_pkesk_checksum(alg);
+}
 #endif

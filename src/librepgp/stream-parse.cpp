@@ -1598,7 +1598,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_X25519:
         declen = decbuf.size();
-        err = x25519_native_decrypt(keymaterial->x25519.priv, &encmaterial.x25519, decbuf.data(), &declen);
+        err = x25519_native_decrypt(&ctx.rng, keymaterial->x25519.priv, &encmaterial.x25519, decbuf.data(), &declen);
         if(err != RNP_SUCCESS) {
             RNP_LOG("X25519 decryption error %u", err);
             return false;
@@ -1612,13 +1612,16 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
+    {
+        pgp_key_t key(*seckey, true); /* make public-key `pgp_key_t` object from seckey */
         declen = decbuf.size();
-        err = keymaterial->kyber_ecdh.priv.decrypt(decbuf.data(), &declen, &encmaterial.kyber_ecdh, keymaterial->kyber_ecdh.pub.get_encoded());
+        err = keymaterial->kyber_ecdh.priv.decrypt(&ctx.rng, decbuf.data(), &declen, &encmaterial.kyber_ecdh, key.subkey_pkt_hash());
         if (err != RNP_SUCCESS) {
             RNP_LOG("Kyber ECC decryption failure");
             return false;
         }
         break;
+    }
 #endif
     default:
         RNP_LOG("unsupported public key algorithm %d\n", seckey->alg);
@@ -1627,56 +1630,41 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 
     uint8_t *      decbuf_sesskey = decbuf.data();
     size_t         decbuf_sesskey_len = declen;
-    pgp_symm_alg_t salg = static_cast<pgp_symm_alg_t>(decbuf[0]);
-    size_t keylen = pgp_key_size(salg);
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if(do_encrypt_pkesk_v3_alg_id(sesskey->alg)) 
+#endif
+    {
+        sesskey->salg = static_cast<pgp_symm_alg_t>(decbuf[0]);
+    }
+    size_t keylen = pgp_key_size(sesskey->salg);
     if (sesskey->version == PGP_PKSK_V3) {
         /* Check algorithm and key length */
-        /*salg = (pgp_symm_alg_t) decbuf[0];
-        if (!pgp_is_sa_supported(salg)) {
-            RNP_LOG("unsupported symmetric algorithm %d", (int) salg);
-            return false;
-        }*/
-        if (!pgp_is_sa_supported(decbuf[0])) {
-            RNP_LOG("Unsupported symmetric algorithm %" PRIu8, decbuf[0]);
+        if (!pgp_is_sa_supported(sesskey->salg)) {
+            RNP_LOG("Unsupported symmetric algorithm %" PRIu8, sesskey->salg);
             return false;
         }
-        if (declen != keylen + 3) { // new block from merge 2023-03-20
-            RNP_LOG("invalid symmetric key length");
-            return false;
-        }
-
 
 #if defined(ENABLE_CRYPTO_REFRESH)
-        if(sesskey->alg == PGP_PKA_X25519) {
-            // expect 7 zero bytes after alg id
-            if(decbuf_sesskey_len != keylen + 8) {
-                RNP_LOG("invalid symmetric key length");
-                return false;
-            }
-
-            const uint8_t padding[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-            if(memcmp(&decbuf_sesskey[1], padding, 7) != 0) {
-                RNP_LOG("invalid padding for X25519");
-                return false;
-            }
-
-            decbuf_sesskey += 7; // skip over padding
-        }
-        else
+        size_t alg_id_bytes = do_encrypt_pkesk_v3_alg_id(sesskey->alg) ? 1 : 0;
+        size_t checksum_bytes = have_pkesk_checksum(sesskey->alg) ? 2 : 0;
+#else
+        size_t alg_id_bytes = 1;
+        size_t checksum_bytes = 2;
 #endif
-        if (decbuf_sesskey_len != keylen + 3) { // alg id + 2 checksum bytes
+
+        if (decbuf_sesskey_len != keylen + alg_id_bytes + checksum_bytes) {
             RNP_LOG("invalid symmetric key length");
             return false;
         }
 
-        /* skip over the first byte which aligns the code for v3 and v6 PKESK packets. */
-        decbuf_sesskey++;
+        /* skip over the first byte (if present) to aligns the code for all cases. */
+        decbuf_sesskey += alg_id_bytes;
     }
 #if defined(ENABLE_CRYPTO_REFRESH)
     else {
         // V6 PKESK
         // required key length is not yet known
-        if(decbuf_sesskey_len <= 2) {
+        if(decbuf_sesskey_len < 16) { // minimum key size
             RNP_LOG("invalid symmetric key length");
             return false;
         }
@@ -1707,19 +1695,19 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
     {
         if (param->use_cfb()) {
             /* Decrypt header */
-            res = encrypted_decrypt_cfb_header(param, salg, decbuf_sesskey);
+            res = encrypted_decrypt_cfb_header(param, sesskey->salg, decbuf_sesskey);
         } else {
             /* Start AEAD decrypting, assuming we have correct key */
-            res = encrypted_start_aead(param, salg, decbuf_sesskey);
+            res = encrypted_start_aead(param, sesskey->salg, decbuf_sesskey);
         }
         if (res) {
-            param->salg = salg;
+            param->salg = sesskey->salg;
         }
         return res;
     } 
 #if defined(ENABLE_CRYPTO_REFRESH)
     else { // PGP_PKSK_V6
-        salg = param->aead_hdr.ealg; // NOTEMTG: salg not part of the v6 PKESK, assignment here just to make the following call "happy"
+        pgp_symm_alg_t salg = param->aead_hdr.ealg; // NOTEMTG: salg not part of the v6 PKESK, assignment here just to make the following call "happy"
         return encrypted_start_aead(param, salg, decbuf_sesskey);
     }
 #endif

@@ -82,12 +82,13 @@ class pgp_kyber_ecdh_composite_private_key_t : public pgp_kyber_ecdh_composite_k
     pgp_kyber_ecdh_composite_private_key_t(const uint8_t *key_encoded, size_t key_encoded_len, pgp_pubkey_alg_t pk_alg);
     pgp_kyber_ecdh_composite_private_key_t(std::vector<uint8_t> const &ecdh_key_encoded, std::vector<uint8_t> const &kyber_key_encoded, pgp_pubkey_alg_t pk_alg);
     pgp_kyber_ecdh_composite_private_key_t(std::vector<uint8_t> const &key_encoded, pgp_pubkey_alg_t pk_alg);
+    pgp_kyber_ecdh_composite_private_key_t& operator=(const pgp_kyber_ecdh_composite_private_key_t& other);
     pgp_kyber_ecdh_composite_private_key_t() = default;
 
 
-    rnp_result_t decrypt(uint8_t *out, size_t *out_len, const pgp_kyber_ecdh_encrypted_t *enc, const std::vector<uint8_t> &encoded_pubkey);
+    rnp_result_t decrypt(rnp::RNG *rng, uint8_t *out, size_t *out_len, const pgp_kyber_ecdh_encrypted_t *enc, const std::vector<uint8_t> &subkey_pkt_hash);
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
     std::vector<uint8_t> get_encoded() const;
 
     pgp_pubkey_alg_t pk_alg() const
@@ -105,10 +106,10 @@ class pgp_kyber_ecdh_composite_private_key_t : public pgp_kyber_ecdh_composite_k
     pgp_pubkey_alg_t pk_alg_;
 
     /* kyber part */
-    pgp_kyber_private_key_t kyber_key_;
+    std::unique_ptr<pgp_kyber_private_key_t> kyber_key_;
 
     /* ecc part*/
-    ecdh_kem_private_key_t ecdh_key_;
+    std::unique_ptr<ecdh_kem_private_key_t> ecdh_key_;
 };
 
 
@@ -124,9 +125,9 @@ class pgp_kyber_ecdh_composite_public_key_t : public pgp_kyber_ecdh_composite_ke
       return (pk_alg_ == rhs.pk_alg_) && (kyber_key_ == rhs.kyber_key_) && (ecdh_key_ == rhs.ecdh_key_);
     }
 
-    rnp_result_t encrypt(rnp::RNG *rng, pgp_kyber_ecdh_encrypted_t *out, const uint8_t *in, size_t in_len);
+    rnp_result_t encrypt(rnp::RNG *rng, pgp_kyber_ecdh_encrypted_t *out, const uint8_t *in, size_t in_len, const std::vector<uint8_t> &subkey_pkt_hash);
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
     std::vector<uint8_t> get_encoded() const;
 
     pgp_pubkey_alg_t pk_alg() const

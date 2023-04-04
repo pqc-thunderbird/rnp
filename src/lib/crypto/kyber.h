@@ -36,7 +36,8 @@
 #include <vector>
 #include <repgp/repgp_def.h>
 #include "crypto/rng.h"
-#include "botan/secmem.h"
+#include <botan/kyber.h>
+#include <botan/pubkey.h>
 
 enum kyber_parameter_e { kyber_768, kyber_1024 };
 
@@ -51,18 +52,27 @@ class pgp_kyber_private_key_t {
     pgp_kyber_private_key_t(std::vector<uint8_t> const &key_encoded, kyber_parameter_e mode);
     pgp_kyber_private_key_t() = default;
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
-    std::vector<uint8_t> decapsulate(const uint8_t *ciphertext, size_t ciphertext_len);
+    std::vector<uint8_t> decapsulate(rnp::RNG *rng, const uint8_t *ciphertext, size_t ciphertext_len);
     std::vector<uint8_t>
     get_encoded() const
     {
         return Botan::unlock(key_encoded_);
     };
 
+    kyber_parameter_e
+    param() const
+    {
+        return kyber_mode_;
+    }
+
   private:
+    Botan::Kyber_PrivateKey botan_key() const;
+
     Botan::secure_vector<uint8_t> key_encoded_;
     kyber_parameter_e kyber_mode_;
+    bool is_initialized_ = false;
 };
 
 class pgp_kyber_public_key_t {
@@ -70,14 +80,14 @@ class pgp_kyber_public_key_t {
     pgp_kyber_public_key_t(const uint8_t *key_encoded, size_t key_encoded_len, kyber_parameter_e mode);
     pgp_kyber_public_key_t(std::vector<uint8_t> const &key_encoded, kyber_parameter_e mode);
     pgp_kyber_public_key_t() = default;
-    kyber_encap_result_t encapsulate();
+    kyber_encap_result_t encapsulate(rnp::RNG *rng);
 
     bool operator==(const pgp_kyber_public_key_t &rhs) const 
     {
       return (kyber_mode_ == rhs.kyber_mode_) && (key_encoded_ == rhs.key_encoded_);
     }
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
     std::vector<uint8_t>
     get_encoded() const
@@ -86,11 +96,14 @@ class pgp_kyber_public_key_t {
     };
 
   private:
+    Botan::Kyber_PublicKey botan_key() const;
+
     std::vector<uint8_t> key_encoded_;
     kyber_parameter_e kyber_mode_;
+    bool is_initialized_ = false;
 };
 
 std::pair<pgp_kyber_public_key_t, pgp_kyber_private_key_t> kyber_generate_keypair(
-  /*rnp::RNG *rng,*/ kyber_parameter_e kyber_param);
+  rnp::RNG *rng, kyber_parameter_e kyber_param);
 
 #endif

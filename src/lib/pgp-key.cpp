@@ -1855,7 +1855,13 @@ pgp_key_t::is_signer(const pgp_subsig_t &sig) const
         return sig.sig.keyfp() == fp();
     }
     if (!sig.sig.has_keyid()) {
-        return false || (version() == PGP_V6); // v6 packets MUST NOT include this subpacket, therefore return true for v6
+        return false || (
+#if defined(ENABLE_CRYPTO_REFRESH)
+        (version() == PGP_V6) // v6 packets MUST NOT include this subpacket, therefore return true for v6
+#else
+        false
+#endif
+    );
     }
 
     return keyid() == sig.sig.keyid();
@@ -2313,10 +2319,12 @@ pgp_key_t::sign_init(rnp::RNG &rng, pgp_signature_t &sig, pgp_hash_alg_t hash, u
         // for v6 issuing keys, this MUST NOT be included
         sig.set_keyid(keyid());
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
     if(version == PGP_V6) {
         sig.salt_size = rnp::Hash::size(sig.halg)/2;
         rng.get(sig.salt, sig.salt_size);
     }
+#endif
 }
 
 void
@@ -2755,6 +2763,21 @@ pgp_key_t::merge(const pgp_key_t &src, pgp_key_t *primary)
     return true;
 }
 
+#if defined(ENABLE_PQC)
+std::vector<uint8_t>
+pgp_key_t::subkey_pkt_hash() const
+{
+    const pgp_hash_alg_t pk_pkt_hash_alg = PGP_HASH_SHA3_256;
+    std::vector<uint8_t> out(rnp::Hash::size(pk_pkt_hash_alg));
+
+    auto pk_pkt_hash = rnp::Hash::create(pk_pkt_hash_alg);
+    pk_pkt_hash->add(rawpkt_.raw);
+    pk_pkt_hash->finish(out.data());
+    
+    return out;
+}
+#endif
+
 size_t
 pgp_key_material_t::bits() const
 {
@@ -2791,14 +2814,14 @@ pgp_key_material_t::bits() const
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384: 
-        return 0; /* TODOMTG: public key length */
+        return 8  * kyber_ecdh.pub.get_encoded().size(); /* public key length */
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        return 0; /* TODOMTG: public key length*/
+        return 8 * dilithium_exdsa.pub.get_encoded().size(); /* public key length*/
 #endif
     default:
         RNP_LOG("Unknown public key alg: %d", (int) alg);

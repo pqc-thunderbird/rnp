@@ -36,7 +36,8 @@
 #include <vector>
 #include <repgp/repgp_def.h>
 #include "crypto/rng.h"
-#include "botan/secmem.h"
+#include <botan/dilithium.h>
+#include <botan/pubkey.h>
 
 enum dilithium_parameter_e { dilithium_L3, dilithium_L5 };
 
@@ -49,9 +50,15 @@ class pgp_dilithium_private_key_t {
                                 dilithium_parameter_e       param);
     pgp_dilithium_private_key_t() = default;
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
-    std::vector<uint8_t> sign(const uint8_t *msg, size_t msg_len) const;
+    dilithium_parameter_e
+    param() const
+    {
+        return dilithium_param_;
+    }
+
+    std::vector<uint8_t> sign(rnp::RNG *rng, const uint8_t *msg, size_t msg_len) const;
     std::vector<uint8_t>
     get_encoded() const
     {
@@ -59,8 +66,11 @@ class pgp_dilithium_private_key_t {
     };
 
   private:
+    Botan::Dilithium_PrivateKey botan_key() const;
+
     Botan::secure_vector<uint8_t> key_encoded_;
     dilithium_parameter_e dilithium_param_;
+    bool is_initialized_ = false;
 };
 
 class pgp_dilithium_public_key_t {
@@ -82,7 +92,7 @@ class pgp_dilithium_public_key_t {
                           const uint8_t *signature,
                           size_t         signature_len) const;
 
-    bool is_valid() const;
+    bool is_valid(rnp::RNG *rng) const;
 
     std::vector<uint8_t>
     get_encoded() const
@@ -91,11 +101,14 @@ class pgp_dilithium_public_key_t {
     };
 
   private:
+    Botan::Dilithium_PublicKey botan_key() const;
+
     std::vector<uint8_t>  key_encoded_;
     dilithium_parameter_e dilithium_param_;
+    bool is_initialized_ = false;
 };
 
 std::pair<pgp_dilithium_public_key_t, pgp_dilithium_private_key_t> dilithium_generate_keypair(
-  /*rnp::RNG *rng,*/ dilithium_parameter_e dilithium_param);
+  rnp::RNG *rng, dilithium_parameter_e dilithium_param);
 
 #endif
