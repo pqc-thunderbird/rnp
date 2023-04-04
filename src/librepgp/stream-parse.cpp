@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2022, [Ribose Inc](https://www.ribose.com).
+ * Copyright (c) 2017-2023, [Ribose Inc](https://www.ribose.com).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -37,6 +37,7 @@
 #include <time.h>
 #include <cinttypes>
 #include <rnp/rnp_def.h>
+#include "repgp/repgp_def.h"
 #include "stream-ctx.h"
 #include "stream-def.h"
 #include "stream-parse.h"
@@ -93,11 +94,12 @@ typedef struct pgp_source_encrypted_param_t {
     pgp_source_packet_param_t     pkt;            /* underlying packet-related params */
     std::vector<pgp_sk_sesskey_t> symencs;        /* array of sym-encrypted session keys */
     std::vector<pgp_pk_sesskey_t> pubencs;        /* array of pk-encrypted session keys */
-    bool                          has_mdc;        /* SEIPD v1, encrypted with mdc (tag 18) */
-    bool                          seipd_v2;       /* SEIPD v2, encrypted with AEAD (tag 18)*/
-    bool                          mdc_validated;  /* mdc was validated already */
+    rnp::AuthType                 auth_type; /* Authentication type */
+    //bool                          seipd_v2;       /* SEIPD v2, encrypted with AEAD (tag 18)*/ // TODOMTG: still needed?
+    //bool                          mdc_validated;  /* mdc was validated already */
+    bool        auth_validated;              /* Auth tag (MDC or AEAD) was already validated */
     bool                          aead;           /* AEAD encrypted data packet, tag 20 */
-    bool                          aead_validated; /* we read and validated last chunk */
+    
     pgp_crypt_t                   decrypt;        /* decrypting crypto */
     std::unique_ptr<rnp::Hash>    mdc;            /* mdc SHA1 hash */
     size_t                        chunklen;       /* size of AEAD chunk in bytes */
@@ -109,12 +111,31 @@ typedef struct pgp_source_encrypted_param_t {
     pgp_aead_hdr_t                aead_hdr;    /* AEAD encryption parameters */
     pgp_seipdv2_hdr_t             seipdv2_hdr; /* SEIPDv2 encryption parameters */
     std::vector<uint8_t>          seipd_v2_nonce;
-    uint8_t
-      aead_ad[PGP_AEAD_MAX_AD_LEN];  /* additional data (used for AEAD and SEIPDv2 packets) */
-    size_t               aead_adlen; /* length of the additional data */
+    uint8_t                       aead_ad[PGP_AEAD_MAX_AD_LEN];  /* additional data (used for AEAD and SEIPDv2 packets) */
+    size_t                         aead_adlen; /* length of the additional data */
     pgp_symm_alg_t       salg;       /* data encryption algorithm */
     pgp_parse_handler_t *handler;    /* parsing handler with callbacks */
+
+    bool
+    use_cfb()
+    {
+        return (auth_type != rnp::AuthType::AEADv1 
+#ifdef ENABLE_CRYPTO_REFRESH 
+                && auth_type != rnp::AuthType::AEADv2
+#endif
+                );
+    }
+
+#ifdef ENABLE_CRYPTO_REFRESH 
+    bool is_v2_seipd() const
+    {
+        return auth_type == rnp::AuthType::AEADv2;
+    }
+#endif
+
 } pgp_source_encrypted_param_t;
+
+
 
 typedef struct pgp_source_signed_param_t {
     pgp_parse_handler_t *handler;         /* parsing handler with callbacks */
@@ -168,9 +189,24 @@ typedef struct pgp_source_partial_param_t {
     bool          last;    /* current part is last */
 } pgp_source_partial_param_t;
 
-namespace {
 
-} // namespace
+namespace 
+{
+
+    bool is_valid_seipd_version(uint8_t version)
+    {
+        if(version == 1
+#ifdef ENABLE_CRYPTO_REFRESH
+                || version == 2
+#endif
+          )
+        {
+            return true;
+        }
+        return false;
+    }
+
+}
 
 static bool
 is_pgp_source(pgp_source_t &src)
@@ -464,7 +500,8 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
 
     RNP_DBG_LOG("DBG: stream-parse: encrypted_start_aead_chunk: idx = %lu, last = %i\n", idx, last);
     /* set chunk index for additional data */
-    if (!param->seipd_v2) {
+    //if (!param->is_v2_seipd()) {
+    if (param->auth_type == rnp::AuthType::AEADv1) {
         STORE64BE(param->aead_ad + param->aead_adlen - 8, idx);
     }
 
@@ -478,8 +515,10 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
             /* reset the crypto in case we had empty chunk before the last one */
             pgp_cipher_aead_reset(&param->decrypt);
         }
-        STORE64BE(param->aead_ad + param->aead_adlen, total);
-        param->aead_adlen += 8;
+        //if(param->auth_type == rnp::AuthType::AEADv2) {
+            STORE64BE(param->aead_ad + param->aead_adlen, total);
+            param->aead_adlen += 8;
+        //}
     }
     uint8_t *add_data = param->aead_ad;
     size_t   add_data_len = param->aead_adlen;
@@ -490,14 +529,18 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
       static_cast<uint8_t>(param->seipdv2_hdr.cipher_alg),
       static_cast<uint8_t>(param->seipdv2_hdr.aead_alg),
       param->seipdv2_hdr.chunk_size_octet};
-    if (param->seipd_v2) {
+
+#ifdef ENABLE_CRYPTO_REFRESH
+    if (param->is_v2_seipd()) {
         if(last) {
             std::copy(&param->aead_ad[5], &param->aead_ad[5 + 8], std::back_inserter(add_data_seipd_v2));
         }
         add_data = add_data_seipd_v2.data();
         add_data_len = add_data_seipd_v2.size();
+        //param->aead_adlen += 8;
     }
-    RNP_DBG_LOG_HEX("stream-parse/ad", add_data, add_data_len);
+#endif
+    RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_set_ad called with ad", add_data, add_data_len);
     if (!pgp_cipher_aead_set_ad(&param->decrypt, add_data, add_data_len)) {
         RNP_LOG("failed to set ad");
         return false;
@@ -508,12 +551,16 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     param->chunkin = 0;
 
     uint8_t *nonce_base = param->aead_hdr.iv;
-    if (param->seipd_v2) {
+
+#ifdef ENABLE_CRYPTO_REFRESH
+    if (param->is_v2_seipd()) {
         nonce_base = param->seipd_v2_nonce.data();
     }
+#endif
     /* set chunk index for nonce */
     nlen = pgp_cipher_aead_nonce(param->aead_hdr.aalg, nonce_base, nonce, idx);
 
+    RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_start called with nonce(nlen)", nonce, nlen);
     /* start cipher */
     return pgp_cipher_aead_start(&param->decrypt, nonce, nlen);
 }
@@ -532,7 +579,7 @@ encrypted_src_read_aead_part(pgp_source_encrypted_param_t *param)
     param->cachepos = 0;
     param->cachelen = 0;
 
-    if (param->aead_validated) {
+    if (param->auth_validated) {
         return true;
     }
 
@@ -540,7 +587,6 @@ encrypted_src_read_aead_part(pgp_source_encrypted_param_t *param)
     taglen = pgp_cipher_aead_tag_len(param->aead_hdr.aalg);
     read = sizeof(param->cache) - 2 * PGP_AEAD_MAX_TAG_LEN;
 
-    
     if (read >= param->chunklen - param->chunkin) {
         read = param->chunklen - param->chunkin;
         chunkend = true;
@@ -586,6 +632,7 @@ encrypted_src_read_aead_part(pgp_source_encrypted_param_t *param)
         if (tagread > taglen) {
             src_skip(param->pkt.readsrc, tagread - taglen);
         }
+
         res = pgp_cipher_aead_finish(
           &param->decrypt, param->cache, param->cache, read + tagread - taglen);
         if (!res) {
@@ -618,7 +665,7 @@ encrypted_src_read_aead_part(pgp_source_encrypted_param_t *param)
             RNP_LOG("wrong last chunk");
             return res;
         }
-        param->aead_validated = true;
+        param->auth_validated = true;
     }
 
     return res;
@@ -689,7 +736,7 @@ encrypted_src_read_cfb(pgp_source_t *src, void *buf, size_t len, size_t *readres
 
     bool    parsemdc = false;
     uint8_t mdcbuf[MDC_V1_SIZE];
-    if (param->has_mdc) {
+    if (param->auth_type == rnp::AuthType::MDC) {
         size_t mdcread = 0;
         /* make sure there are always 22 bytes left on input */
         if (!src_peek(param->pkt.readsrc, mdcbuf, MDC_V1_SIZE, &mdcread) ||
@@ -709,7 +756,7 @@ encrypted_src_read_cfb(pgp_source_t *src, void *buf, size_t len, size_t *readres
 
     pgp_cipher_cfb_decrypt(&param->decrypt, (uint8_t *) buf, (uint8_t *) buf, read);
 
-    if (param->has_mdc) {
+    if (param->auth_type == rnp::AuthType::MDC) {
         try {
             param->mdc->add(buf, read);
 
@@ -730,7 +777,7 @@ encrypted_src_read_cfb(pgp_source_t *src, void *buf, size_t len, size_t *readres
                     RNP_LOG("mdc hash check failed");
                     return false;
                 }
-                param->mdc_validated = true;
+                param->auth_validated = true;
             }
         } catch (const std::exception &e) {
             RNP_LOG("mdc update failed: %s", e.what());
@@ -748,25 +795,25 @@ encrypted_src_finish(pgp_source_t *src)
 
     /* report to the handler that decryption is finished */
     if (param->handler->on_decryption_done) {
-        bool validated =
-          (param->has_mdc && param->mdc_validated) || (param->aead && param->aead_validated);
+        bool validated = (param->auth_type != rnp::AuthType::None) && param->auth_validated;
         param->handler->on_decryption_done(validated, param->handler->param);
     }
 
-    if (param->aead) {
-        if (!param->aead_validated) {
-            RNP_LOG("aead last chunk was not validated");
-            return RNP_ERROR_BAD_STATE;
-        }
+    if ((param->auth_type == rnp::AuthType::None) || param->auth_validated) {
         return RNP_SUCCESS;
     }
-
-    if (param->has_mdc && !param->mdc_validated) {
+    switch (param->auth_type) {
+    case rnp::AuthType::MDC:
         RNP_LOG("mdc was not validated");
-        return RNP_ERROR_BAD_STATE;
+        break;
+    case rnp::AuthType::AEADv1:
+        RNP_LOG("aead last chunk was not validated");
+        break;
+    default:
+        RNP_LOG("auth was not validated");
+        break;
     }
-
-    return RNP_SUCCESS;
+    return RNP_ERROR_BAD_STATE;
 }
 
 static void
@@ -782,7 +829,7 @@ encrypted_src_close(pgp_source_t *src)
         param->pkt.readsrc = NULL;
     }
 
-    if (param->aead) {
+    if (!param->use_cfb()) {
 #if defined(ENABLE_AEAD)
         pgp_cipher_aead_destroy(&param->decrypt);
 #endif
@@ -1396,7 +1443,7 @@ encrypted_decrypt_cfb_header(pgp_source_encrypted_param_t *param,
     /* init mdc if it is here */
     /* RFC 4880, 5.13: Unlike the Symmetrically Encrypted Data Packet, no special CFB
      * resynchronization is done after encrypting this prefix data. */
-    if (!param->has_mdc) {
+    if (param->auth_type == rnp::AuthType::None) {
         pgp_cipher_cfb_resync(&param->decrypt, enchdr + 2);
         return true;
     }
@@ -1426,15 +1473,16 @@ encrypted_start_aead(pgp_source_encrypted_param_t *param, pgp_symm_alg_t alg, ui
     if (alg != param->aead_hdr.ealg) {
         return false;
     }
-
+#ifdef ENABLE_CRYPTO_REFRESH
     std::vector<uint8_t> seipd_v2_key;
-    if (param->seipd_v2) {
+    if (param->is_v2_seipd()) {
         seipd_v2_aead_fields_t aead_fields =
           seipd_v2_key_and_nonce_derivation(param->seipdv2_hdr, key);
         seipd_v2_key = aead_fields.key;
         key = std::move(seipd_v2_key.data());
         param->seipd_v2_nonce = std::move(aead_fields.nonce);
     }
+#endif
 
     /* initialize cipher with key */
     if (!pgp_cipher_aead_init(
@@ -1478,8 +1526,8 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         - The payload following any v6 PKESK or v6 SKESK packet MUST be a v2 SEIPD.
         - implementations MUST NOT precede a v2 SEIPD payload with either v3 PKESK or v4 SKESK
        packets. */
-    if ((param->seipd_v2 && !(sesskey->version == PGP_PKSK_V6)) ||
-        (param->has_mdc && !(sesskey->version == PGP_PKSK_V3))) {
+    if ((param->is_v2_seipd() && !(sesskey->version == PGP_PKSK_V6)) ||
+        (param->auth_type == rnp::AuthType::MDC && !(sesskey->version == PGP_PKSK_V3))) {
         RNP_LOG("Attempt to mix SEIPD v1 with PKESK v6 or SEIPD v2 with PKESK v3");
         return false;
     }
@@ -1645,7 +1693,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
     if (sesskey->version == PGP_PKSK_V3)
 #endif
     {
-        if (!param->aead) {
+        if (param->use_cfb()) {
             /* Decrypt header */
             res = encrypted_decrypt_cfb_header(param, sesskey->salg, decbuf_sesskey);
         } else {
@@ -1767,14 +1815,15 @@ encrypted_try_password(pgp_source_encrypted_param_t *param, const char *password
         }
 
         /* Decrypt header for CFB */
-        if (!param->aead && !encrypted_decrypt_cfb_header(param, alg, keybuf.data())) {
+        if (param->use_cfb() && !encrypted_decrypt_cfb_header(param, alg, keybuf.data())) {
             continue;
         }
-        if (param->aead && !encrypted_start_aead(param, param->aead_hdr.ealg, keybuf.data())) {
+        if (!param->use_cfb() &&
+            !encrypted_start_aead(param, param->aead_hdr.ealg, keybuf.data())) {
             continue;
         }
 
-        param->salg = param->aead ? param->aead_hdr.ealg : alg;
+        param->salg = param->use_cfb() ? alg : param->aead_hdr.ealg;
         /* inform handler that we used this symenc */
         if (param->handler->on_decryption_start) {
             param->handler->on_decryption_start(NULL, &skey, param->handler->param);
@@ -1782,7 +1831,7 @@ encrypted_try_password(pgp_source_encrypted_param_t *param, const char *password
         return 1;
     }
 
-    if (param->aead && pgp_block_size(param->aead_hdr.ealg)) {
+    if (!param->use_cfb() && pgp_block_size(param->aead_hdr.ealg)) {
         /* we know aead symm alg even if we wasn't able to start decryption */
         param->salg = param->aead_hdr.ealg;
     }
@@ -2096,6 +2145,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
                 RNP_LOG("failed to read packet header");
                 return RNP_ERROR_READ;
             }
+            //printf("DBG encrypted_read_packet_data: ptag = %u\n", ptag);
             ptype = get_packet_type(ptag);
             switch (ptype) {
             case PGP_PKT_SK_SESSION_KEY: {
@@ -2144,7 +2194,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
 
     /* Reading header of encrypted packet */
     if (ptype == PGP_PKT_AEAD_ENCRYPTED) {
-        param->aead = true;
+        param->auth_type = rnp::AuthType::AEADv1;
         uint8_t hdr[4];
         if (!src_peek_eq(param->pkt.readsrc, hdr, 4)) {
             return RNP_ERROR_READ;
@@ -2156,7 +2206,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
         }
 
         /* check AEAD encrypted data packet header */
-        if (param->aead_hdr.version != 1) {
+        if (!is_valid_seipd_version(param->aead_hdr.version)) {
             RNP_LOG("unknown aead ver: %d", param->aead_hdr.version);
             return RNP_ERROR_BAD_FORMAT;
         }
@@ -2184,10 +2234,13 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
         }
 
         if (SEIPD_version == 1) {
-            param->has_mdc = true;
-            param->mdc_validated = false;
-        } else if (SEIPD_version == 2) {
-            param->seipd_v2 = true;
+            //param->has_mdc = true;
+            param->auth_type = rnp::AuthType::MDC;
+            param->auth_validated = false;
+        } 
+#ifdef ENABLE_CRYPTO_REFRESH 
+        else if (SEIPD_version == 2) {
+            param->auth_type = rnp::AuthType::AEADv2;
             param->seipdv2_hdr.version = 2;
             uint8_t hdr[4];
             if (!src_peek_eq(param->pkt.readsrc, hdr, 4)) {
@@ -2223,11 +2276,14 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             param->aead_hdr.aalg = param->seipdv2_hdr.aead_alg;
             param->aead_hdr.csize = param->seipdv2_hdr.chunk_size_octet; // needed?
             param->aead_hdr.ealg = param->seipdv2_hdr.cipher_alg;
-        } else {
+        } 
+#endif 
+        else {
             RNP_LOG("unknown SEIPD version: %d", (int) SEIPD_version);
             return RNP_ERROR_BAD_FORMAT;
         }
     }
+    param->auth_validated = false;
 
     return RNP_SUCCESS;
 }
@@ -2258,7 +2314,12 @@ init_encrypted_src(pgp_parse_handler_t *handler, pgp_source_t *src, pgp_source_t
         goto finish;
     }
 
-    src->read = (param->aead || param->seipd_v2) ? encrypted_src_read_aead : encrypted_src_read_cfb;
+    src->read = (!param->use_cfb() 
+#ifdef ENABLE_CRYPTO_REFRESH
+            || param->is_v2_seipd() 
+#endif
+)
+        ? encrypted_src_read_aead : encrypted_src_read_cfb;
 
     /* Obtaining the symmetric key */
     if (!handler->password_provider) {
@@ -2369,8 +2430,10 @@ init_encrypted_src(pgp_parse_handler_t *handler, pgp_source_t *src, pgp_source_t
 
     /* report decryption start to the handler */
     if (handler->on_decryption_info) {
-        handler->on_decryption_info(
-          param->has_mdc, param->aead_hdr.aalg, param->salg, handler->param);
+        handler->on_decryption_info(param->auth_type == rnp::AuthType::MDC,
+                                    param->aead_hdr.aalg,
+                                    param->salg,
+                                    handler->param);
     }
 
     if (!have_key) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020, [Ribose Inc](https://www.ribose.com).
+ * Copyright (c) 2017-2020, 2023 [Ribose Inc](https://www.ribose.com).
  * All rights reserved.
  *
  * This code is originally derived from software contributed to
@@ -231,28 +231,28 @@ typedef enum : uint8_t {
     PGP_PKA_EDDSA = 22,                   /* EdDSA from draft-ietf-openpgp-rfc4880bis */
 
 #if defined(ENABLE_CRYPTO_REFRESH)
-    PGP_PKA_X25519 = 25,                    /* v6 / Crypto Refresh */
-    PGP_PKA_ED25519 = 27,                   /* v6 / Crypto Refresh */
+    PGP_PKA_X25519 = 25,  /* v6 / Crypto Refresh */
+    PGP_PKA_ED25519 = 27, /* v6 / Crypto Refresh */
 #endif
 
 #if defined(ENABLE_PQC)
     /* PQC-ECC composite */
-    PGP_PKA_KYBER768_X25519 = 29,                 /* Kyber768 + X25519 from draft-wussler-openpgp-pqc-01 */
-    PGP_PKA_KYBER1024_X448 = 30,                  /* Kyer1024 + X448 from draft-wussler-openpgp-pqc-01 */
-    PGP_PKA_KYBER768_P256 = 31,                   /* Kyber768 + NIST P-256 from draft-wussler-openpgp-pqc-01 */
-    PGP_PKA_KYBER1024_P384 = 32,                  /* Kyber1024 + NIST P-384 from draft-wussler-openpgp-pqc-01 */
-    PGP_PKA_KYBER768_BP256 = 33,                  /* Kyber768 + Brainpool P256r1 from draft-wussler-openpgp-pqc-01 */
-    PGP_PKA_KYBER1024_BP384 = 34,                 /* Kyber1024 + Brainpool P384r1 from draft-wussler-openpgp-pqc-01 */
+    PGP_PKA_KYBER768_X25519 = 29,                 /* Kyber768 + X25519 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER1024_X448 = 30,                  /* Kyer1024 + X448 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER768_P256 = 31,                   /* Kyber768 + NIST P-256 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER1024_P384 = 32,                  /* Kyber1024 + NIST P-384 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER768_BP256 = 33,                  /* Kyber768 + Brainpool P256r1 from draft-wussler-openpgp-pqc-00 */
+    PGP_PKA_KYBER1024_BP384 = 34,                 /* Kyber1024 + Brainpool P384r1 from draft-wussler-openpgp-pqc-00 */
 
-    PGP_PKA_DILITHIUM3_ED25519 = 35,              /* Dilithium 3 + Ed25519 from draft-wussler-openpgp-pqc-01*/
-    PGP_PKA_DILITHIUM5_ED448 = 36,                /* Dilithium 5 + Ed448 from draft-wussler-openpgp-pqc-01*/
-    PGP_PKA_DILITHIUM3_P256 = 37,                 /* Dilithium 3 + ECDSA-NIST-P-256 from draft-wussler-openpgp-pqc-01*/
-    PGP_PKA_DILITHIUM5_P384 = 38,                 /* Dilithium 5 + ECDSA-NIST-P-384 from draft-wussler-openpgp-pqc-01*/
-    PGP_PKA_DILITHIUM3_BP256 = 39,                /* Dilithium 3 + ECDSA-brainpoolP256r1 from draft-wussler-openpgp-pqc-01*/
-    PGP_PKA_DILITHIUM5_BP384 = 40,                /* Dilithium 5 + ECDSA-brainpoolP384r1 from draft-wussler-openpgp-pqc-01*/
+    PGP_PKA_DILITHIUM3_ED25519 = 35,              /* Dilithium 3 + Ed25519 from draft-wussler-openpgp-pqc-00*/
+    PGP_PKA_DILITHIUM5_ED448 = 36,                /* Dilithium 5 + Ed448 from draft-wussler-openpgp-pqc-00*/
+    PGP_PKA_DILITHIUM3_P256 = 37,                 /* Dilithium 3 + ECDSA-NIST-P-256 from draft-wussler-openpgp-pqc-00*/
+    PGP_PKA_DILITHIUM5_P384 = 38,                 /* Dilithium 5 + ECDSA-NIST-P-384 from draft-wussler-openpgp-pqc-00*/
+    PGP_PKA_DILITHIUM3_BP256 = 39,                /* Dilithium 3 + ECDSA-brainpoolP256r1 from draft-wussler-openpgp-pqc-00*/
+    PGP_PKA_DILITHIUM5_BP384 = 40,                /* Dilithium 5 + ECDSA-brainpoolP384r1 from draft-wussler-openpgp-pqc-00*/
 #endif
 
-    PGP_PKA_SM2 = 99,                     /* SM2 encryption/signature schemes */
+    PGP_PKA_SM2 = 99, /* SM2 encryption/signature schemes */
 
     PGP_PKA_PRIVATE00 = 100, /* Private/Experimental Algorithm */
     PGP_PKA_PRIVATE01 = 101, /* Private/Experimental Algorithm */
@@ -490,7 +490,7 @@ typedef enum {
 } pgp_compression_type_t;
 
 enum { PGP_SKSK_V4 = 4, PGP_SKSK_V5 = 5 };
-typedef enum { 
+typedef enum {
     PGP_PKSK_V3 = 3,
 #if defined(ENABLE_CRYPTO_REFRESH)
     PGP_PKSK_V6 = 6
@@ -503,7 +503,8 @@ typedef enum {
 
 /** Version.
  * OpenPGP has two different protocol versions: version 3 and version 4.
- * Also there is a draft that defines version 5, see https://datatracker.ietf.org/doc/draft-ietf-openpgp-crypto-refresh/
+ * Also there is a draft that defines version 5, see
+ * https://datatracker.ietf.org/doc/draft-ietf-openpgp-crypto-refresh/
  *
  * \see RFC4880 5.2
  */
@@ -565,5 +566,17 @@ typedef enum pgp_key_store_format_t {
     PGP_KEY_STORE_KBX,
     PGP_KEY_STORE_G10,
 } pgp_key_store_format_t;
+
+namespace rnp {
+enum class AuthType {
+    None,
+    MDC,
+    AEADv1,
+#ifdef ENABLE_CRYPTO_REFRESH
+    AEADv2
+#endif
+};
+
+} // namespace rnp
 
 #endif
