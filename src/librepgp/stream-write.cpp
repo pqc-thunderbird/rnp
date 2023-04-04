@@ -104,12 +104,12 @@ typedef struct pgp_dest_encrypted_param_t {
     std::array<uint8_t, PGP_SEIPDV2_SALT_LEN> v2_seipd_salt; /* SEIPDv2 salt value */
     std::vector<uint8_t>                      v2_seipd_nonce;
 
-    bool is_aead_auth() 
+    bool is_aead_auth()
     {
-        return (this->auth_type == rnp::AuthType::AEADv1) 
+        return (this->auth_type == rnp::AuthType::AEADv1)
 #ifdef ENABLE_CRYPTO_REFRESH
             || (this->auth_type == rnp::AuthType::AEADv2)
-#endif  
+#endif
             ;
     };
 
@@ -118,7 +118,7 @@ typedef struct pgp_dest_encrypted_param_t {
     {
         return this->auth_type == rnp::AuthType::AEADv2;;
     }
-#endif  
+#endif
 } pgp_dest_encrypted_param_t;
 
 typedef struct pgp_dest_signer_info_t {
@@ -364,7 +364,8 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
     }
 
     /* set chunk index for additional data */
-    if (!param->is_v2_seipd) {
+    //if (!param->is_v2_seipd) {
+    if (param->auth_type == rnp::AuthType::AEADv1) { 
         STORE64BE(param->ad + param->adlen - 8, idx);
     }
 
@@ -384,8 +385,12 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
             total -= param->chunklen - param->cachelen - param->chunkout;
         }
 
-        STORE64BE(param->ad + param->adlen, total);
-        param->adlen += 8;
+//#ifdef ENABLE_CRYPTO_REFRESH
+ //       if (param->auth_type == rnp::AuthType::AEADv2) { 
+            STORE64BE(param->ad + param->adlen, total);
+            param->adlen += 8;
+        //}
+//#endif
     }
     RNP_DBG_LOG_HEX("stream-write/ad", param->ad, param->adlen);
     if (!pgp_cipher_aead_set_ad(&param->encrypt, param->ad, param->adlen)) {
@@ -395,15 +400,21 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
 
     /* set chunk index for nonce */
     uint8_t *nonce_src_ptr = param->iv;
-    if (param->is_v2_seipd) {
+
+#ifdef ENABLE_CRYPTO_REFRESH
+    //if (param->is_v2_seipd) {
+    if (param->auth_type == rnp::AuthType::AEADv2) {
         nonce_src_ptr = param->v2_seipd_nonce.data();
     }
+#endif
     nlen = pgp_cipher_aead_nonce(param->aalg, nonce_src_ptr, nonce, idx);
+    RNP_DBG_LOG_HEX("encrypted_start_aead_chunk: param->iv/nonce_src_ptr(nlen)", nonce_src_ptr, nlen);
     if(nlen == 0) {
         RNP_LOG("ERROR: when starting encrypted AEAD chunk: could not determine nonce length");
     }
 
     /* start cipher */
+    RNP_DBG_LOG_HEX("encrypted_start_aead_chunk: nonce(nlen)", nonce, nlen);
     res = pgp_cipher_aead_start(&param->encrypt, nonce, nlen);
 
     /* write final authentication tag */
@@ -488,7 +499,8 @@ encrypted_dst_finish(pgp_dest_t *dst)
 {
     pgp_dest_encrypted_param_t *param = (pgp_dest_encrypted_param_t *) dst->param;
 
-    if (param->auth_type == rnp::AuthType::AEADv1 || param->auth_type == rnp::AuthType::AEADv2) {
+    //if (param->auth_type == rnp::AuthType::AEADv1 || param->auth_type == rnp::AuthType::AEADv2) {
+    if (param->is_aead_auth()) {
 #if !defined(ENABLE_AEAD)
         RNP_LOG("AEAD is not enabled.");
         rnp_result_t res = RNP_ERROR_NOT_IMPLEMENTED;
@@ -534,7 +546,8 @@ encrypted_dst_close(pgp_dest_t *dst, bool discard)
         return;
     }
 
-    if (param->auth_type == rnp::AuthType::AEADv1 || param->auth_type == rnp::AuthType::AEADv2) {
+    //if (param->auth_type == rnp::AuthType::AEADv1 || param->auth_type == rnp::AuthType::AEADv2) {
+    if (param->is_aead_auth()) {
 #if defined(ENABLE_AEAD)
         pgp_cipher_aead_destroy(&param->encrypt);
 #endif
@@ -898,29 +911,36 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     }
 
     /* fill header */
-    hdr[0] = param->is_v2_seipd ? 2 : 1;
+    //hdr[0] = param->is_v2_seipd ? 2 : 1;
+#ifdef ENABLE_CRYPTO_REFRESH
+    hdr[0] = param->auth_type == rnp::AuthType::AEADv2 ? 2 : 1;
+#else
+    hdr[0] = 1;
+#endif
 
-    if(param->is_v2_seipd) {
+    /*if(param->is_v2_seipd) {
     hdr[1] = param->ctx->ealg;
     hdr[2] = param->ctx->aalg;
-    //hdr[3] = param->;
 
     }
-    else {
+    else {*/
     hdr[1] = param->ctx->ealg;
     hdr[2] = param->ctx->aalg;
 
-    }
-    hdr[3] = param->ctx->abits; 
+    //}
+    hdr[3] = param->ctx->abits;
     RNP_DBG_LOG("stream-write: encrypted_start_aead: chunk size octet in hdr = %u\n", param->ctx->abits);
     /* generate iv */
     nlen = pgp_cipher_aead_nonce_len(param->ctx->aalg);
     uint8_t *iv_or_salt = param->iv;
     size_t   iv_or_salt_len = nlen;
-    if (param->is_v2_seipd) {
+#ifdef ENABLE_CRYPTO_REFRESH 
+    //if (param->is_v2_seipd) {
+    if (param->auth_type == rnp::AuthType::AEADv2) {
         iv_or_salt = param->v2_seipd_salt.data();
         iv_or_salt_len = param->v2_seipd_salt.size();
     }
+#endif
     try {
         param->ctx->ctx->rng.get(iv_or_salt, iv_or_salt_len);
     } catch (const std::exception &e) {
@@ -937,20 +957,28 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
 
     /* fill additional/authenticated data */
     uint8_t raw_packet_tag = PGP_PKT_AEAD_ENCRYPTED;
-    if (param->is_v2_seipd) {
+#ifdef ENABLE_CRYPTO_REFRESH
+    //if (param->is_v2_seipd) {
+    if (param->auth_type == rnp::AuthType::AEADv2) {
         raw_packet_tag = PGP_PKT_SE_IP_DATA;
     }
+#endif
     param->ad[0] = raw_packet_tag | PGP_PTAG_ALWAYS_SET | PGP_PTAG_NEW_FORMAT;
     memcpy(param->ad + 1, hdr, 4);
-    if (!param->is_v2_seipd) {
+#ifdef ENABLE_CRYPTO_REFRESH
+    //if (param->is_v2_seipd) {
+    if (param->auth_type == rnp::AuthType::AEADv2) {
+        param->adlen = 5;
+    } else {
+#endif
         memset(param->ad + 5, 0, 8);
         param->adlen = 13;
-    } else {
-        param->adlen = 5;
+#ifdef ENABLE_CRYPTO_REFRESH
     }
     // std::vector<uint8_t> message_key;
     seipd_v2_aead_fields_t s2_fields;
-    if (param->is_v2_seipd) {
+    //if (param->is_v2_seipd) {
+    if (param->auth_type == rnp::AuthType::AEADv2) {
         param->ctx->aalg = PGP_AEAD_OCB; // NOTEMTG: would have to be set be preference of recipient
         param->aalg = PGP_AEAD_OCB;
         pgp_seipdv2_hdr_t v2_seipd_hdr;
@@ -963,6 +991,7 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
         enckey = s2_fields.key.data();
         param->v2_seipd_nonce = std::move(s2_fields.nonce);
     }
+#endif
 
     /* initialize cipher */
     if (!pgp_cipher_aead_init(
@@ -1054,6 +1083,7 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
         singlepass = false;
     }
 
+    RNP_DBG_LOG_HEX("init_encrypted_dst: enckey", enckey.data(), keylen);
     /* Configuring and writing pk-encrypted session keys */
     for (auto recipient : handler->ctx->recipients) {
         pgp_pkesk_version_t pkesk_version = PGP_PKSK_V3;
@@ -1084,12 +1114,17 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     /* Initializing partial packet writer */
     param->pkt.partial = true;
     param->pkt.indeterminate = false;
-    if (param->is_aead_auth()) {
+    if (param->auth_type == rnp::AuthType::AEADv1) {
         param->pkt.tag = PGP_PKT_AEAD_ENCRYPTED;
     } else {
         /* We do not generate PGP_PKT_SE_DATA, leaving this just in case */
         param->pkt.tag =
           param->auth_type == rnp::AuthType::MDC ? PGP_PKT_SE_IP_DATA : PGP_PKT_SE_DATA;
+#ifdef ENABLE_CRYPTO_REFRESH
+        if(param->auth_type == rnp::AuthType::AEADv2) {
+            param->pkt.tag = PGP_PKT_SE_IP_DATA;
+        }
+#endif
     }
 
     /* initializing partial data length writer */

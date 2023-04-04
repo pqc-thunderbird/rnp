@@ -480,6 +480,7 @@ pgp_cipher_aead_init(pgp_crypt_t *  crypt,
         return false;
     }
 
+    RNP_DBG_LOG_HEX("pgp_cipher_aead_init with key", key, pgp_key_size(ealg));
     if (botan_cipher_set_key(crypt->aead.obj, key, (size_t) pgp_key_size(ealg))) {
         RNP_LOG("failed to set key");
         return false;
@@ -529,6 +530,7 @@ pgp_cipher_aead_tag_len(pgp_aead_alg_t aalg)
 bool
 pgp_cipher_aead_set_ad(pgp_crypt_t *crypt, const uint8_t *ad, size_t len)
 {
+    RNP_DBG_LOG_HEX("set_ad", ad, len);
     return botan_cipher_set_associated_data(crypt->aead.obj, ad, len) == 0;
 }
 
@@ -536,6 +538,7 @@ bool
 pgp_cipher_aead_start(pgp_crypt_t *crypt, const uint8_t *nonce, size_t len)
 {
     RNP_DBG_LOG("DBG: called pgp_cipher_aead_start\n");
+    RNP_DBG_LOG_HEX("start with nonce", nonce, len);
     return botan_cipher_start(crypt->aead.obj, nonce, len) == 0;
 }
 
@@ -559,6 +562,8 @@ pgp_cipher_aead_update(pgp_crypt_t *crypt, uint8_t *out, const uint8_t *in, size
         RNP_LOG("wrong aead usage");
         return false;
     }
+    RNP_DBG_LOG_HEX("pgp_cipher_aead_update called with input", in, len);
+    RNP_DBG_LOG_HEX("pgp_cipher_aead_update output", out, outwr);
 
     return true;
 }
@@ -582,9 +587,11 @@ pgp_cipher_aead_finish(pgp_crypt_t *crypt, uint8_t *out, const uint8_t *in, size
 
     if (crypt->aead.decrypt) {
         size_t datalen = len - crypt->aead.taglen;
+        RNP_LOG("aead encrypt update");
         /* for decryption we should have tag for the final update call */
         res =
           botan_cipher_update(crypt->aead.obj, flags, out, datalen, &outwr, in, len, &inread);
+        RNP_DBG_LOG_HEX("part input to decryption", in, len);
         if (res != 0) {
             if (res != BOTAN_FFI_ERROR_BAD_MAC) {
                 RNP_LOG("aead finish failed: %d", res);
@@ -597,6 +604,7 @@ pgp_cipher_aead_finish(pgp_crypt_t *crypt, uint8_t *out, const uint8_t *in, size
             return false;
         }
     } else {
+        RNP_LOG("aead decrypt update");
         /* for encryption tag will be generated */
         size_t outlen = len + crypt->aead.taglen;
         if (botan_cipher_update(
@@ -604,6 +612,9 @@ pgp_cipher_aead_finish(pgp_crypt_t *crypt, uint8_t *out, const uint8_t *in, size
             RNP_LOG("aead finish failed");
             return false;
         }
+        RNP_DBG_LOG("inread = %zu", inread);
+        RNP_DBG_LOG_HEX("last part of cryption input", in, len);
+        RNP_DBG_LOG_HEX("last part of cryption result", out, outwr);
 
         if ((outwr != outlen) || (inread != len)) {
             RNP_LOG("wrong encrypt aead finish usage");
