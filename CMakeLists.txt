@@ -57,7 +57,6 @@ option(ENABLE_COVERAGE "Enable code coverage testing.")
 option(ENABLE_SANITIZERS "Enable ASan and other sanitizers.")
 option(ENABLE_FUZZERS "Enable fuzz targets.")
 option(DOWNLOAD_GTEST "Download Googletest" On)
-option(DOWNLOAD_SEXP "Use FetchContent to download sexp library" Off)
 option(DOWNLOAD_RUBYRNP "Download ruby-rnp and run related tests." On)
 # crypto components
 function(tristate_feature_auto NAME DESCRIPTION)
@@ -77,13 +76,6 @@ set_property(CACHE ENABLE_IDEA PROPERTY STRINGS ${TRISTATE_VALUES})
 tristate_feature_auto(ENABLE_BLOWFISH "Enable Blowfish cipher support.")
 tristate_feature_auto(ENABLE_CAST5 "Enable CAST5 cipher support.")
 tristate_feature_auto(ENABLE_RIPEMD160 "Enable RIPEMD-160 hash support.")
-
-option(ENABLE_CRYPTO_REFRESH "Enable crypto-refresh support (v6)")
-option(ENABLE_PQC "Enable PQC support - requires ENABLE_CRYPTO_REFRESH")
-
-if((NOT ENABLE_CRYPTO_REFRESH) AND ENABLE_PQC)
-  message(FATAL_ERROR "ENABLE_PQC requires ENABLE_CRYPTO_REFRESH")
-endif()
 
 set(ENABLE_DOC Auto CACHE STRING "Enable building documentation.")
 set_property(CACHE ENABLE_DOC PROPERTY STRINGS ${TRISTATE_VALUES})
@@ -134,7 +126,7 @@ if(NOT MSVC)
     -Wno-unused-parameter
     -Wno-missing-field-initializers
   )
-endif()
+endif(NOT MSVC)
 
 # MSYS-specific options
 if(MSYS)
@@ -146,7 +138,12 @@ if(MSYS)
     -fstack-protector
     -fopenmp
   )
-endif()
+endif(MSYS)
+
+# THis works both for MSVC and CL on Windows
+if(WIN32 AND NOT MSYS)
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
+endif(WIN32 AND NOT MSYS)
 
 # set a few other things at the top level to prevent incompatibilities
 set(CMAKE_C_STANDARD 99)
