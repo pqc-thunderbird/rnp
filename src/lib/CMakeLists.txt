@@ -298,7 +298,6 @@ add_library(librnp-obj OBJECT
   pass-provider.cpp
   pgp-key.cpp
   rnp.cpp
-  $<TARGET_OBJECTS:rnp-common>
 )
 
 get_target_property(_comp_options librnp-obj COMPILE_OPTIONS)
@@ -516,10 +515,6 @@ function(get_linked_libs libsvar dirsvar tgt)
   list(APPEND visited_targets ${tgt})
   if (imported)
     get_target_property(linkedlibs ${tgt} INTERFACE_LINK_LIBRARIES)
-    message(STATUS "----> ${lib} -interface- ${linkedlibs}")
-#  else()
-#    get_target_property(linkedlibs ${tgt} LINK_LIBRARIES)
-#    message(STATUS "----> ${lib} -- ${linkedlibs}")
   endif()
   set(libs)
   foreach (lib ${linkedlibs})
