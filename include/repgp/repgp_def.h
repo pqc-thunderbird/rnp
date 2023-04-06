@@ -497,8 +497,8 @@ typedef enum {
 #endif
 } pgp_pkesk_version_t;
 typedef enum {
-    PGP_SE_IP_DATA_VERSION = 1,
-    PGP_SE_IP_DATA_VERSION_2 = 2 /* TODOMTG: ifdef */
+    PGP_SE_IP_DATA_V1 = 1,
+    PGP_SE_IP_DATA_V2 = 2
 } pgp_seipd_version_t;
 
 /** Version.

@@ -380,7 +380,7 @@ typedef struct pgp_aead_hdr_t {
 } pgp_aead_hdr_t;
 
 typedef struct pgp_seipdv2_hdr_t {
-    int            version;                    /* version of the SEIPD packet */
+    pgp_seipd_version_t version;               /* version of the SEIPD packet */
     pgp_symm_alg_t cipher_alg;                 /* underlying symmetric algorithm */
     pgp_aead_alg_t aead_alg;                   /* AEAD algorithm, i.e. EAX, OCB, etc */
     uint8_t        chunk_size_octet;           /* chunk size octet */

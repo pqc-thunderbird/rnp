@@ -785,7 +785,12 @@ pgp_packet_body_t::add_subpackets(const pgp_signature_t &sig, bool hashed)
         add_uint16(spbody.data_.size());
     }
     else { /* PGP_V6 */
+#if defined(ENABLE_CRYPTO_REFRESH)
         add_uint32(spbody.data_.size());
+#else
+        RNP_LOG("should not reach this code");
+        throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
+#endif
     }
     add(spbody.data_.data(), spbody.data_.size());
 }

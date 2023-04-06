@@ -2100,6 +2100,7 @@ parse_aead_chunk_size(uint8_t chunk_size_octet, size_t *chunk_size)
     return true;
 }
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 bool
 get_seipdv2_src_hdr(pgp_source_t *src, pgp_seipdv2_hdr_t *hdr)
 {
@@ -2109,13 +2110,14 @@ get_seipdv2_src_hdr(pgp_source_t *src, pgp_seipdv2_hdr_t *hdr)
         return false;
     }
 
-    hdr->version = 2;
+    hdr->version = PGP_SE_IP_DATA_V2;
     hdr->cipher_alg = (pgp_symm_alg_t) hdrbt[0];
     hdr->aead_alg = (pgp_aead_alg_t) hdrbt[1];
     hdr->chunk_size_octet = hdrbt[2];
     std::memcpy(hdr->salt, &hdrbt[3], PGP_SEIPDV2_SALT_LEN);
     return true;
 }
+#endif
 
 bool
 get_aead_src_hdr(pgp_source_t *src, pgp_aead_hdr_t *hdr)
@@ -2254,7 +2256,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
 #ifdef ENABLE_CRYPTO_REFRESH 
         else if (SEIPD_version == 2) {
             param->auth_type = rnp::AuthType::AEADv2;
-            param->seipdv2_hdr.version = 2;
+            param->seipdv2_hdr.version = PGP_SE_IP_DATA_V2;
             uint8_t hdr[4];
             if (!src_peek_eq(param->pkt.readsrc, hdr, 4)) {
                 return RNP_ERROR_READ;

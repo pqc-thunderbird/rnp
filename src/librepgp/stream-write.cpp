@@ -1005,7 +1005,7 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
         v2_seipd_hdr.cipher_alg = param->ctx->ealg;
         v2_seipd_hdr.aead_alg = param->ctx->aalg;
         v2_seipd_hdr.chunk_size_octet = param->ctx->abits;
-        v2_seipd_hdr.version = 2;
+        v2_seipd_hdr.version = PGP_SE_IP_DATA_V2;
         memcpy(v2_seipd_hdr.salt, iv_or_salt, PGP_SEIPDV2_SALT_LEN);
         s2_fields = seipd_v2_key_and_nonce_derivation(v2_seipd_hdr, enckey);
         enckey = s2_fields.key.data();

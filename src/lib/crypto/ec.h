@@ -90,6 +90,7 @@ typedef struct pgp_ec_signature_t {
     pgp_mpi_t s;
 } pgp_ec_signature_t;
 
+#if defined(ENABLE_CRYPTO_REFRESH)
 typedef struct pgp_ed25519_key_t {
     std::vector<uint8_t> pub;  // \  native encoding
     std::vector<uint8_t> priv; // /
@@ -108,7 +109,7 @@ typedef struct pgp_x25519_encrypted_t {
     std::vector<uint8_t> eph_key;
     std::vector<uint8_t> enc_sess_key;
 } pgp_x25519_encrypted_t;
-
+#endif
 
 /*
  * @brief   Finds curve ID by hex representation of OID

@@ -56,7 +56,8 @@ bool
 src_read(pgp_source_t *src, void *buf, size_t len, size_t *readres)
 {
     // DEBUG
-    uint8_t* input_buf = (uint8_t*) buf; 
+    uint8_t* input_buf = (uint8_t*) buf;
+    (void)input_buf; // suppress unused variable
     // END DEBUG
     size_t              left = len;
     size_t              read;

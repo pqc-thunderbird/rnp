@@ -67,6 +67,7 @@ signature_hash_key(const pgp_key_pkt_t &key, rnp::Hash &hash)
             return;
         }
 #else
+        RNP_LOG("should not reach this code");
         throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
 #endif
     }
@@ -1318,6 +1319,7 @@ pgp_signature_t::parse_v4v6(pgp_packet_body_t &pkt)
 #if defined(ENABLE_CRYPTO_REFRESH)
         splen_size = PGP_SIG_HASHED_AREA_SIZE_OCTETS_V6;
 #else
+        RNP_LOG("should not reach this code");
         throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
 #endif
     }
