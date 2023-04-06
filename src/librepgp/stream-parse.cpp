@@ -2248,13 +2248,13 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             return RNP_ERROR_READ;
         }
 
-        if (SEIPD_version == 1) {
+        if (SEIPD_version == PGP_SE_IP_DATA_V1) {
             //param->has_mdc = true;
             param->auth_type = rnp::AuthType::MDC;
             param->auth_validated = false;
         } 
 #ifdef ENABLE_CRYPTO_REFRESH 
-        else if (SEIPD_version == 2) {
+        else if (SEIPD_version == PGP_SE_IP_DATA_V2) {
             param->auth_type = rnp::AuthType::AEADv2;
             param->seipdv2_hdr.version = PGP_SE_IP_DATA_V2;
             uint8_t hdr[4];
