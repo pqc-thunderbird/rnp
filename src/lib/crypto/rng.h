@@ -76,7 +76,9 @@ class RNG {
     struct botan_rng_struct *handle();
 
     /**
-     * @brief Returns the Botan RNG object
+     * @brief Returns the Botan RNG C++ object
+     *        Note: It is planned to move away from the FFI handle.
+     *        For the transition phase, both approaches are implemented.
      */
      Botan::RandomNumberGenerator* obj() const;
 #endif

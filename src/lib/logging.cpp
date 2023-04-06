@@ -77,7 +77,3 @@ rnp_log_continue()
         _rnp_log_disable--;
     }
 }
-
-namespace rnp {
-
-} // namespace rnp
