@@ -548,6 +548,8 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     }
 #endif
     /* set chunk index for nonce */
+    RNP_DBG_LOG("mode is %s", param->aead_hdr.aalg == PGP_AEAD_EAX ? "true" : "false");
+    RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_nonce() called with nonce_base(len=?)", nonce_base, 15);
     nlen = pgp_cipher_aead_nonce(param->aead_hdr.aalg, nonce_base, nonce, idx);
 
     RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_start called with nonce(nlen)", nonce, nlen);
@@ -2241,6 +2243,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
                 RNP_LOG("failed to read SEIPDv2 header");
                 return RNP_ERROR_READ;
             }
+            RNP_DBG_LOG_HEX("parsed salt", param->seipdv2_hdr.salt, sizeof(param->seipdv2_hdr.salt));
 
             /* check SEIPDv2 packet header // TODOMTG: cannot happen?: */
             /*if (param->seipdv2_hdr.version != PGP_SE_IP_DATA_VERSION_2) {
