@@ -407,7 +407,7 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
         nonce_src_ptr = param->v2_seipd_nonce.data();
     }
 #endif
-    RNP_DBG_LOG("mode is %s", param->aalg == PGP_AEAD_EAX ? "true" : "false");
+    RNP_DBG_LOG("mode is EAX: %s", param->aalg == PGP_AEAD_EAX ? "true" : "false");
     RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_nonce() called with nonce_base(len=?)", nonce_src_ptr, 15);
     nlen = pgp_cipher_aead_nonce(param->aalg, nonce_src_ptr, nonce, idx);
     RNP_DBG_LOG_HEX("encrypted_start_aead_chunk: param->iv/nonce_src_ptr(nlen)", nonce_src_ptr, nlen);
@@ -987,7 +987,7 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     //if (param->is_v2_seipd) {
     if (param->auth_type == rnp::AuthType::AEADv2) {
         //param->ctx->aalg = PGP_AEAD_OCB; // NOTEMTG: would have to be set be preference of recipient
-        //param->aalg = PGP_AEAD_OCB;
+        param->aalg = param->ctx->aalg;
         pgp_seipdv2_hdr_t v2_seipd_hdr;
         v2_seipd_hdr.cipher_alg = param->ctx->ealg;
         v2_seipd_hdr.aead_alg = param->ctx->aalg;

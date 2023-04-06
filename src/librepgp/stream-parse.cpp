@@ -548,7 +548,7 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     }
 #endif
     /* set chunk index for nonce */
-    RNP_DBG_LOG("mode is %s", param->aead_hdr.aalg == PGP_AEAD_EAX ? "true" : "false");
+    RNP_DBG_LOG("mode is EAX: %s", param->aead_hdr.aalg == PGP_AEAD_EAX ? "true" : "false");
     RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_nonce() called with nonce_base(len=?)", nonce_base, 15);
     nlen = pgp_cipher_aead_nonce(param->aead_hdr.aalg, nonce_base, nonce, idx);
 
