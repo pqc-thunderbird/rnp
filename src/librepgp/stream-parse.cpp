@@ -1534,7 +1534,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 
     /* Crypto Refresh: For X25519/X448 PKESKv3, AES is mandated */
     if(sesskey->alg == PGP_PKA_X25519 && sesskey->version == PGP_PKSK_V3) {
-        switch(param->salg) {
+        switch(sesskey->salg) {
             case PGP_SA_AES_128:
             case PGP_SA_AES_192:
             case PGP_SA_AES_256:
