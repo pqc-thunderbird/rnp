@@ -632,6 +632,12 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     }
 #endif
 
+    fprintf(stdout, "Session Key:\n");
+    for(int i = 0; i < keylen; ++i)
+    fprintf(stdout, "%02X%s", key[i],
+             ( i + 1 ) % 16 == 0 ? "\r\n" : " " );
+    fprintf(stdout, "\n");
+
 #if defined(ENABLE_CRYPTO_REFRESH)
     if(have_pkesk_checksum(pkey.alg))
 #endif

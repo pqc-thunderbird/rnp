@@ -1702,6 +1702,12 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         }
     }
 
+    fprintf(stdout, "Session Key:\n");
+    for(int i = 0; i < keylen; ++i)
+    fprintf(stdout, "%02X%s", decbuf_sesskey[i],
+             ( i + 1 ) % 16 == 0 ? "\r\n" : " " );
+    fprintf(stdout, "\n");
+
 #if defined(ENABLE_CRYPTO_REFRESH)
     if (sesskey->version == PGP_PKSK_V3)
 #endif
