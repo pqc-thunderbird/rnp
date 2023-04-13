@@ -1526,7 +1526,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 
     /* Crypto Refresh: For X25519/X448 PKESKv3, AES is mandated */
     if(sesskey->alg == PGP_PKA_X25519 && sesskey->version == PGP_PKSK_V3) {
-        switch(param->salg) {
+        switch(sesskey->salg) {
             case PGP_SA_AES_128:
             case PGP_SA_AES_192:
             case PGP_SA_AES_256:
@@ -2240,13 +2240,13 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             return RNP_ERROR_READ;
         }
 
-        if (SEIPD_version == 1) {
+        if (SEIPD_version == PGP_SE_IP_DATA_V1) {
             //param->has_mdc = true;
             param->auth_type = rnp::AuthType::MDC;
             param->auth_validated = false;
         } 
 #ifdef ENABLE_CRYPTO_REFRESH 
-        else if (SEIPD_version == 2) {
+        else if (SEIPD_version == PGP_SE_IP_DATA_V2) {
             param->auth_type = rnp::AuthType::AEADv2;
             param->seipdv2_hdr.version = PGP_SE_IP_DATA_V2;
             uint8_t hdr[4];
