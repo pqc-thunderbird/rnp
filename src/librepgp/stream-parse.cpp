@@ -92,8 +92,6 @@ typedef struct pgp_source_encrypted_param_t {
     std::vector<pgp_sk_sesskey_t> symencs;        /* array of sym-encrypted session keys */
     std::vector<pgp_pk_sesskey_t> pubencs;        /* array of pk-encrypted session keys */
     rnp::AuthType                 auth_type; /* Authentication type */
-    //bool                          seipd_v2;       /* SEIPD v2, encrypted with AEAD (tag 18)*/ // TODOMTG: still needed?
-    //bool                          mdc_validated;  /* mdc was validated already */
     bool        auth_validated;              /* Auth tag (MDC or AEAD) was already validated */
     bool                          aead;           /* AEAD encrypted data packet, tag 20 */
     
@@ -107,7 +105,7 @@ typedef struct pgp_source_encrypted_param_t {
     size_t                        cachepos;    /* index of first unread byte in the cache */
     pgp_aead_hdr_t                aead_hdr;    /* AEAD encryption parameters */
     pgp_seipdv2_hdr_t             seipdv2_hdr; /* SEIPDv2 encryption parameters */
-    std::vector<uint8_t>          seipd_v2_nonce;
+    //std::vector<uint8_t>          seipd_v2_nonce;
     uint8_t                       aead_ad[PGP_AEAD_MAX_AD_LEN];  /* additional data (used for AEAD and SEIPDv2 packets) */
     size_t                         aead_adlen; /* length of the additional data */
     pgp_symm_alg_t       salg;       /* data encryption algorithm */
@@ -540,17 +538,18 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     param->chunkidx = idx;
     param->chunkin = 0;
 
-    uint8_t *nonce_base = param->aead_hdr.iv;
 
+#if 0
 #ifdef ENABLE_CRYPTO_REFRESH
     if (param->is_v2_seipd()) {
         nonce_base = param->seipd_v2_nonce.data();
     }
 #endif
+#endif
     /* set chunk index for nonce */
     RNP_DBG_LOG("mode is EAX: %s", param->aead_hdr.aalg == PGP_AEAD_EAX ? "true" : "false");
-    RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_nonce() called with nonce_base(len=?)", nonce_base, 15);
-    nlen = pgp_cipher_aead_nonce(param->aead_hdr.aalg, nonce_base, nonce, idx);
+    RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_nonce() called with param->aead_hdr.iv(len=?)", param->aead_hdr.iv, 15);
+    nlen = pgp_cipher_aead_nonce(param->aead_hdr.aalg, param->aead_hdr.iv, nonce, idx);
 
     RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_start called with nonce(nlen)", nonce, nlen);
     /* start cipher */
@@ -1472,7 +1471,13 @@ encrypted_start_aead(pgp_source_encrypted_param_t *param, pgp_symm_alg_t alg, ui
           seipd_v2_key_and_nonce_derivation(param->seipdv2_hdr, key);
         seipd_v2_key = aead_fields.key;
         key = std::move(seipd_v2_key.data());
-        param->seipd_v2_nonce = std::move(aead_fields.nonce);
+        //param->seipd_v2_nonce = std::move(aead_fields.nonce);
+        if(aead_fields.nonce.size() > sizeof(param->aead_hdr.iv))
+        {
+            // signalling error would be better here
+            aead_fields.nonce.resize(sizeof(param->aead_hdr.iv));
+        }
+        memcpy(param->aead_hdr.iv, aead_fields.nonce.data(), aead_fields.nonce.size());
     }
 #endif
 
@@ -2067,7 +2072,7 @@ get_compressed_src_alg(pgp_source_t *src, uint8_t *alg)
 
 static bool
 parse_aead_chunk_size(uint8_t chunk_size_octet, size_t *chunk_size)
-{ // TODOMTG:CMT-FALKO: should be in an anonymous namespace instead of "static"
+{ 
     if (chunk_size_octet > 56) {
         RNP_LOG("too large chunk size: %d", chunk_size_octet);
         return false;
@@ -2141,7 +2146,6 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
                 RNP_LOG("failed to read packet header");
                 return RNP_ERROR_READ;
             }
-            //printf("DBG encrypted_read_packet_data: ptag = %u\n", ptag);
             ptype = get_packet_type(ptag);
             switch (ptype) {
             case PGP_PKT_SK_SESSION_KEY: {
@@ -2232,15 +2236,12 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
         memcpy(param->aead_ad + 1, hdr, 4);
         memset(param->aead_ad + 5, 0, 8);
     } else if (ptype == PGP_PKT_SE_IP_DATA) {
-        // TODOMTG: should probably make this a separate function
         uint8_t SEIPD_version;
-        // if (!src_read_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
         if (!src_read_eq(param->pkt.readsrc, &SEIPD_version, 1)) {
             return RNP_ERROR_READ;
         }
 
         if (SEIPD_version == PGP_SE_IP_DATA_V1) {
-            //param->has_mdc = true;
             param->auth_type = rnp::AuthType::MDC;
             param->auth_validated = false;
         } 
@@ -2260,10 +2261,6 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             RNP_DBG_LOG_HEX("parsed salt", param->seipdv2_hdr.salt, sizeof(param->seipdv2_hdr.salt));
 
             /* check SEIPDv2 packet header // TODOMTG: cannot happen?: */
-            /*if (param->seipdv2_hdr.version != PGP_SE_IP_DATA_VERSION_2) {
-                RNP_LOG("Expect SEIPDv2, got version: %d", param->aead_hdr.version);
-                return RNP_ERROR_BAD_FORMAT;
-            }*/
             if ((param->seipdv2_hdr.aead_alg != PGP_AEAD_EAX) &&
                 (param->seipdv2_hdr.aead_alg != PGP_AEAD_OCB)) {
                 RNP_LOG("unknown AEAD alg: %d", (int) param->seipdv2_hdr.aead_alg);
