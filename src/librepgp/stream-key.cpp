@@ -837,8 +837,8 @@ default:
 
 #if defined(ENABLE_CRYPTO_REFRESH)
     if(key.version == PGP_V6 && key.sec_protection.s2k.usage == PGP_S2KU_NONE) {
-    }
         return; /* checksum removed for v6 and usage byte zero */
+    }
 #endif
 
     /* add sum16 if sha1 is not used */
