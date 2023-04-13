@@ -541,6 +541,11 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
     /* check the cleartext data */
     switch (key.sec_protection.s2k.usage) {
     case PGP_S2KU_NONE:
+#if defined(ENABLE_CRYPTO_REFRESH)
+        if(key.version == PGP_V6) {
+            break; /* checksum removed for v6 and usage byte zero */
+        }
+#endif
     case PGP_S2KU_ENCRYPTED: {
         /* calculate and check sum16 of the cleartext */
         if (len < 2) {
@@ -829,6 +834,12 @@ default:
         RNP_LOG("unknown pk alg : %d", (int) key.alg);
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
+
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if(key.version == PGP_V6 && key.sec_protection.s2k.usage == PGP_S2KU_NONE) {
+    }
+        return; /* checksum removed for v6 and usage byte zero */
+#endif
 
     /* add sum16 if sha1 is not used */
     if (key.sec_protection.s2k.usage != PGP_S2KU_ENCRYPTED_AND_HASHED) {
