@@ -606,10 +606,14 @@ first_key_password_provider(rnp_ffi_t        ffi,
                             char *           buf,
                             size_t           buf_len)
 {
-    assert_non_null(key);
+    if (!key) {
+        throw std::invalid_argument("key");
+    }
     char *keyid = NULL;
-    assert_rnp_success(rnp_key_get_keyid(key, &keyid));
-    assert_string_equal(keyid, "8A05B89FAD5ADED1");
+    rnp_key_get_keyid(key, &keyid);
+    if (strcmp(keyid, "8A05B89FAD5ADED1")) {
+        throw std::invalid_argument("keyid");
+    }
     rnp_buffer_destroy(keyid);
     return false;
 }
@@ -1070,6 +1074,28 @@ TEST_F(rnp_tests, test_ffi_encrypt_and_sign)
     // make sure the output file was created
     assert_true(rnp_file_exists("encrypted"));
 
+    // check whether keys are locked
+    rnp_identifier_iterator_t it = NULL;
+    assert_rnp_success(rnp_identifier_iterator_create(ffi, &it, "fingerprint"));
+    const char *fp = NULL;
+    while (!rnp_identifier_iterator_next(it, &fp)) {
+        if (!fp) {
+            break;
+        }
+        SCOPED_TRACE(fp);
+        rnp_key_handle_t skey = NULL;
+        assert_rnp_success(rnp_locate_key(ffi, "fingerprint", fp, &skey));
+        bool secret = true;
+        assert_rnp_success(rnp_key_have_secret(skey, &secret));
+        if (secret) {
+            bool locked = false;
+            assert_rnp_success(rnp_key_is_locked(skey, &locked));
+            assert_true(locked);
+        }
+        rnp_key_handle_destroy(skey);
+    }
+    rnp_identifier_iterator_destroy(it);
+
     // cleanup
     assert_rnp_success(rnp_input_destroy(input));
     input = NULL;
@@ -1162,6 +1188,25 @@ TEST_F(rnp_tests, test_ffi_encrypt_and_sign)
     assert_string_equal(hname, "SHA512");
     rnp_buffer_destroy(hname);
     hname = NULL;
+    // make sure keys are locked
+    assert_rnp_success(rnp_identifier_iterator_create(ffi, &it, "fingerprint"));
+    while (!rnp_identifier_iterator_next(it, &fp)) {
+        if (!fp) {
+            break;
+        }
+        SCOPED_TRACE(fp);
+        rnp_key_handle_t skey = NULL;
+        assert_rnp_success(rnp_locate_key(ffi, "fingerprint", fp, &skey));
+        bool secret = true;
+        assert_rnp_success(rnp_key_have_secret(skey, &secret));
+        if (secret) {
+            bool locked = false;
+            assert_rnp_success(rnp_key_is_locked(skey, &locked));
+            assert_true(locked);
+        }
+        rnp_key_handle_destroy(skey);
+    }
+    rnp_identifier_iterator_destroy(it);
     // cleanup
     rnp_op_verify_destroy(verify);
     rnp_input_destroy(input);
