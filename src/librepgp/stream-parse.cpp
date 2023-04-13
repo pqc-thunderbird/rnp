@@ -1674,14 +1674,13 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         decbuf_sesskey += alg_id_bytes;
     }
 #if defined(ENABLE_CRYPTO_REFRESH)
-    else {
-        // V6 PKESK
-        // required key length is not yet known
-        if(decbuf_sesskey_len < 16) { // minimum key size
+    else { // V6 PKESK
+        /* compute the expected key length from the decbuf_sesskey_len and check */
+        keylen = have_pkesk_checksum(sesskey->alg) ? decbuf_sesskey_len - 2 : decbuf_sesskey_len;
+        if(pgp_key_size(param->aead_hdr.ealg) != keylen) {
             RNP_LOG("invalid symmetric key length");
             return false;
         }
-        keylen = decbuf_sesskey_len - 2;
     }
 #endif
 
