@@ -102,7 +102,6 @@ typedef struct pgp_dest_encrypted_param_t {
     size_t                     cachelen; /* how many bytes are in cache, for AEAD */
     uint8_t cache[PGP_AEAD_CACHE_LEN];   /* pre-allocated cache for encryption */
     std::array<uint8_t, PGP_SEIPDV2_SALT_LEN> v2_seipd_salt; /* SEIPDv2 salt value */
-    std::vector<uint8_t>                      v2_seipd_nonce;
 
     bool is_aead_auth()
     {
@@ -399,18 +398,11 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
     }
 
     /* set chunk index for nonce */
-    uint8_t *nonce_src_ptr = param->iv;
 
-#ifdef ENABLE_CRYPTO_REFRESH
-    //if (param->is_v2_seipd) {
-    if (param->auth_type == rnp::AuthType::AEADv2) {
-        nonce_src_ptr = param->v2_seipd_nonce.data();
-    }
-#endif
     RNP_DBG_LOG("mode is EAX: %s", param->aalg == PGP_AEAD_EAX ? "true" : "false");
-    RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_nonce() called with nonce_base(len=?)", nonce_src_ptr, 15);
-    nlen = pgp_cipher_aead_nonce(param->aalg, nonce_src_ptr, nonce, idx);
-    RNP_DBG_LOG_HEX("encrypted_start_aead_chunk: param->iv/nonce_src_ptr(nlen)", nonce_src_ptr, nlen);
+    RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_nonce() called with nonce_base(len=?)", param->iv, 15);
+    nlen = pgp_cipher_aead_nonce(param->aalg, param->iv, nonce, idx);
+    RNP_DBG_LOG_HEX("encrypted_start_aead_chunk: param->iv/param->iv(nlen)", param->iv, nlen);
     if(nlen == 0) {
         RNP_LOG("ERROR: when starting encrypted AEAD chunk: could not determine nonce length");
     }
@@ -1011,7 +1003,12 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
         memcpy(v2_seipd_hdr.salt, iv_or_salt, PGP_SEIPDV2_SALT_LEN);
         s2_fields = seipd_v2_key_and_nonce_derivation(v2_seipd_hdr, enckey);
         enckey = s2_fields.key.data();
-        param->v2_seipd_nonce = std::move(s2_fields.nonce);
+        if(s2_fields.nonce.size() > sizeof(param->iv))
+        {
+            // would be better to indicate an error
+            s2_fields.nonce.resize(sizeof(param->iv));
+        }
+        std::memcpy(param->iv, s2_fields.nonce.data(), s2_fields.nonce.size());
     }
 #endif
 
