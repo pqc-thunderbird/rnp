@@ -48,6 +48,8 @@ typedef struct {
     int   not_fatal;
 } rnp_test_state_t;
 
+#if 0
+<<<<<<< HEAD
 void rnpkeys_exportkey_verifyUserId(void **state);
 
 void rnpkeys_generatekey_testSignature(void **state);
@@ -464,6 +466,9 @@ void test_result_to_string(void **state);
 void test_dilithium_key_function(void **state);
 
 void test_kyber_key_function(void **state);
+#endif
+
+#if defined(RNP_TESTS_EXPECT)
 
 #define assert_true(a) EXPECT_TRUE((a))
 #define assert_false(a) EXPECT_FALSE((a))
@@ -478,5 +483,20 @@ void test_kyber_key_function(void **state);
 #define assert_memory_equal(a, b, sz) EXPECT_EQ(0, memcmp((a), (b), (sz)))
 #define assert_memory_not_equal(a, b, sz) EXPECT_NE(0, memcmp((a), (b), (sz)))
 #define assert_throw(a) EXPECT_ANY_THROW(a)
+#else
+#define assert_true(a) ASSERT_TRUE((a))
+#define assert_false(a) ASSERT_FALSE((a))
+#define assert_string_equal(a, b) ASSERT_STREQ((a), (b))
+#define assert_int_equal(a, b) ASSERT_EQ((a), (b))
+#define assert_int_not_equal(a, b) ASSERT_NE((a), (b))
+#define assert_greater_than(a, b) ASSERT_GT((a), (b))
+#define assert_non_null(a) ASSERT_NE((a), nullptr)
+#define assert_null(a) ASSERT_EQ((a), nullptr)
+#define assert_rnp_success(a) ASSERT_EQ((a), RNP_SUCCESS)
+#define assert_rnp_failure(a) ASSERT_NE((a), RNP_SUCCESS)
+#define assert_memory_equal(a, b, sz) ASSERT_EQ(0, memcmp((a), (b), (sz)))
+#define assert_memory_not_equal(a, b, sz) ASSERT_NE(0, memcmp((a), (b), (sz)))
+#define assert_throw(a) ASSERT_ANY_THROW(a)
+#endif
 
 #endif // RNP_TESTS_H

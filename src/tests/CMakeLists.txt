@@ -185,11 +185,11 @@ target_link_libraries(rnp_tests
 if (CRYPTO_BACKEND_LOWERCASE STREQUAL "openssl")
   target_link_libraries(rnp_tests PRIVATE OpenSSL::Crypto)
 endif()
-if (WIN32 AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+
+if(MSYS)
   target_link_libraries(rnp_tests PRIVATE regex)
-elseif(MSVC)
-  add_compile_definitions(RNP_USE_STD_REGEX)
-endif()
+endif(MSYS)
+
 target_compile_definitions(rnp_tests
   PRIVATE
     RNP_RUN_TESTS
