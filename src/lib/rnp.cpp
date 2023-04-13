@@ -4886,6 +4886,10 @@ gen_json_primary_key(rnp_ffi_t                    ffi,
                      bool                         protect)
 {
     rnp_keygen_primary_desc_t desc = {};
+    // desc.crypto is a union
+    // so at least Clang 12 on Windows zero-initializes the first union member only
+    // keeping the "larger" member partially unintialized
+    desc.crypto.dsa.q_bitlen = 0;
 
     desc.cert.key_expiration = DEFAULT_KEY_EXPIRATION;
     if (!parse_keygen_primary(jsoparams, desc, prot)) {
