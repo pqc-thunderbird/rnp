@@ -363,7 +363,6 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
     }
 
     /* set chunk index for additional data */
-    //if (!param->is_v2_seipd) {
     if (param->auth_type == rnp::AuthType::AEADv1) { 
         STORE64BE(param->ad + param->adlen - 8, idx);
     }
@@ -384,12 +383,8 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
             total -= param->chunklen - param->cachelen - param->chunkout;
         }
 
-//#ifdef ENABLE_CRYPTO_REFRESH
- //       if (param->auth_type == rnp::AuthType::AEADv2) { 
             STORE64BE(param->ad + param->adlen, total);
             param->adlen += 8;
-        //}
-//#endif
     }
     RNP_DBG_LOG_HEX("stream-write/ad", param->ad, param->adlen);
     if (!pgp_cipher_aead_set_ad(&param->encrypt, param->ad, param->adlen)) {
@@ -506,7 +501,7 @@ encrypted_dst_finish(pgp_dest_t *dst)
         }
 
         rnp_result_t res = encrypted_start_aead_chunk(param, chunks, true);
-        //pgp_cipher_aead_destroy(&param->encrypt);
+        //pgp_cipher_aead_destroy(&param->encrypt); // this caused memory error (most likely double free)
 #endif
         if (res) {
             finish_streamed_packet(&param->pkt);
@@ -540,7 +535,6 @@ encrypted_dst_close(pgp_dest_t *dst, bool discard)
         return;
     }
 
-    //if (param->auth_type == rnp::AuthType::AEADv1 || param->auth_type == rnp::AuthType::AEADv2) {
     if (param->is_aead_auth()) {
 #if defined(ENABLE_AEAD)
         pgp_cipher_aead_destroy(&param->encrypt);
@@ -925,23 +919,13 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     }
 
     /* fill header */
-    //hdr[0] = param->is_v2_seipd ? 2 : 1;
 #ifdef ENABLE_CRYPTO_REFRESH
     hdr[0] = param->auth_type == rnp::AuthType::AEADv2 ? 2 : 1;
 #else
     hdr[0] = 1;
 #endif
-
-    /*if(param->is_v2_seipd) {
     hdr[1] = param->ctx->ealg;
     hdr[2] = param->ctx->aalg;
-
-    }
-    else {*/
-    hdr[1] = param->ctx->ealg;
-    hdr[2] = param->ctx->aalg;
-
-    //}
     hdr[3] = param->ctx->abits;
     RNP_DBG_LOG("stream-write: encrypted_start_aead: chunk size octet in hdr = %u\n", param->ctx->abits);
     /* generate iv */
@@ -949,7 +933,6 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     uint8_t *iv_or_salt = param->iv;
     size_t   iv_or_salt_len = nlen;
 #ifdef ENABLE_CRYPTO_REFRESH 
-    //if (param->is_v2_seipd) {
     if (param->auth_type == rnp::AuthType::AEADv2) {
         iv_or_salt = param->v2_seipd_salt.data();
         iv_or_salt_len = param->v2_seipd_salt.size();
@@ -972,7 +955,6 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     /* fill additional/authenticated data */
     uint8_t raw_packet_tag = PGP_PKT_AEAD_ENCRYPTED;
 #ifdef ENABLE_CRYPTO_REFRESH
-    //if (param->is_v2_seipd) {
     if (param->auth_type == rnp::AuthType::AEADv2) {
         raw_packet_tag = PGP_PKT_SE_IP_DATA;
     }
@@ -980,7 +962,6 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     param->ad[0] = raw_packet_tag | PGP_PTAG_ALWAYS_SET | PGP_PTAG_NEW_FORMAT;
     memcpy(param->ad + 1, hdr, 4);
 #ifdef ENABLE_CRYPTO_REFRESH
-    //if (param->is_v2_seipd) {
     if (param->auth_type == rnp::AuthType::AEADv2) {
         param->adlen = 5;
     } else {
@@ -989,11 +970,8 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
         param->adlen = 13;
 #ifdef ENABLE_CRYPTO_REFRESH
     }
-    // std::vector<uint8_t> message_key;
     seipd_v2_aead_fields_t s2_fields;
-    //if (param->is_v2_seipd) {
     if (param->auth_type == rnp::AuthType::AEADv2) {
-        //param->ctx->aalg = PGP_AEAD_OCB; // NOTEMTG: would have to be set be preference of recipient
         param->aalg = param->ctx->aalg;
         pgp_seipdv2_hdr_t v2_seipd_hdr;
         v2_seipd_hdr.cipher_alg = param->ctx->ealg;
@@ -1109,7 +1087,6 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
 #if defined(ENABLE_CRYPTO_REFRESH)
         if (handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable()) {
             pkesk_version = PGP_PKSK_V6;
-            //param->is_v2_seipd = true;
             param->auth_type = rnp::AuthType::AEADv2;
             param->ctx->aalg = PGP_AEAD_OCB; // TODOMTG: this must be done elsewhere / differently
             dst->write = encrypted_dst_write_aead; // TODOMTG: should be unnecessary
