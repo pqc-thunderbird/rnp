@@ -2250,8 +2250,8 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
         if (SEIPD_version == PGP_SE_IP_DATA_V1) {
             param->auth_type = rnp::AuthType::MDC;
             param->auth_validated = false;
-        } 
-#ifdef ENABLE_CRYPTO_REFRESH 
+        }
+#ifdef ENABLE_CRYPTO_REFRESH
         else if (SEIPD_version == PGP_SE_IP_DATA_V2) {
             param->auth_type = rnp::AuthType::AEADv2;
             param->seipdv2_hdr.version = PGP_SE_IP_DATA_V2;
