@@ -759,11 +759,12 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
 
     std::vector<std::string> ciphers = {"AES128", "AES192", "AES256"};
     std::vector<std::string> aead_modes = {"None", "EAX", "OCB"};
+    std::vector<bool> enable_pkeskv6_modes = {true, false};
 
+    for(auto enable_pkeskv6 : enable_pkeskv6_modes)
     for(auto aead : aead_modes)
+    for(auto cipher : ciphers)
     {
-      for(auto cipher : ciphers)
-      {
         // write out some data
         FILE *fp = fopen("plaintext", "wb");
         assert_non_null(fp);
@@ -782,9 +783,11 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
         assert_rnp_success(rnp_locate_key(ffi, "keyid", "d1db378da9930885", &key));
         assert_non_null(key);
         
-        //assert_rnp_failure(rnp_op_encrypt_add_recipient(op, NULL)); // what for ?
+        assert_rnp_failure(rnp_op_encrypt_add_recipient(op, NULL)); // what for ?
         assert_rnp_success(rnp_op_encrypt_add_recipient(op, key));
-        assert_rnp_success(rnp_op_encrypt_enable_pkesk_v6(op));
+        if(enable_pkeskv6) {
+          assert_rnp_success(rnp_op_encrypt_enable_pkesk_v6(op));
+        }
         rnp_key_handle_destroy(key);
         key = NULL;
 
@@ -819,7 +822,6 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
         input = NULL;
         rnp_output_destroy(output);
         output = NULL;
-      }
     }
     rnp_ffi_destroy(ffi);
 }
