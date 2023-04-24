@@ -196,7 +196,7 @@ signature_calculate(pgp_signature_t &     sig,
     }
 #if defined(ENABLE_PQC)
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
@@ -309,7 +309,7 @@ signature_validate(const pgp_signature_t &     sig,
         break;
 #if defined(ENABLE_PQC)
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];

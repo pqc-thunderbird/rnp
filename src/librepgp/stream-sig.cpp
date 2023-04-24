@@ -303,7 +303,7 @@ pgp_sig_subpkt_t::parse()
         }
         break;
     case PGP_SIG_SUBPKT_ISSUER_KEY_ID:
-        // TODOMTG: MUST NOT be included in signatures issued by v6 keys: ignore, warn, or fail here?
+        // TODO-V6: MUST NOT be included in signatures issued by v6 keys: ignore, warn, or fail here?
         if ((oklen = len == 8)) {
             fields.issuer = data;
         }
@@ -392,7 +392,7 @@ pgp_sig_subpkt_t::parse()
         break;
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_SIG_SUBPKT_PREFERRED_AEAD_CIPHERSUITES:
-        // TODOMTG: handle better
+        // TODO-V6: needs implementation 
         break;
 #endif
     case PGP_SIG_SUBPKT_PRIVATE_100:
@@ -580,7 +580,7 @@ pgp_signature_t::operator==(const pgp_signature_t &src) const
     if ((lbits[0] != src.lbits[0]) || (lbits[1] != src.lbits[1])) {
         return false;
     }
-    // TODOMTG: need to check memcmp salt, src.salt?
+    // TODO-V6: could also compare salt
     if ((hashed_len != src.hashed_len) || memcmp(hashed_data, src.hashed_data, hashed_len)) {
         return false;
     }
@@ -718,7 +718,7 @@ pgp_signature_t::has_keyfp() const
         return false;
     }
     const pgp_sig_subpkt_t *subpkt = get_subpkt(PGP_SIG_SUBPKT_ISSUER_FPR);
-    return subpkt && (subpkt->fields.issuer_fp.len <= PGP_MAX_FINGERPRINT_SIZE); // TODOMTG: Second check adapted for new max length ... but could also be removed since the check seems to be arbitrary and the usefulness is questionable.
+    return subpkt && (subpkt->fields.issuer_fp.len <= PGP_MAX_FINGERPRINT_SIZE);
 }
 
 pgp_fingerprint_t
@@ -1530,7 +1530,7 @@ pgp_signature_t::parse_material(pgp_signature_material_t &material) const
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
@@ -1628,7 +1628,7 @@ pgp_signature_t::write_material(const pgp_signature_material_t &material)
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];

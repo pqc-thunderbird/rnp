@@ -716,7 +716,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
@@ -1091,9 +1091,9 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
             param->auth_type = rnp::AuthType::AEADv2;
             if(param->ctx->aalg == PGP_AEAD_NONE)
             {
-                param->ctx->aalg = PGP_AEAD_OCB; // TODOMTG: is this the right place? 
+                param->ctx->aalg = PGP_AEAD_OCB; // TODO-V6: is this the right place to set the default algorithm? 
             }
-            dst->write = encrypted_dst_write_aead; // TODOMTG: should be done elsewhere?
+            dst->write = encrypted_dst_write_aead; // currently necessary 
         }
 #endif
         ret = encrypted_add_recipient(

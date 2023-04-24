@@ -747,15 +747,10 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
     // setup FFI
     assert_rnp_success(rnp_ffi_create(&ffi, "GPG", "GPG"));
 
-    // load our keyrings
-    // TODOMTG: need initial keyring?
-    /*assert_true(
-      load_keys_gpg(ffi, "data/keyrings/1/pubring.gpg", "data/keyrings/1/secring.gpg"));*/
     assert_true(import_all_keys(ffi, "data/test_v6_valid_data/transferable_seckey_v6.asc"));
 
     //RNP_LOG_HEX("key id", ffi->secring->keys.front().keyid().data(), ffi->secring->keys.front().keyid().size());
     //RNP_LOG_HEX("key id", ffi->secring->keys.back().keyid().data(), ffi->secring->keys.back().keyid().size());
-
 
     std::vector<std::string> ciphers = {"AES128", "AES192", "AES256"};
     std::vector<std::string> aead_modes = {"None", "EAX", "OCB"};

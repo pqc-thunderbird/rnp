@@ -61,13 +61,13 @@ static const id_str_pair pubkey_alg_map[] = {
 #endif
 #if defined(ENABLE_PQC)
   {PGP_PKA_KYBER768_X25519, "Kyber-X25519"},
-  {PGP_PKA_KYBER1024_X448, "Kyber-X448"},
+  //{PGP_PKA_KYBER1024_X448, "Kyber-X448"},
   {PGP_PKA_KYBER768_P256, "Kyber-P256"},
   {PGP_PKA_KYBER1024_P384, "Kyber-P384"},
   {PGP_PKA_KYBER768_BP256, "Kyber-BP256"},
   {PGP_PKA_KYBER1024_BP384, "Kyber-BP384"},
   {PGP_PKA_DILITHIUM3_ED25519, "Dilithium-ED25519"},
-  {PGP_PKA_DILITHIUM5_ED448, "Dilithium-ED448"},
+  //{PGP_PKA_DILITHIUM5_ED448, "Dilithium-ED448"},
   {PGP_PKA_DILITHIUM3_P256, "Dilithium-P256"},
   {PGP_PKA_DILITHIUM5_P384, "Dilithium-P384"},
   {PGP_PKA_DILITHIUM3_BP256, "Dilithium-BP256"},
@@ -274,14 +274,14 @@ get_numbits(const rnp_keygen_crypto_params_t *crypto)
         return crypto->elgamal.key_bitlen;
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
         return pgp_kyber_ecdh_composite_public_key_t::encoded_size(crypto->key_alg) * 8;
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
