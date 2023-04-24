@@ -545,6 +545,7 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
         if(key.version == PGP_V6) {
             break; /* checksum removed for v6 and usage byte zero */
         }
+        [[fallthrough]];
 #endif
     case PGP_S2KU_ENCRYPTED: {
         /* calculate and check sum16 of the cleartext */
