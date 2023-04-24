@@ -1672,6 +1672,11 @@ cli_rnp_generate_key(cli_rnp_t *rnp, const char *username)
         ERR_MSG("Failed to set hash algorithm.");
         goto done;
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if(cfg.get_bool(CFG_KG_V6_KEY)) {
+       rnp_op_generate_set_v6_key(genkey);
+    }
+#endif
     if (rnp_op_generate_execute(genkey) || rnp_op_generate_get_key(genkey, &subkey)) {
         ERR_MSG("Subkey generation failed.");
         goto done;
