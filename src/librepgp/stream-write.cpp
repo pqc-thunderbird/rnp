@@ -1046,8 +1046,12 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     param->auth_type =
       handler->ctx->aalg == PGP_AEAD_NONE ? rnp::AuthType::MDC : rnp::AuthType::AEADv1;
 
+    pkeycount = handler->ctx->recipients.size();
+    skeycount = handler->ctx->passwords.size();
+
 #if defined(ENABLE_CRYPTO_REFRESH)
-    if (param->auth_type == rnp::AuthType::AEADv1 && handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable()) {
+    /* in the case of PKESK (pkeycount > 0) and all keys are PKESKv6/SEIPDv2 capable, ugprade to AEADv2 */
+    if (param->auth_type == rnp::AuthType::AEADv1 && handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable() && pkeycount > 0) {
         param->auth_type = rnp::AuthType::AEADv2;
     }
 #endif
@@ -1059,9 +1063,6 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     dst->finish = encrypted_dst_finish;
     dst->close = encrypted_dst_close;
     dst->type = PGP_STREAM_ENCRYPTED;
-
-    pkeycount = handler->ctx->recipients.size();
-    skeycount = handler->ctx->passwords.size();
 
     rnp::secure_array<uint8_t, PGP_MAX_KEY_SIZE> enckey; /* content encryption key */
     if (!pkeycount && !skeycount) {
