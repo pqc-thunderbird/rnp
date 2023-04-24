@@ -2247,6 +2247,14 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
         }
 #ifdef ENABLE_CRYPTO_REFRESH
         else if (SEIPD_version == PGP_SE_IP_DATA_V2) {
+            /*  SKESK v6 is not yet implemented, thus we must not attempt to decrypt SEIPDv2 here 
+                TODO: Once SKESK v6 is implemented, replace this check with a check for consistency between SEIPD and SKESK version
+            */
+            if(param->symencs.size() > 0) {
+                RNP_LOG("SEIPDv2 not usable with SKESK version");
+                return RNP_ERROR_BAD_FORMAT;
+            }
+
             param->auth_type = rnp::AuthType::AEADv2;
             param->seipdv2_hdr.version = PGP_SE_IP_DATA_V2;
             uint8_t hdr[4];
