@@ -171,8 +171,8 @@ pgp_kyber_ecdh_composite_key_t::pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg) {
       case PGP_PKA_KYBER1024_BP384:
         [[fallthrough]];
       case PGP_PKA_KYBER1024_P384:
-        [[fallthrough]];
-      case PGP_PKA_KYBER1024_X448:
+        //[[fallthrough]];
+      //case PGP_PKA_KYBER1024_X448:
         return kyber_1024;
       default:
         RNP_LOG("invalid PK alg given");
@@ -194,8 +194,8 @@ pgp_kyber_ecdh_composite_key_t::pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg) {
         return PGP_CURVE_BP384;
       case PGP_PKA_KYBER1024_P384:
         return PGP_CURVE_NIST_P_384;
-      case PGP_PKA_KYBER1024_X448:
-        return PGP_CURVE_UNKNOWN; /* TODOMTG: Not yet implemented */
+      /*case PGP_PKA_KYBER1024_X448:
+        return ... NOT_IMPLEMENTED*/
       default:
         RNP_LOG("invalid PK alg given");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS); 
@@ -290,7 +290,7 @@ namespace
             case PGP_PKA_KYBER768_P256:
                 hash_alg = PGP_HASH_SHA3_256;
                 break;
-            case PGP_PKA_KYBER1024_X448:
+            //case PGP_PKA_KYBER1024_X448:
             case PGP_PKA_KYBER1024_P384:
             case PGP_PKA_KYBER1024_BP384:
                 hash_alg = PGP_HASH_SHA3_512;

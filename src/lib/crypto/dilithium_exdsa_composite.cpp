@@ -144,8 +144,8 @@ pgp_dilithium_exdsa_composite_key_t::pk_alg_to_dilithium_id(pgp_pubkey_alg_t pk_
       case PGP_PKA_DILITHIUM5_BP384:
         [[fallthrough]];
       case PGP_PKA_DILITHIUM5_P384:
-        [[fallthrough]];
-      case PGP_PKA_DILITHIUM5_ED448:
+        //[[fallthrough]];
+      //case PGP_PKA_DILITHIUM5_ED448:
         return dilithium_L5;
       default:
         RNP_LOG("invalid PK alg given");
@@ -167,8 +167,8 @@ pgp_dilithium_exdsa_composite_key_t::pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg)
         return PGP_CURVE_BP384;
       case PGP_PKA_DILITHIUM5_P384:
         return PGP_CURVE_NIST_P_384;
-      case PGP_PKA_DILITHIUM5_ED448:
-        throw rnp::rnp_exception(RNP_ERROR_NOT_IMPLEMENTED); /* TODO: Not yet implemented */
+      /*case PGP_PKA_DILITHIUM5_ED448:
+        throw rnp::rnp_exception(RNP_ERROR_NOT_IMPLEMENTED);*/
       default:
         RNP_LOG("invalid PK alg given");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS); 

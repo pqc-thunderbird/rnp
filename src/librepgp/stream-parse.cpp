@@ -1617,7 +1617,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
@@ -2260,7 +2260,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             }
             RNP_DBG_LOG_HEX("parsed salt", param->seipdv2_hdr.salt, sizeof(param->seipdv2_hdr.salt));
 
-            /* check SEIPDv2 packet header // TODOMTG: cannot happen?: */
+            /* check SEIPDv2 packet header */
             if ((param->seipdv2_hdr.aead_alg != PGP_AEAD_EAX) &&
                 (param->seipdv2_hdr.aead_alg != PGP_AEAD_OCB)) {
                 RNP_LOG("unknown AEAD alg: %d", (int) param->seipdv2_hdr.aead_alg);

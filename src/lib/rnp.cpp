@@ -168,13 +168,13 @@ static const id_str_pair pubkey_alg_map[] = {
 #endif
 #if defined(ENABLE_PQC)
   {PGP_PKA_KYBER768_X25519, RNP_ALGNAME_KYBER768_X25519},
-  {PGP_PKA_KYBER1024_X448, RNP_ALGNAME_KYBER1024_X448},
+  //{PGP_PKA_KYBER1024_X448, RNP_ALGNAME_KYBER1024_X448},
   {PGP_PKA_KYBER768_P256, RNP_ALGNAME_KYBER768_P256},
   {PGP_PKA_KYBER1024_P384, RNP_ALGNAME_KYBER1024_P384},
   {PGP_PKA_KYBER768_BP256, RNP_ALGNAME_KYBER768_BP256},
   {PGP_PKA_KYBER1024_BP384, RNP_ALGNAME_KYBER1024_BP384},
   {PGP_PKA_DILITHIUM3_ED25519, RNP_ALGNAME_DILITHIUM3_ED25519},
-  {PGP_PKA_DILITHIUM5_ED448, RNP_ALGNAME_DILITHIUM5_ED448},
+  //{PGP_PKA_DILITHIUM5_ED448, RNP_ALGNAME_DILITHIUM5_ED448},
   {PGP_PKA_DILITHIUM3_P256, RNP_ALGNAME_DILITHIUM3_P256},
   {PGP_PKA_DILITHIUM5_P384, RNP_ALGNAME_DILITHIUM5_P384},
   {PGP_PKA_DILITHIUM3_BP256, RNP_ALGNAME_DILITHIUM3_BP256},
@@ -346,13 +346,13 @@ pub_alg_supported(int alg)
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519:
-    case PGP_PKA_KYBER1024_X448:
+    //case PGP_PKA_KYBER1024_X448:
     case PGP_PKA_KYBER768_P256:
     case PGP_PKA_KYBER1024_P384:
     case PGP_PKA_KYBER768_BP256:
     case PGP_PKA_KYBER1024_BP384:
     case PGP_PKA_DILITHIUM3_ED25519:
-    case PGP_PKA_DILITHIUM5_ED448:
+    //case PGP_PKA_DILITHIUM5_ED448:
     case PGP_PKA_DILITHIUM3_P256:
     case PGP_PKA_DILITHIUM5_P384:
     case PGP_PKA_DILITHIUM3_BP256:
@@ -5286,14 +5286,14 @@ default_key_flags(pgp_pubkey_alg_t alg, bool subkey)
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
         return PGP_KF_ENCRYPT;
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
@@ -7565,14 +7565,14 @@ add_json_public_mpis(json_object *jso, pgp_key_t *key)
 #endif 
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
         return RNP_SUCCESS; /* TODO */
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
@@ -7612,7 +7612,7 @@ add_json_secret_mpis(json_object *jso, pgp_key_t *key)
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
@@ -7658,7 +7658,7 @@ add_json_sig_mpis(json_object *jso, const pgp_signature_t *sig)
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
@@ -7923,14 +7923,14 @@ key_to_json(json_object *jso, rnp_key_handle_t handle, uint32_t flags)
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
     case PGP_PKA_KYBER1024_BP384:
         return RNP_SUCCESS; /* TODO */
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
