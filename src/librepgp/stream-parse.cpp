@@ -1782,7 +1782,7 @@ encrypted_try_password(pgp_source_encrypted_param_t *param, const char *password
 #if !defined(ENABLE_AEAD)
             continue;
 #else
-            /* v6 AEAD-encrypted session key */
+            /* v5 AEAD-encrypted session key */
             size_t taglen = pgp_cipher_aead_tag_len(skey.aalg);
             size_t ceklen = pgp_key_size(param->aead_hdr.ealg);
 
