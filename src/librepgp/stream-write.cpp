@@ -1051,7 +1051,7 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
 
 #if defined(ENABLE_CRYPTO_REFRESH)
     /* in the case of PKESK (pkeycount > 0) and all keys are PKESKv6/SEIPDv2 capable, ugprade to AEADv2 */
-    if (param->auth_type == rnp::AuthType::AEADv1 && handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable() && pkeycount > 0) {
+    if (handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable() && pkeycount > 0) {
         param->auth_type = rnp::AuthType::AEADv2;
     }
 #endif
@@ -1092,7 +1092,7 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
         if(handler->ctx->aalg == PGP_AEAD_NONE) {
             // set default AEAD if not set
             // TODO-V6: is this the right place to set the default algorithm?
-            param->aalg = DEFAULT_AEAD_ALG;
+            param->ctx->aalg = DEFAULT_AEAD_ALG;
         }
 #endif
         ret = encrypted_add_recipient(
