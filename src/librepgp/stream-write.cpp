@@ -1086,14 +1086,13 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     for (auto recipient : handler->ctx->recipients) {
         pgp_pkesk_version_t pkesk_version = PGP_PKSK_V3;
 #if defined(ENABLE_CRYPTO_REFRESH)
-        if (handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable()) {
+        if (param->auth_type == rnp::AuthType::AEADv2) {
             pkesk_version = PGP_PKSK_V6;
-            param->auth_type = rnp::AuthType::AEADv2;
-            if(param->ctx->aalg == PGP_AEAD_NONE)
-            {
-                param->ctx->aalg = PGP_AEAD_OCB; // TODO-V6: is this the right place to set the default algorithm? 
-            }
-            dst->write = encrypted_dst_write_aead; // currently necessary 
+        }
+        if(handler->ctx->aalg == PGP_AEAD_NONE) {
+            // set default AEAD if not set
+            // TODO-V6: is this the right place to set the default algorithm?
+            param->aalg = DEFAULT_AEAD_ALG;
         }
 #endif
         ret = encrypted_add_recipient(

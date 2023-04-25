@@ -787,8 +787,15 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
         key = NULL;
 
         // set the data encryption cipher
-        assert_rnp_success(rnp_op_encrypt_set_aead(op, aead.c_str()));
+        if((aead == "None") && enable_pkeskv6) {
+            // already enabled v6 pkesk, does not make any sense to set AEAD to None explicitly.
+            assert_rnp_failure(rnp_op_encrypt_set_aead(op, aead.c_str()));
+        }
+        else {
+            assert_rnp_success(rnp_op_encrypt_set_aead(op, aead.c_str()));
+        }
         assert_rnp_success(rnp_op_encrypt_set_cipher(op, cipher.c_str()));
+
         // execute the operation
         assert_rnp_success(rnp_op_encrypt_execute(op));
 

@@ -2743,6 +2743,11 @@ try {
         FFI_LOG(op->ffi, "Invalid AEAD algorithm: %s", alg);
         return RNP_ERROR_BAD_PARAMETERS;
     }
+
+    if(op->rnpctx.aalg == PGP_AEAD_NONE && op->rnpctx.enable_pkesk_v6) {
+        FFI_LOG(op->ffi, "Setting AEAD algorithm to PGP_AEAD_NONE (%s) would contradict the previously enabled PKESKv6 setting", alg);
+        return RNP_ERROR_BAD_PARAMETERS;
+    }
     return RNP_SUCCESS;
 }
 FFI_GUARD
@@ -2851,7 +2856,8 @@ try {
     // set the default hash alg if none was specified
     if (!op->rnpctx.halg) {
         op->rnpctx.halg = DEFAULT_PGP_HASH_ALG;
-        }
+    }
+
     pgp_write_handler_t handler =
       pgp_write_handler(&op->ffi->pass_provider, &op->rnpctx, NULL, &op->ffi->key_provider);
 
