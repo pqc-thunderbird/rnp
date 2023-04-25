@@ -34,16 +34,21 @@
 #include "utils.h"
 #include "botan/rfc3394.h"
 
-static void x25519_hkdf(std::vector<uint8_t> &derived_key, const std::vector<uint8_t> &shared_key) 
+static void x25519_hkdf(std::vector<uint8_t> &derived_key, const std::vector<uint8_t> &ephemeral_pubkey_material, const std::vector<uint8_t> &recipient_pubkey_material, const std::vector<uint8_t> &shared_key)
 {
     /* The shared secret is passed to HKDF (see {{RFC5869}}) using SHA256, and the UTF-8-encoded string "OpenPGP X25519" as the info parameter. */
     static const std::vector<uint8_t> info = {'O', 'p', 'e', 'n', 'P', 'G', 'P', ' ', 'X', '2', '5', '5', '1', '9'};
     auto kdf = rnp::Hkdf::create(PGP_HASH_SHA256);
     derived_key.resize(pgp_key_size(PGP_SA_AES_128)); // 128-bit AES key wrap
 
+    std::vector<uint8_t> kdf_input;
+    kdf_input.insert(kdf_input.end(), std::begin(ephemeral_pubkey_material), std::end(ephemeral_pubkey_material));
+    kdf_input.insert(kdf_input.end(), std::begin(recipient_pubkey_material), std::end(recipient_pubkey_material));
+    kdf_input.insert(kdf_input.end(), std::begin(shared_key), std::end(shared_key));
+
     kdf->extract_expand(NULL, 0, // no salt
-                       shared_key.data(),
-                       shared_key.size(),
+                       kdf_input.data(),
+                       kdf_input.size(),
                        info.data(),
                        info.size(),
                        derived_key.data(),
@@ -84,7 +89,7 @@ rnp_result_t x25519_native_encrypt(rnp::RNG *                 rng,
         return ret; 
     }
 
-    x25519_hkdf(derived_key, shared_key);
+    x25519_hkdf(derived_key, encrypted->eph_key, pubkey, shared_key);
 
     Botan::SymmetricKey kek(derived_key);
     try {
@@ -98,7 +103,7 @@ rnp_result_t x25519_native_encrypt(rnp::RNG *                 rng,
 }
 
 rnp_result_t x25519_native_decrypt(rnp::RNG *                   rng,
-                                   const std::vector<uint8_t>   &privkey,
+                                   const pgp_x25519_key_t       &keypair,
                                    const pgp_x25519_encrypted_t *encrypted,
                                    uint8_t                      *decbuf,
                                    size_t                       *decbuf_len)
@@ -119,14 +124,14 @@ rnp_result_t x25519_native_decrypt(rnp::RNG *                   rng,
     }
 
     /* decapsulate */
-    ecdh_kem_private_key_t ecdhkem_privkey(privkey, PGP_CURVE_25519);
+    ecdh_kem_private_key_t ecdhkem_privkey(keypair.priv, PGP_CURVE_25519);
     ret = ecdhkem_privkey.decapsulate(rng, encrypted->eph_key, shared_key);
     if(ret != RNP_SUCCESS) {
         RNP_LOG("decapsulation failed");
         return ret; 
     }
 
-    x25519_hkdf(derived_key, shared_key);
+    x25519_hkdf(derived_key, encrypted->eph_key, keypair.pub, shared_key);
 
     Botan::SymmetricKey kek(derived_key);
     auto tmp_out = Botan::rfc3394_keyunwrap(Botan::secure_vector<uint8_t>(encrypted->enc_sess_key.begin(), encrypted->enc_sess_key.end()), kek);

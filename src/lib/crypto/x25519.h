@@ -49,7 +49,7 @@ rnp_result_t x25519_native_encrypt(rnp::RNG *                 rng,
                                    pgp_x25519_encrypted_t     *encrypted);
 
 rnp_result_t x25519_native_decrypt(rnp::RNG *                   rng,
-                                   const std::vector<uint8_t>   &privkey,
+                                   const pgp_x25519_key_t       &keypair,
                                    const pgp_x25519_encrypted_t *encrypted,
                                    uint8_t                      *decbuf,
                                    size_t                       *decbuf_len);

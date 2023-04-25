@@ -1608,7 +1608,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_X25519:
         declen = decbuf.size();
-        err = x25519_native_decrypt(&ctx.rng, keymaterial->x25519.priv, &encmaterial.x25519, decbuf.data(), &declen);
+        err = x25519_native_decrypt(&ctx.rng, keymaterial->x25519, &encmaterial.x25519, decbuf.data(), &declen);
         if(err != RNP_SUCCESS) {
             RNP_LOG("X25519 decryption error %u", err);
             return false;
