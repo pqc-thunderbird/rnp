@@ -736,6 +736,25 @@ TEST_F(rnp_tests, test_ffi_decrypt_pk_unlocked)
 }
 
 #if defined(ENABLE_CRYPTO_REFRESH)
+TEST_F(rnp_tests, test_ffi_decrypt_v6_pkesk_test_vector)
+{
+    rnp_ffi_t        ffi = NULL;
+    rnp_input_t      input = NULL;
+    rnp_output_t     output = NULL;
+
+    assert_rnp_success(rnp_ffi_create(&ffi, "GPG", "GPG"));
+    assert_true(import_all_keys(ffi, "data/test_v6_valid_data/transferable_seckey_v6.asc"));
+
+    assert_rnp_success(rnp_input_from_path(&input, "data/test_v6_valid_data/v6pkesk.asc"));
+    assert_non_null(input);
+    assert_rnp_success(rnp_output_to_null(&output));
+    assert_rnp_success(rnp_decrypt(ffi, input, output));
+
+    // cleanup
+    rnp_input_destroy(input);
+    rnp_output_destroy(output);
+}
+
 TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
 {
     rnp_ffi_t        ffi = NULL;
