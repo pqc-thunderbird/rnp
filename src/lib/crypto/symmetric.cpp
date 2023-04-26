@@ -587,7 +587,7 @@ pgp_cipher_aead_finish(pgp_crypt_t *crypt, uint8_t *out, const uint8_t *in, size
 
     if (crypt->aead.decrypt) {
         size_t datalen = len - crypt->aead.taglen;
-        RNP_LOG("aead encrypt update");
+        RNP_DBG_LOG("aead encrypt update\n");
         /* for decryption we should have tag for the final update call */
         res =
           botan_cipher_update(crypt->aead.obj, flags, out, datalen, &outwr, in, len, &inread);
@@ -604,7 +604,7 @@ pgp_cipher_aead_finish(pgp_crypt_t *crypt, uint8_t *out, const uint8_t *in, size
             return false;
         }
     } else {
-        RNP_LOG("aead decrypt update");
+        RNP_DBG_LOG("aead decrypt update");
         /* for encryption tag will be generated */
         size_t outlen = len + crypt->aead.taglen;
         if (botan_cipher_update(
