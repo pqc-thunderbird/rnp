@@ -749,7 +749,7 @@ rnp_key_store_get_key_grip(const pgp_key_material_t *key, pgp_key_grip_t &grip)
 #endif
 #if defined(ENABLE_PQC)
         case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-        case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+        //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
         case PGP_PKA_KYBER768_P256: [[fallthrough]];
         case PGP_PKA_KYBER1024_P384: [[fallthrough]];
         case PGP_PKA_KYBER768_BP256: [[fallthrough]];
@@ -757,7 +757,7 @@ rnp_key_store_get_key_grip(const pgp_key_material_t *key, pgp_key_grip_t &grip)
             hash->add(key->kyber_ecdh.pub.get_encoded());
             break;
         case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-        case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+        //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
         case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
         case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
         case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];

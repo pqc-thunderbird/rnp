@@ -149,13 +149,13 @@ static const id_str_pair pubkey_alg_map[] = {
 #endif
 #if defined(ENABLE_PQC)
   {PGP_PKA_KYBER768_X25519, "Kyber768 + X25519"},
-  {PGP_PKA_KYBER1024_X448, "Kyber1024 + X448"},
+  //{PGP_PKA_KYBER1024_X448, "Kyber1024 + X448"},
   {PGP_PKA_KYBER768_P256, "Kyber768 + NIST P-256"},
   {PGP_PKA_KYBER1024_P384, "Kyber1024 + NIST P-384"},
   {PGP_PKA_KYBER768_BP256, "Kyber768 + Brainpool256"},
   {PGP_PKA_KYBER1024_BP384, "Kyber1024 + Brainpool384"},
   {PGP_PKA_DILITHIUM3_ED25519, "Dilithium3 + X25519"},
-  {PGP_PKA_DILITHIUM5_ED448, "Dilithium + X448"},
+  //{PGP_PKA_DILITHIUM5_ED448, "Dilithium + X448"},
   {PGP_PKA_DILITHIUM3_P256, "Dilithium3 + NIST P-256"},
   {PGP_PKA_DILITHIUM5_P384, "Dilithium5 + NIST P-384"},
   {PGP_PKA_DILITHIUM3_BP256, "Dilithium3 + Brainpool256"},
@@ -819,7 +819,7 @@ stream_dump_signature_pkt(rnp_dump_ctx_t *ctx, pgp_signature_t *sig, pgp_dest_t 
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
@@ -931,7 +931,7 @@ stream_dump_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *dst)
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
@@ -939,7 +939,7 @@ stream_dump_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *dst)
         dst_print_vec(dst, "kyber-ecdh encoded pubkey", key.material.kyber_ecdh.pub.get_encoded(), ctx->dump_mpi);
         break;
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
@@ -1119,7 +1119,7 @@ stream_dump_pk_session_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *d
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
@@ -1989,7 +1989,7 @@ stream_dump_signature_pkt_json(rnp_dump_ctx_t *       ctx,
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
@@ -2129,7 +2129,7 @@ stream_dump_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_object *pkt)
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
@@ -2137,7 +2137,7 @@ stream_dump_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_object *pkt)
         // TODO
         break;
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
-    case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
+    //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
@@ -2286,7 +2286,7 @@ stream_dump_pk_session_key_json(rnp_dump_ctx_t *ctx, pgp_source_t *src, json_obj
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];

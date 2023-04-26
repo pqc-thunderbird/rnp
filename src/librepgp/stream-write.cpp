@@ -722,7 +722,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
@@ -1052,8 +1052,12 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     param->auth_type =
       handler->ctx->aalg == PGP_AEAD_NONE ? rnp::AuthType::MDC : rnp::AuthType::AEADv1;
 
+    pkeycount = handler->ctx->recipients.size();
+    skeycount = handler->ctx->passwords.size();
+
 #if defined(ENABLE_CRYPTO_REFRESH)
-    if (param->auth_type == rnp::AuthType::AEADv1 && handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable()) {
+    /* in the case of PKESK (pkeycount > 0) and all keys are PKESKv6/SEIPDv2 capable, ugprade to AEADv2 */
+    if (handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable() && pkeycount > 0) {
         param->auth_type = rnp::AuthType::AEADv2;
     }
 #endif
@@ -1065,9 +1069,6 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     dst->finish = encrypted_dst_finish;
     dst->close = encrypted_dst_close;
     dst->type = PGP_STREAM_ENCRYPTED;
-
-    pkeycount = handler->ctx->recipients.size();
-    skeycount = handler->ctx->passwords.size();
 
     rnp::secure_array<uint8_t, PGP_MAX_KEY_SIZE> enckey; /* content encryption key */
     if (!pkeycount && !skeycount) {
@@ -1091,14 +1092,13 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     for (auto recipient : handler->ctx->recipients) {
         pgp_pkesk_version_t pkesk_version = PGP_PKSK_V3;
 #if defined(ENABLE_CRYPTO_REFRESH)
-        if (handler->ctx->enable_pkesk_v6 && handler->ctx->pkeskv6_capable()) {
+        if (param->auth_type == rnp::AuthType::AEADv2) {
             pkesk_version = PGP_PKSK_V6;
-            param->auth_type = rnp::AuthType::AEADv2;
-            if(param->ctx->aalg == PGP_AEAD_NONE)
-            {
-                param->ctx->aalg = PGP_AEAD_OCB; // TODOMTG: is this the right place? 
-            }
-            dst->write = encrypted_dst_write_aead; // TODOMTG: should be done elsewhere?
+        }
+        if(handler->ctx->aalg == PGP_AEAD_NONE) {
+            // set default AEAD if not set
+            // TODO-V6: is this the right place to set the default algorithm?
+            param->ctx->aalg = DEFAULT_AEAD_ALG;
         }
 #endif
         ret = encrypted_add_recipient(

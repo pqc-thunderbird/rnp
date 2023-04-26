@@ -1257,7 +1257,7 @@ pgp_pk_sesskey_t::parse_material(pgp_encrypted_material_t &material) const
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
@@ -1323,7 +1323,7 @@ pgp_pk_sesskey_t::write_material(const pgp_encrypted_material_t &material)
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];

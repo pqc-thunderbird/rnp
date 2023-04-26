@@ -747,105 +747,84 @@ TEST_F(rnp_tests, test_ffi_encrypt_pk_with_v6_key)
     // setup FFI
     assert_rnp_success(rnp_ffi_create(&ffi, "GPG", "GPG"));
 
-    // load our keyrings
-    // TODOMTG: need initial keyring?
-    /*assert_true(
-      load_keys_gpg(ffi, "data/keyrings/1/pubring.gpg", "data/keyrings/1/secring.gpg"));*/
     assert_true(import_all_keys(ffi, "data/test_v6_valid_data/transferable_seckey_v6.asc"));
 
     //RNP_LOG_HEX("key id", ffi->secring->keys.front().keyid().data(), ffi->secring->keys.front().keyid().size());
     //RNP_LOG_HEX("key id", ffi->secring->keys.back().keyid().data(), ffi->secring->keys.back().keyid().size());
 
-    // write out some data
-    FILE *fp = fopen("plaintext", "wb");
-    assert_non_null(fp);
-    assert_int_equal(1, fwrite(plaintext, strlen(plaintext), 1, fp));
-    assert_int_equal(0, fclose(fp));
+    std::vector<std::string> ciphers = {"AES128", "AES192", "AES256"};
+    std::vector<std::string> aead_modes = {"None", "EAX", "OCB"};
+    std::vector<bool> enable_pkeskv6_modes = {true, false};
 
-    // create input+output
-    assert_rnp_success(rnp_input_from_path(&input, "plaintext"));
-    assert_non_null(input);
-    assert_rnp_success(rnp_output_to_path(&output, "encrypted"));
-    assert_non_null(output);
-    // create encrypt operation
-    assert_rnp_success(rnp_op_encrypt_create(&op, ffi, input, output));
-    // add recipients
-    rnp_key_handle_t key = NULL;
-    assert_rnp_success(rnp_locate_key(ffi, "keyid", "d1db378da9930885", &key));
-    assert_non_null(key);
-    
-    //assert_rnp_failure(rnp_op_encrypt_add_recipient(op, NULL)); // what for ?
-    assert_rnp_success(rnp_op_encrypt_add_recipient(op, key));
-    assert_rnp_success(rnp_op_encrypt_enable_pkesk_v6(op));
-    rnp_key_handle_destroy(key);
-    key = NULL;
-    /*assert_rnp_success(rnp_locate_key(ffi, "userid", "key1-uid1", &key));
-    assert_rnp_success(rnp_op_encrypt_add_recipient(op, key));
-    rnp_key_handle_destroy(key);
-    key = NULL;*/
-    // set the data encryption cipher
-    assert_rnp_success(rnp_op_encrypt_set_cipher(op, "AES256")); // TODOMTG: AES256 should be enforced
-    // execute the operation
-    assert_rnp_success(rnp_op_encrypt_execute(op));
+    for(auto enable_pkeskv6 : enable_pkeskv6_modes)
+    for(auto aead : aead_modes)
+    for(auto cipher : ciphers)
+    {
+        // write out some data
+        FILE *fp = fopen("plaintext", "wb");
+        assert_non_null(fp);
+        assert_int_equal(1, fwrite(plaintext, strlen(plaintext), 1, fp));
+        assert_int_equal(0, fclose(fp));
 
-    // make sure the output file was created
-    assert_true(rnp_file_exists("encrypted"));
+        // create input+output
+        assert_rnp_success(rnp_input_from_path(&input, "plaintext"));
+        assert_non_null(input);
+        assert_rnp_success(rnp_output_to_path(&output, "encrypted"));
+        assert_non_null(output);
+        // create encrypt operation
+        assert_rnp_success(rnp_op_encrypt_create(&op, ffi, input, output));
+        // add recipients
+        rnp_key_handle_t key = NULL;
+        assert_rnp_success(rnp_locate_key(ffi, "keyid", "d1db378da9930885", &key));
+        assert_non_null(key);
+        
+        assert_rnp_failure(rnp_op_encrypt_add_recipient(op, NULL)); // what for ?
+        assert_rnp_success(rnp_op_encrypt_add_recipient(op, key));
+        if(enable_pkeskv6) {
+          assert_rnp_success(rnp_op_encrypt_enable_pkesk_v6(op));
+        }
+        rnp_key_handle_destroy(key);
+        key = NULL;
 
-    // cleanup
-    assert_rnp_success(rnp_input_destroy(input));
-    input = NULL;
-    assert_rnp_success(rnp_output_destroy(output));
-    output = NULL;
-    assert_rnp_success(rnp_op_encrypt_destroy(op));
-    op = NULL;
+        // set the data encryption cipher
+        if((aead == "None") && enable_pkeskv6) {
+            // already enabled v6 pkesk, does not make any sense to set AEAD to None explicitly.
+            assert_rnp_failure(rnp_op_encrypt_set_aead(op, aead.c_str()));
+        }
+        else {
+            assert_rnp_success(rnp_op_encrypt_set_aead(op, aead.c_str()));
+        }
+        assert_rnp_success(rnp_op_encrypt_set_cipher(op, cipher.c_str()));
 
-    /* decrypt */
+        // execute the operation
+        assert_rnp_success(rnp_op_encrypt_execute(op));
 
-    // decrypt 
-    assert_rnp_success(rnp_input_from_path(&input, "encrypted"));
-    assert_non_null(input);
-    assert_rnp_success(rnp_output_to_path(&output, "decrypted"));
-    assert_non_null(output);
-    assert_rnp_success(rnp_ffi_set_pass_provider(ffi, NULL, NULL));
-    assert_rnp_success(rnp_decrypt(ffi, input, output));
-    // cleanup
-    rnp_input_destroy(input);
-    input = NULL;
-    rnp_output_destroy(output);
-    output = NULL;
-#if 0
-    // decrypt (wrong pass, should fail)
-    assert_rnp_success(rnp_input_from_path(&input, "encrypted"));
-    assert_non_null(input);
-    assert_rnp_success(rnp_output_to_path(&output, "decrypted"));
-    assert_non_null(output);
-    const char *pass = "wrong1";
-    assert_rnp_success(rnp_ffi_set_pass_provider(ffi, getpasscb_once, &pass));
-    assert_rnp_failure(rnp_decrypt(ffi, input, output));
-    // cleanup
-    rnp_input_destroy(input);
-    input = NULL;
-    rnp_output_destroy(output);
-    output = NULL;
+        // make sure the output file was created
+        assert_true(rnp_file_exists("encrypted"));
 
-    // decrypt
-    assert_rnp_success(rnp_input_from_path(&input, "encrypted"));
-    assert_non_null(input);
-    assert_rnp_success(rnp_output_to_path(&output, "decrypted"));
-    assert_non_null(output);
-    assert_rnp_success(
-      rnp_ffi_set_pass_provider(ffi, ffi_string_password_provider, (void *) "password"));
-    assert_rnp_success(rnp_decrypt(ffi, input, output));
-    // cleanup
-    rnp_input_destroy(input);
-    input = NULL;
-    rnp_output_destroy(output);
-    output = NULL;
-    // read in the decrypted file
-    assert_string_equal(file_to_str("decrypted").c_str(), plaintext);
-    // final cleanup
-    
-#endif
+        // cleanup
+        assert_rnp_success(rnp_input_destroy(input));
+        input = NULL;
+        assert_rnp_success(rnp_output_destroy(output));
+        output = NULL;
+        assert_rnp_success(rnp_op_encrypt_destroy(op));
+        op = NULL;
+
+        /* decrypt */
+
+        // decrypt 
+        assert_rnp_success(rnp_input_from_path(&input, "encrypted"));
+        assert_non_null(input);
+        assert_rnp_success(rnp_output_to_path(&output, "decrypted"));
+        assert_non_null(output);
+        assert_rnp_success(rnp_ffi_set_pass_provider(ffi, NULL, NULL));
+        assert_rnp_success(rnp_decrypt(ffi, input, output));
+        // cleanup
+        rnp_input_destroy(input);
+        input = NULL;
+        rnp_output_destroy(output);
+        output = NULL;
+    }
     rnp_ffi_destroy(ffi);
 }
 #endif

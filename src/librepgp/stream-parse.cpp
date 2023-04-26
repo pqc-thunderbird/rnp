@@ -1608,7 +1608,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_X25519:
         declen = decbuf.size();
-        err = x25519_native_decrypt(&ctx.rng, keymaterial->x25519.priv, &encmaterial.x25519, decbuf.data(), &declen);
+        err = x25519_native_decrypt(&ctx.rng, keymaterial->x25519, &encmaterial.x25519, decbuf.data(), &declen);
         if(err != RNP_SUCCESS) {
             RNP_LOG("X25519 decryption error %u", err);
             return false;
@@ -1617,7 +1617,7 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
 #endif
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
-    case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
     case PGP_PKA_KYBER768_P256: [[fallthrough]];
     case PGP_PKA_KYBER1024_P384: [[fallthrough]];
     case PGP_PKA_KYBER768_BP256: [[fallthrough]];
@@ -1788,7 +1788,7 @@ encrypted_try_password(pgp_source_encrypted_param_t *param, const char *password
 #if !defined(ENABLE_AEAD)
             continue;
 #else
-            /* v6 AEAD-encrypted session key */
+            /* v5 AEAD-encrypted session key */
             size_t taglen = pgp_cipher_aead_tag_len(skey.aalg);
             size_t ceklen = pgp_key_size(param->aead_hdr.ealg);
 
@@ -2253,6 +2253,14 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
         }
 #ifdef ENABLE_CRYPTO_REFRESH
         else if (SEIPD_version == PGP_SE_IP_DATA_V2) {
+            /*  SKESK v6 is not yet implemented, thus we must not attempt to decrypt SEIPDv2 here 
+                TODO: Once SKESK v6 is implemented, replace this check with a check for consistency between SEIPD and SKESK version
+            */
+            if(param->symencs.size() > 0) {
+                RNP_LOG("SEIPDv2 not usable with SKESK version");
+                return RNP_ERROR_BAD_FORMAT;
+            }
+
             param->auth_type = rnp::AuthType::AEADv2;
             param->seipdv2_hdr.version = PGP_SE_IP_DATA_V2;
             uint8_t hdr[4];
@@ -2266,7 +2274,7 @@ encrypted_read_packet_data(pgp_source_encrypted_param_t *param)
             }
             RNP_DBG_LOG_HEX("parsed salt", param->seipdv2_hdr.salt, sizeof(param->seipdv2_hdr.salt));
 
-            /* check SEIPDv2 packet header // TODOMTG: cannot happen?: */
+            /* check SEIPDv2 packet header */
             if ((param->seipdv2_hdr.aead_alg != PGP_AEAD_EAX) &&
                 (param->seipdv2_hdr.aead_alg != PGP_AEAD_OCB)) {
                 RNP_LOG("unknown AEAD alg: %d", (int) param->seipdv2_hdr.aead_alg);
