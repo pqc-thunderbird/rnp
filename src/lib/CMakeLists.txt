@@ -32,7 +32,13 @@ find_package(ZLIB REQUIRED)
 # required packages
 find_package(JSON-C 0.11 REQUIRED)
 if (CRYPTO_BACKEND_BOTAN)
-  find_package(Botan2 2.14.0 REQUIRED)
+  if(ENABLE_PQC)
+    # for PQC we need newer Botan features
+    # TODO: exact version is yet to be determined
+    find_package(Botan2 3 REQUIRED)
+  else()
+    find_package(Botan2 2.14.0 REQUIRED)
+  endif()
 endif()
 if (CRYPTO_BACKEND_OPENSSL)
   include(FindOpenSSL)
