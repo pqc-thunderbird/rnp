@@ -61,7 +61,7 @@ std::pair<pgp_kyber_public_key_t, pgp_kyber_private_key_t>
 kyber_generate_keypair(rnp::RNG *rng, kyber_parameter_e kyber_param)
 {
     Kyber_PrivateKey kyber_priv(*rng->obj(), rnp_kyber_param_to_botan_kyber_mode(kyber_param));
-    kyber_priv.set_binary_encoding(KyberKeyEncoding::Raw);
+    
     secure_vector<uint8_t>      encoded_private_key = kyber_priv.private_key_bits();
     std::unique_ptr<Public_Key> kyber_pub = kyber_priv.public_key();
 
@@ -75,7 +75,7 @@ kyber_generate_keypair(rnp::RNG *rng, kyber_parameter_e kyber_param)
 Kyber_PublicKey
 pgp_kyber_public_key_t::botan_key() const
 {
-    return Kyber_PublicKey(key_encoded_, rnp_kyber_param_to_botan_kyber_mode(kyber_mode_), KyberKeyEncoding::Raw);
+    return Kyber_PublicKey(key_encoded_, rnp_kyber_param_to_botan_kyber_mode(kyber_mode_));
 }
 
 Kyber_PrivateKey
@@ -83,7 +83,7 @@ pgp_kyber_private_key_t::botan_key() const
 {
     secure_vector<uint8_t> key_sv(key_encoded_.data(),
                                   key_encoded_.data() + key_encoded_.size());
-    return Kyber_PrivateKey(key_sv, rnp_kyber_param_to_botan_kyber_mode(kyber_mode_), KyberKeyEncoding::Raw);  
+    return Kyber_PrivateKey(key_sv, rnp_kyber_param_to_botan_kyber_mode(kyber_mode_));  
 }
 
 kyber_encap_result_t
