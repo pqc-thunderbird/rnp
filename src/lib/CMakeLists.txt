@@ -142,12 +142,18 @@ if(CRYPTO_BACKEND_BOTAN)
       # hash
       CRC24 HASH MD5 SHA1 SHA2_32 SHA2_64 SHA3
       # public-key core
-      DL_GROUP DL_PUBLIC_KEY_FAMILY ECC_GROUP ECC_PUBLIC_KEY_CRYPTO PUBLIC_KEY_CRYPTO
+      DL_GROUP ECC_GROUP ECC_PUBLIC_KEY_CRYPTO PUBLIC_KEY_CRYPTO # Botan-2: DL_PUBLIC_KEY_FAMILY Botan-3: DL_SCHEME, see switch below
       # public-key algs
       CURVE_25519 DSA ECDH ECDSA ED25519 ELGAMAL RSA
       # public-key operations etc
       EME_PKCS1v15 EMSA_PKCS1 EMSA_RAW KDF_BASE RFC3394_KEYWRAP SP800_56A
   )
+  if(BOTAN2_VERSION VERSION_LESS 3.0.0)
+    set(_botan_required_features ${_botan_required_features} DL_PUBLIC_KEY_FAMILY)
+  else()
+    set(_botan_required_features ${_botan_required_features} DL_SCHEME)
+  endif()
+
   foreach(feature ${_botan_required_features})
     check_cxx_symbol_exists("BOTAN_HAS_${feature}" botan/build.h _botan_has_${feature})
     if (NOT _botan_has_${feature})
