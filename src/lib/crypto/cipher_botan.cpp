@@ -30,8 +30,6 @@
 #include "utils.h"
 #include "types.h"
 
-#include <iostream> // TODOMTG
-
 static const id_str_pair cipher_mode_map[] = {
   {PGP_CIPHER_MODE_CBC, "CBC"},
   {PGP_CIPHER_MODE_OCB, "OCB"},
@@ -170,7 +168,6 @@ Cipher_Botan::update(uint8_t *      output,
                      size_t         input_length,
                      size_t *       input_consumed)
 {
-    //std::cout << "Cipher_Botan::update called with input_length = " << input_length << std::endl;
     try {
         size_t ud = this->update_granularity();
         m_buf.resize(ud);
@@ -218,9 +215,10 @@ Cipher_Botan::update(uint8_t *      output,
                 *output_written += written;
                 
                 m_input_buffer.resize(0);
-                const uint8_t * input_to_in_buf = input - unused_input - min_fin_size;
+                const uint8_t * input_to_in_buf = input + input_length - unused_input - min_fin_size;
                 m_input_buffer.insert(std::end(m_input_buffer), input_to_in_buf, input_to_in_buf + min_fin_size);
                 input_length -= min_fin_size;
+                *input_consumed += min_fin_size;
             } 
             
             //size_t keep_in_input_buffer = input_length >= min_fin_size ? 0 : std::min(min_fin_size - input_length, m_input_buffer.size());

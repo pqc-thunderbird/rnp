@@ -38,9 +38,6 @@
 #include <crypto/cipher.hpp>
 #include <crypto/mem.h>
 
-# include <botan/hex.h> // TODOMTG: remove
-# include <iostream>  // TODOMTG: remove
-
 static std::vector<uint8_t>
 decode_hex(const char *hex)
 {
@@ -181,7 +178,6 @@ test_cipher(pgp_symm_alg_t    alg,
     assert_memory_equal(decrypted.data(), pt.data(), pt.size());
 
     // decrypt with a bad tag
-    std::cout << "start test with invalid authentication tag ..." << std::endl;
     if (tag_size != 0) {
         dec.reset(Cipher::decryption(alg, mode, tag_size, disable_padding).release());
         assert_true(dec->set_key(key.data(), key.size()));
