@@ -38,6 +38,9 @@
 #include <crypto/cipher.hpp>
 #include <crypto/mem.h>
 
+# include <botan/hex.h> // TODOMTG: remove
+# include <iostream>  // TODOMTG: remove
+
 static std::vector<uint8_t>
 decode_hex(const char *hex)
 {
@@ -67,6 +70,9 @@ test_cipher(pgp_symm_alg_t    alg,
     const std::vector<uint8_t> ad(decode_hex(ad_hex));
     const std::vector<uint8_t> pt(decode_hex(pt_hex));
     const std::vector<uint8_t> expected_ct(decode_hex(expected_ct_hex));
+
+
+    std::cout << "plaintext = '" << pt_hex << "'" << std::endl << std::endl;
 
     auto enc = Cipher::encryption(alg, mode, tag_size, disable_padding);
     assert_non_null(enc);
@@ -175,6 +181,7 @@ test_cipher(pgp_symm_alg_t    alg,
     assert_memory_equal(decrypted.data(), pt.data(), pt.size());
 
     // decrypt with a bad tag
+    std::cout << "start test with invalid authentication tag ..." << std::endl;
     if (tag_size != 0) {
         dec.reset(Cipher::decryption(alg, mode, tag_size, disable_padding).release());
         assert_true(dec->set_key(key.data(), key.size()));
@@ -214,6 +221,8 @@ test_cipher(pgp_symm_alg_t    alg,
                                  ct.size() - input_consumed,
                                  &consumed));
     }
+
+    std::cout << "... finished test with invalid authentication tag" << std::endl;
 }
 
 TEST_F(rnp_tests, test_cipher_idea)
