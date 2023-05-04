@@ -174,6 +174,67 @@ Cipher_Botan::update(uint8_t *      output,
 
         *input_consumed = 0;
         *output_written = 0;
+        size_t min_fin_size = m_cipher->minimum_final_size();
+
+        // need to hold back input if underlying Botan cipher requires it:
+        if(min_fin_size)
+        {
+            size_t ud_count; 
+            if(m_input_buffer.size() + input_length < min_fin_size)
+            {
+                ud_count = 0; 
+            }
+            else
+            {
+                ud_count = (m_input_buffer.size() + input_length - min_fin_size) / ud;
+                if(ud_count * ud > output_length)
+                {
+                    ud_count = output_length / ud;
+                }
+            }
+            size_t unused_input = m_input_buffer.size() + input_length - ud_count * ud - min_fin_size;
+
+            
+            // fill up the input_buffer 
+            size_t input_buf_target_size = ud_count > 0 ? ud : min_fin_size;
+                // fill up 
+            size_t missing_in_input_buf = input_buf_target_size - m_input_buffer.size();
+            
+            size_t append_to_input_buf = missing_in_input_buf <= input_length ? missing_in_input_buf : input_length;
+            m_input_buffer.insert(m_input_buffer.end(), input, input + append_to_input_buf);
+            input += append_to_input_buf;
+            input_length -= append_to_input_buf;
+            *input_consumed += append_to_input_buf;
+            
+            if(ud_count > 0)
+            {
+                size_t written = m_cipher->process(m_input_buffer.data(), ud);
+                std::copy(m_input_buffer.data(), m_input_buffer.data() + written, output);
+                output += written;
+                output_length -= written;
+                *output_written += written;
+                
+                m_input_buffer.resize(0);
+                const uint8_t * input_to_in_buf = input + input_length - unused_input - min_fin_size;
+                m_input_buffer.insert(std::end(m_input_buffer), input_to_in_buf, input_to_in_buf + min_fin_size);
+                input_length -= min_fin_size;
+                *input_consumed += min_fin_size;
+            } 
+            
+            //size_t keep_in_input_buffer = input_length >= min_fin_size ? 0 : std::min(min_fin_size - input_length, m_input_buffer.size());
+            //size_t use_from_input_buf = m_input_buffer.size() - keep_in_input_buffer;
+            //size_t hold_back_from_input = std::min(min_fin_size - keep_in_input_buffer, input_length);
+            /*size_t use_from_input = input_length - hold_back_from_input;
+            
+            m_buf.assign(m_input_buffer.data(), m_input_buffer.data() + use_from_input_buf);
+            m_input_buffer.erase(m_input_buffer.begin(), m_input_buffer.begin() + use_from_input_buf);
+            m_buf.insert(std::end(m_buf), input, input + use_from_input);
+
+            m_input_buffer.insert(std::end(m_input_buffer), input + use_from_input, input + input_length);
+
+            input_length = use_from_input;*/
+
+        }
         while (input_length >= ud && output_length >= ud) {
             m_buf.assign(input, input + ud);
             size_t written = m_cipher->process(m_buf.data(), ud);
@@ -205,12 +266,12 @@ Cipher_Botan::finish(uint8_t *      output,
         *input_consumed = 0;
         *output_written = 0;
         size_t ud = this->update_granularity();
-        if (input_length > ud) {
+        //if (input_length > ud) {
             if (!update(output,
                         output_length,
                         output_written,
                         input,
-                        input_length - ud,
+                        input_length, // - ud,
                         input_consumed)) {
                 return false;
             }
@@ -218,8 +279,11 @@ Cipher_Botan::finish(uint8_t *      output,
             input_length = input_length - *input_consumed;
             output += *output_written;
             output_length -= *output_written;
-        }
-        Botan::secure_vector<uint8_t> final_block(input, input + input_length);
+        //}
+        // if at this point at least minimum_final_size bytes have been input, the following call will have sufficiently sized input:
+        Botan::secure_vector<uint8_t> final_block(m_input_buffer.begin(), m_input_buffer.end());
+        final_block.insert(std::end(final_block), input, input + input_length);
+        //Botan::secure_vector<uint8_t> final_block(m_input_buffer.data(), m_input_buffer.data() + m_input_buffer.size());
         m_cipher->finish(final_block);
         if (final_block.size() > output_length) {
             RNP_LOG("Insufficient buffer");

@@ -66,6 +66,7 @@ class Cipher_Botan : public Cipher {
 
     std::unique_ptr<Botan::Cipher_Mode> m_cipher;
     std::vector<uint8_t>                m_buf;
+    std::vector<uint8_t>                m_input_buffer;
 
     static Cipher_Botan *create(pgp_symm_alg_t alg, const std::string &name, bool encrypt);
 };
