@@ -65,10 +65,7 @@ Dilithium_PublicKey
 pgp_dilithium_public_key_t::botan_key() const
 {
     return Dilithium_PublicKey(key_encoded_,
-                                rnp_dilithium_param_to_botan_dimension(dilithium_param_)
-                                //DilithiumFlavor::Deterministic,
-                                //DilithiumKeyEncoding::Raw);
-    );
+                                rnp_dilithium_param_to_botan_dimension(dilithium_param_));
 }
 
 Dilithium_PrivateKey
@@ -78,10 +75,7 @@ pgp_dilithium_private_key_t::botan_key() const
                                    key_encoded_.data() + key_encoded_.size());
     return Dilithium_PrivateKey(
       priv_sv,
-      rnp_dilithium_param_to_botan_dimension(this->dilithium_param_)
-      //DilithiumFlavor::Deterministic,
-      //DilithiumKeyEncoding::Raw
-      );
+      rnp_dilithium_param_to_botan_dimension(this->dilithium_param_));
 }
 
 bool
@@ -102,9 +96,7 @@ dilithium_generate_keypair(
   rnp::RNG *rng, dilithium_parameter_e dilithium_param)
 {
     Dilithium_PrivateKey priv_key(*rng->obj(),
-                                  rnp_dilithium_param_to_botan_dimension(dilithium_param)
-                                  //DilithiumFlavor::Deterministic
-                                  );
+                                  rnp_dilithium_param_to_botan_dimension(dilithium_param));
 
     std::unique_ptr<Public_Key> pub_key = priv_key.public_key();
     secure_vector<uint8_t>      priv_bits = priv_key.private_key_bits();
