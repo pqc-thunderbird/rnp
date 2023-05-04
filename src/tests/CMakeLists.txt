@@ -73,6 +73,12 @@ if (CRYPTO_BACKEND_LOWERCASE STREQUAL "openssl")
   find_package(OpenSSL 1.1.1 REQUIRED)
 endif()
 
+  if(BOTAN2_VERSION VERSION_LESS 3.0.0)
+  else()
+    add_compile_definitions(RNP_TEST_BOTAN_VERSION_IS_3)
+  endif()
+
+
 add_executable(rnp_tests
   ../rnp/rnpcfg.cpp
   ../rnp/fficli.cpp

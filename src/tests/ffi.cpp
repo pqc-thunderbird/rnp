@@ -3115,7 +3115,8 @@ TEST_F(rnp_tests, test_ffi_supported_features)
 #if defined(ENABLE_PQC)
     pqc_opt = 10; // kyber+ecc and dilithium+ecc variants
 #endif
-    assert_true(check_features(RNP_FEATURE_PK_ALG, features, 6 + has_sm2 + pqc_opt + crypto_refresh_opt));
+    assert_true(check_features(
+      RNP_FEATURE_PK_ALG, features, 6 + has_sm2 + pqc_opt + crypto_refresh_opt));
     rnp_buffer_destroy(features);
     assert_rnp_success(rnp_supports_feature(RNP_FEATURE_PK_ALG, "RSA", &supported));
     assert_true(supported);
@@ -5135,7 +5136,12 @@ TEST_F(rnp_tests, test_ffi_decrypt_wrong_mpi_bits)
     if (!aead_eax_enabled()) {
         assert_rnp_failure(rnp_op_verify_execute(op));
     } else {
-        assert_rnp_success(rnp_op_verify_execute(op));
+#if RNP_TEST_BOTAN_VERSION_IS_3
+        assert_rnp_failure(
+#else
+        assert_rnp_success(
+#endif
+          rnp_op_verify_execute(op));
     }
     rnp_op_verify_destroy(op);
     rnp_input_destroy(input);
@@ -5151,7 +5157,12 @@ TEST_F(rnp_tests, test_ffi_decrypt_wrong_mpi_bits)
     if (!aead_eax_enabled()) {
         assert_rnp_failure(rnp_op_verify_execute(op));
     } else {
-        assert_rnp_success(rnp_op_verify_execute(op));
+#if RNP_TEST_BOTAN_VERSION_IS_3
+        assert_rnp_failure(
+#else
+        assert_rnp_success(
+#endif
+          rnp_op_verify_execute(op));
     }
     rnp_op_verify_destroy(op);
     rnp_input_destroy(input);
@@ -5167,7 +5178,12 @@ TEST_F(rnp_tests, test_ffi_decrypt_wrong_mpi_bits)
     if (!aead_eax_enabled()) {
         assert_rnp_failure(rnp_op_verify_execute(op));
     } else {
-        assert_rnp_success(rnp_op_verify_execute(op));
+#if RNP_TEST_BOTAN_VERSION_IS_3
+        assert_rnp_failure(
+#else
+        assert_rnp_success(
+#endif
+            rnp_op_verify_execute(op));
     }
     rnp_op_verify_destroy(op);
     rnp_input_destroy(input);
