@@ -5127,7 +5127,12 @@ TEST_F(rnp_tests, test_ffi_decrypt_wrong_mpi_bits)
     if (!aead_eax_enabled()) {
         assert_rnp_failure(rnp_op_verify_execute(op));
     } else {
-        assert_rnp_success(rnp_op_verify_execute(op));
+#if RNP_TEST_BOTAN_VERSION_IS_3
+        assert_rnp_failure(
+#else
+        assert_rnp_success(
+#endif
+          rnp_op_verify_execute(op));
     }
     rnp_op_verify_destroy(op);
     rnp_input_destroy(input);
@@ -5143,7 +5148,12 @@ TEST_F(rnp_tests, test_ffi_decrypt_wrong_mpi_bits)
     if (!aead_eax_enabled()) {
         assert_rnp_failure(rnp_op_verify_execute(op));
     } else {
-        assert_rnp_success(rnp_op_verify_execute(op));
+#if RNP_TEST_BOTAN_VERSION_IS_3
+        assert_rnp_failure(
+#else
+        assert_rnp_success(
+#endif
+          rnp_op_verify_execute(op));
     }
     rnp_op_verify_destroy(op);
     rnp_input_destroy(input);
@@ -5159,7 +5169,12 @@ TEST_F(rnp_tests, test_ffi_decrypt_wrong_mpi_bits)
     if (!aead_eax_enabled()) {
         assert_rnp_failure(rnp_op_verify_execute(op));
     } else {
-        assert_rnp_success(rnp_op_verify_execute(op));
+#if RNP_TEST_BOTAN_VERSION_IS_3
+        assert_rnp_failure(
+#else
+        assert_rnp_success(
+#endif
+            rnp_op_verify_execute(op));
     }
     rnp_op_verify_destroy(op);
     rnp_input_destroy(input);
