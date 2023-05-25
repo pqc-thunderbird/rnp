@@ -1066,6 +1066,7 @@ pgp_pk_sesskey_t::write(pgp_dest_t &dst) const
 #if defined(ENABLE_CRYPTO_REFRESH)
     }
     else { // PGP_PKSK_V6
+        pktbody.add_byte(1 + fp.length); // A one-octet size of the following two fields.
         pktbody.add_byte((fp.length == PGP_FINGERPRINT_V6_SIZE) ? PGP_V6 : PGP_V4);
         pktbody.add(fp.fingerprint, fp.length);
         RNP_DBG_LOG("DBG: pgp_pk_sesskey_t::write(): fp size = %i", fp.length);
@@ -1117,6 +1118,17 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
     }
 #if defined(ENABLE_CRYPTO_REFRESH)
     else { // PGP_PKSK_V6
+        uint8_t fp_and_key_ver_len; // A one-octet size of the following two fields.
+        if (!pkt.get(fp_and_key_ver_len)) {
+            RNP_LOG("Error when reading length of next two fields");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        if((fp_and_key_ver_len != 1 + PGP_FINGERPRINT_V4_SIZE)
+            && (fp_and_key_ver_len != 1 + PGP_FINGERPRINT_V6_SIZE)) {
+            RNP_LOG("Invalid size for key version + length field");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+
         size_t fp_len;
         uint8_t fp_key_version;
         if (!pkt.get(fp_key_version)) {
@@ -1138,6 +1150,10 @@ pgp_pk_sesskey_t::parse(pgp_source_t &src)
                 return RNP_ERROR_BAD_FORMAT;
         }
         fp.length = fp_len;
+        if(fp.length && (fp.length != fp_and_key_ver_len - 1)) {
+            RNP_LOG("size mismatch (fingerprint size and fp+key version length field)");
+            return RNP_ERROR_BAD_FORMAT;
+        }
         if (!pkt.get(fp.fingerprint, fp.length)) {
             RNP_LOG("Error when reading fingerprint");
             return RNP_ERROR_BAD_FORMAT;
