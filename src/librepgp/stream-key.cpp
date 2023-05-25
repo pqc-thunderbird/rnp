@@ -676,7 +676,7 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
         case PGP_PKA_DILITHIUM5_BP384:
             tmpbuf.resize(pgp_dilithium_exdsa_composite_private_key_t::encoded_size(key.alg));
             if (!body.get(tmpbuf.data(), tmpbuf.size())) {
-                RNP_LOG("failed to parse dilithium-exdsa secret key data");
+                RNP_LOG("failed to parse dilithium-ecdsa/eddsa secret key data");
                 return RNP_ERROR_BAD_FORMAT;
             }
             key.material.dilithium_exdsa.priv = pgp_dilithium_exdsa_composite_private_key_t(tmpbuf.data(), tmpbuf.size(), key.alg);
@@ -1474,7 +1474,7 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     case PGP_PKA_DILITHIUM5_BP384:
         tmpbuf.resize(pgp_dilithium_exdsa_composite_public_key_t::encoded_size(alg));
         if (!pkt.get(tmpbuf.data(), tmpbuf.size())) {
-            RNP_LOG("failed to parse dilithium-exdsa public key data");
+            RNP_LOG("failed to parse dilithium-ecdsa/eddsa public key data");
             return RNP_ERROR_BAD_FORMAT;
         }
         material.dilithium_exdsa.pub = pgp_dilithium_exdsa_composite_public_key_t(tmpbuf, alg);

@@ -1537,7 +1537,7 @@ pgp_signature_t::parse_material(pgp_signature_material_t &material) const
     case PGP_PKA_DILITHIUM5_BP384:
         material.dilithium_exdsa.sig.resize(pgp_dilithium_exdsa_signature_t::composite_signature_size(palg));
         if (!pkt.get(material.dilithium_exdsa.sig.data(), material.dilithium_exdsa.sig.size())) {
-            RNP_LOG("failed to get dilithium-exdsa signature");
+            RNP_LOG("failed to get dilithium-ecdsa/eddsa signature");
             return false;
         }
         break;

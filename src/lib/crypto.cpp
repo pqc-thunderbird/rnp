@@ -182,7 +182,7 @@ pgp_generate_seckey(const rnp_keygen_crypto_params_t &crypto,
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
         if(pgp_dilithium_exdsa_composite_key_t::gen_keypair(&crypto.ctx->rng, &seckey.material.dilithium_exdsa, seckey.alg)) {
-            RNP_LOG("failed to generate Dilithium-ExDSA-composite key for PK alg %d", seckey.alg);
+            RNP_LOG("failed to generate Dilithium-ecdsa/eddsa-composite key for PK alg %d", seckey.alg);
             return false;
         }
         break;
