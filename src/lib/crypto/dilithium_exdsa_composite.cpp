@@ -37,7 +37,7 @@ pgp_dilithium_exdsa_composite_key_t::~pgp_dilithium_exdsa_composite_key_t() {}
 void
 pgp_dilithium_exdsa_composite_key_t::initialized_or_throw() const {
     if(!is_initialized()) {
-        RNP_LOG("Trying to use uninitialized dilithium-exdsa key");
+        RNP_LOG("Trying to use uninitialized dilithium-ecdsa/eddsa key");
         throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
     }
 }

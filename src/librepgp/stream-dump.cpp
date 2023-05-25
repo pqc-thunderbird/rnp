@@ -154,7 +154,7 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_KYBER1024_P384, "Kyber1024 + NIST P-384"},
   {PGP_PKA_KYBER768_BP256, "Kyber768 + Brainpool256"},
   {PGP_PKA_KYBER1024_BP384, "Kyber1024 + Brainpool384"},
-  {PGP_PKA_DILITHIUM3_ED25519, "Dilithium3 + X25519"},
+  {PGP_PKA_DILITHIUM3_ED25519, "Dilithium3 + ED25519"},
   //{PGP_PKA_DILITHIUM5_ED448, "Dilithium + X448"},
   {PGP_PKA_DILITHIUM3_P256, "Dilithium3 + NIST P-256"},
   {PGP_PKA_DILITHIUM5_P384, "Dilithium5 + NIST P-384"},
@@ -824,7 +824,7 @@ stream_dump_signature_pkt(rnp_dump_ctx_t *ctx, pgp_signature_t *sig, pgp_dest_t 
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        dst_print_vec(dst, "dilithium-exdsa sig", material.dilithium_exdsa.sig, ctx->dump_mpi);
+        dst_print_vec(dst, "dilithium-ecdsa/eddsa sig", material.dilithium_exdsa.sig, ctx->dump_mpi);
         break;
 #endif
     default:
@@ -944,7 +944,7 @@ stream_dump_key(rnp_dump_ctx_t *ctx, pgp_source_t *src, pgp_dest_t *dst)
     case PGP_PKA_DILITHIUM5_P384: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_BP256: [[fallthrough]];
     case PGP_PKA_DILITHIUM5_BP384:
-        dst_print_vec(dst, "dilithium-exdsa encodced pubkey", key.material.dilithium_exdsa.pub.get_encoded(), ctx->dump_mpi);
+        dst_print_vec(dst, "dilithium-ecdsa/eddsa encodced pubkey", key.material.dilithium_exdsa.pub.get_encoded(), ctx->dump_mpi);
         break;
 #endif
     default:
