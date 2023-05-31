@@ -31,13 +31,12 @@ find_package(ZLIB REQUIRED)
 
 # required packages
 find_package(JSON-C 0.11 REQUIRED)
-if (CRYPTO_BACKEND_BOTAN)
-  if(ENABLE_PQC)
-    # for PQC we need newer Botan features
-    # TODO: exact version is yet to be determined
-    find_package(Botan2 3 REQUIRED)
-  else()
-    find_package(Botan2 2.14.0 REQUIRED)
+if (CRYPTO_BACKEND_BOTAN3)
+  find_package(Botan 3.0.0 REQUIRED)
+elseif (CRYPTO_BACKEND_BOTAN)
+  find_package(Botan 2.14.0 REQUIRED)
+  if(BOTAN_VERSION VERSION_GREATER_EQUAL 3.0.0)
+    set(CRYPTO_BACKEND_BOTAN3 1)
   endif()
 endif()
 if (CRYPTO_BACKEND_OPENSSL)
@@ -48,6 +47,25 @@ if (CRYPTO_BACKEND_OPENSSL)
     set(CRYPTO_BACKEND_OPENSSL3 1)
   endif()
 endif()
+
+if(CRYPTO_BACKEND_BOTAN3)
+  set(CMAKE_CXX_STANDARD 20)
+endif()
+
+
+if(ENABLE_PQC)
+  if (NOT CRYPTO_BACKEND_BOTAN3)
+    message(FATAL_ERROR "ENABLE_PQC requires Botan 3 as crypto backend")
+  endif()
+  if (NOT ENABLE_CRYPTO_REFRESH)
+    message(FATAL_ERROR "ENABLE_PQC requires ENABLE_CRYPTO_REFRESH")
+  endif()
+endif()
+
+  # check that AEAD is enabled and not turned off for ENABLE_CRYPTO_REFRESH
+  if(ENABLE_CRYPTO_REFRESH AND (NOT ENABLE_AEAD))
+    message(FATAL_ERROR "ENABLE_CRYPTO_REFRESH requires ENABLE_AEAD, but it's either Off or Auto and got turned off")
+  endif()
 
 # generate a config.h
 include(CheckIncludeFileCXX)
@@ -135,7 +153,7 @@ endfunction()
 
 if(CRYPTO_BACKEND_BOTAN)
   # check botan's enabled features
-  set(CMAKE_REQUIRED_INCLUDES "${BOTAN2_INCLUDE_DIRS}")
+  set(CMAKE_REQUIRED_INCLUDES "${BOTAN_INCLUDE_DIRS}")
   set(_botan_required_features
       # base
       BIGINT FFI HEX_CODEC PGP_S2K
@@ -154,12 +172,11 @@ if(CRYPTO_BACKEND_BOTAN)
       # public-key operations etc
       EME_PKCS1v15 EMSA_PKCS1 EMSA_RAW KDF_BASE RFC3394_KEYWRAP SP800_56A
   )
-  if(BOTAN2_VERSION VERSION_LESS 3.0.0)
+  if(BOTAN_VERSION VERSION_LESS 3.0.0)
     set(_botan_required_features ${_botan_required_features} DL_PUBLIC_KEY_FAMILY)
   else()
-    set(_botan_required_features ${_botan_required_features} DL_SCHEME)
+    set(_botan_required_features ${_botan_required_features} DL_SCHEME RAW_HASH_FN)
   endif()
-
   foreach(feature ${_botan_required_features})
     check_cxx_symbol_exists("BOTAN_HAS_${feature}" botan/build.h _botan_has_${feature})
     if (NOT _botan_has_${feature})
@@ -178,10 +195,6 @@ if(CRYPTO_BACKEND_BOTAN)
   resolve_feature_state(ENABLE_RIPEMD160 "RIPEMD_160")
   # Botan supports Brainpool curves together with SECP via the ECC_GROUP define
 
-  # check that AEAD is enabled and not turned off for ENABLE_CRYPTO_REFRESH
-  if(ENABLE_CRYPTO_REFRESH AND (NOT ENABLE_AEAD))
-    message(FATAL_ERROR "ENABLE_CRYPTO_REFRESH requires ENABLE_AEAD, but it's either Off or Auto and got turned off")
-  endif()
 
   set(CMAKE_REQUIRED_INCLUDES)
 endif()
@@ -368,7 +381,7 @@ target_include_directories(librnp-obj
 )
 target_link_libraries(librnp-obj PRIVATE JSON-C::JSON-C)
 if (CRYPTO_BACKEND_BOTAN)
-  target_link_libraries(librnp-obj PRIVATE Botan2::Botan2)
+  target_link_libraries(librnp-obj PRIVATE Botan::Botan)
 elseif (CRYPTO_BACKEND_OPENSSL)
   target_link_libraries(librnp-obj PRIVATE OpenSSL::Crypto)
 endif()
@@ -389,21 +402,29 @@ else()
 endif()
 
 add_library(librnp $<TARGET_OBJECTS:librnp-obj> $<TARGET_OBJECTS:rnp-common>)
+if (OpenSSL::applink)
+  target_link_libraries(librnp PRIVATE OpenSSL::applink)
+endif(OpenSSL::applink)
+
 set_target_properties(librnp
   PROPERTIES
     VERSION "${RNP_VERSION}"
     SOVERSION "${RNP_VERSION_MAJOR}"
-    PREFIX "lib"
     OUTPUT_NAME "rnp"
 )
 
 if (BUILD_SHARED_LIBS)
   add_library(librnp-static STATIC $<TARGET_OBJECTS:librnp-obj> $<TARGET_OBJECTS:rnp-common>)
-  if (NOT WIN32)
+  if (OpenSSL::applink)
+    target_link_libraries(librnp-static PRIVATE OpenSSL::applink)
+  endif(OpenSSL::applink)
+  if (WIN32)
+    set_target_properties(librnp-static PROPERTIES OUTPUT_NAME "rnp-static")
+  else (WIN32)
 # On Unix like systems we will build/install/pack shared and static libraries librnp.so and librnp.a
 # On Windows we will build/install/pack dynamic, import and  static libraries rnp.dll, rnp.lib and rnp-static.lib
     set_target_properties(librnp-static PROPERTIES OUTPUT_NAME "rnp")
-  endif (NOT WIN32)
+  endif (WIN32)
  # Limit symbols export only to rnp_* functions.
   if (APPLE)
     # use -export_symbols_list on Apple OSs
@@ -451,11 +472,11 @@ else()
 endif()
 
 # add these to the rnp-targets export
-# On Unix like systems we will build/install/pack shared and static libraries librnp.so and librnp.a
-# On Windows we will build/install/pack dynamic, import and  static libraries rnp.dll, rnp.lib and rnp-static.lib
+# On Unix like systems we will build/install/pack either shared library librnp.so or static  librnp.a
+# On Windows we will build/install/pack either dynamic and import libraries rnp.dll, rnp.lib or static library rnp-static.lib
 
-# If a client application uses shared rnp library, sexp is statically linked to librnp.so
-# If a client application uses static rnp library, it still needs libsexp.a
+# If a client application uses shared rnp library, sexp is statically linked to librnp.so and libsexp.a is not installed
+# If a client application uses static rnp library, it still needs libsexp.a and it is installed
 
 if (BUILD_SHARED_LIBS)
 # both static and shared libraries
@@ -470,30 +491,23 @@ install(TARGETS librnp
       COMPONENT development
   )
 
-  install(TARGETS librnp-static sexp
-    EXPORT rnp-targets
-    ARCHIVE
-      DESTINATION  "${CMAKE_INSTALL_LIBDIR}"
-      COMPONENT development
-  )
+# install dll only for windows
+  if (WIN32)
+    install(TARGETS librnp
+      RUNTIME
+        DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        COMPONENT runtime
+    )
+  endif(WIN32)
 else(BUILD_SHARED_LIBS)
 # static libraries only
-install(TARGETS librnp sexp
+  install(TARGETS librnp sexp
     EXPORT rnp-targets
     ARCHIVE
       DESTINATION  "${CMAKE_INSTALL_LIBDIR}"
       COMPONENT development
 )
 endif(BUILD_SHARED_LIBS)
-
-# install dll only for windows
-if (WIN32)
-  install(TARGETS librnp
-    RUNTIME
-      DESTINATION "${CMAKE_INSTALL_BINDIR}"
-      COMPONENT runtime
-  )
-endif(WIN32)
 
 # install headers
 install(

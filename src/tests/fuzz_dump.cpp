@@ -44,4 +44,18 @@ TEST_F(rnp_tests, test_fuzz_dump)
     start = time(NULL);
     assert_int_equal(dump_LLVMFuzzerTestOneInput(data.data(), data.size()), 0);
     assert_true(time(NULL) - start <= 30);
+
+    data = file_to_vec(DATA_PATH "timeout-6462239459115008");
+    start = time(NULL);
+    assert_int_equal(dump_LLVMFuzzerTestOneInput(data.data(), data.size()), 0);
+    assert_true(time(NULL) - start <= 30);
+
+    data = file_to_vec(DATA_PATH "outofmemory-5570076898623488");
+    assert_int_equal(dump_LLVMFuzzerTestOneInput(data.data(), data.size()), 0);
+
+    data = file_to_vec(DATA_PATH "timeout-6057122298462208");
+    assert_int_equal(dump_LLVMFuzzerTestOneInput(data.data(), data.size()), 0);
+
+    data = file_to_vec(DATA_PATH "outofmemory-6111789935624192");
+    assert_int_equal(dump_LLVMFuzzerTestOneInput(data.data(), data.size()), 0);
 }

@@ -58,9 +58,9 @@ add_executable(rnpkeys
   ../rnp/fficli.cpp
 )
 
-if(NOT WIN32 OR MSYS)
+if(BUILD_SHARED_LIBS)
   target_sources(rnpkeys PRIVATE ../lib/logging.cpp $<TARGET_OBJECTS:rnp-common>)
-endif(NOT WIN32 OR MSYS)
+endif(BUILD_SHARED_LIBS)
 
 target_include_directories(rnpkeys
   PRIVATE
@@ -87,10 +87,6 @@ if(MSVC)
       "${GETOPT_LIBRARY}"
     )
 endif()
-
-if(MSYS)
-  target_link_libraries(rnpkeys PRIVATE regex)
-endif(MSYS)
 
 include(GNUInstallDirs)
 install(TARGETS rnpkeys

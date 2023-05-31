@@ -53,6 +53,8 @@ if (NOT OPENSSL_FOUND)
   message(FATAL_ERROR "OpenSSL is not found. Please make sure that you call find_package(OpenSSL) first.")
 endif()
 
+message(STATUS "Querying OpenSSL features")
+
 # Copy and build findopensslfeatures.c in fossl-build subfolder.
 set(_fossl_work_dir "${CMAKE_BINARY_DIR}/fossl")
 file(MAKE_DIRECTORY "${_fossl_work_dir}")
@@ -60,61 +62,82 @@ file(COPY "${CMAKE_CURRENT_LIST_DIR}/findopensslfeatures.c"
   DESTINATION "${_fossl_work_dir}"
 )
 # As it's short enough let's keep it here.
-# Reuse OPENSSL parameters from the master project
-# If FindOpenSSL is used in fossl there is a good chance to find another instance of openssl
+# Reuse OPENSSL parameters from the upstream project
+# otherwise  there is a good chance to find another instance of openssl
+# We assume that OpenSSL root is one level up openssl include directory
+# This does not look as a good solution, however it is the only one that
+# works with all Windows configuration options
+
+message(STATUS "Using OpenSSL root directory at ${OPENSSL_INCLUDE_DIR}/..")
+
 file(WRITE "${_fossl_work_dir}/CMakeLists.txt"
-"cmake_minimum_required(VERSION 3.14)\n\
+"cmake_minimum_required(VERSION 3.18)\n\
 project(findopensslfeatures LANGUAGES C)\n\
 set(CMAKE_C_STANDARD 99)\n\
+include(FindOpenSSL)\n\
+find_package(OpenSSL REQUIRED)\n\
 add_executable(findopensslfeatures findopensslfeatures.c)\n\
-target_include_directories(findopensslfeatures PRIVATE ${OPENSSL_INCLUDE_DIR})\n
-target_link_libraries(findopensslfeatures PRIVATE ${OPENSSL_CRYPTO_LIBRARY})\n"
+target_include_directories(findopensslfeatures PRIVATE ${OPENSSL_INCLUDE_DIR})\n\
+target_link_libraries(findopensslfeatures PRIVATE OpenSSL::Crypto)\n\
+if (OpenSSL::applink)\n\
+  target_link_libraries(findopensslfeatures PRIVATE OpenSSL::applink)\n\
+endif(OpenSSL::applink)\n"
 )
 
-set(MKF "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+set(MKF ${MKF} "-DCMAKE_BUILD_TYPE=Release" "-DOPENSSL_ROOT_DIR=${OPENSSL_INCLUDE_DIR}/..")
+
+if(CMAKE_PREFIX_PATH)
+  set(MKF ${MKF} "-DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
+endif(CMAKE_PREFIX_PATH)
 
 if(CMAKE_TOOLCHAIN_FILE)
   set(MKF ${MKF} "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
 endif(CMAKE_TOOLCHAIN_FILE)
 
 if(CMAKE_GENERATOR_PLATFORM)
-  set(MKF ${MKF} "-A ${CMAKE_GENERATOR_PLATFORM}")
+  set(MKF ${MKF} "-A" "${CMAKE_GENERATOR_PLATFORM}")
 endif(CMAKE_GENERATOR_PLATFORM)
 
 if(CMAKE_GENERATOR_TOOLSET)
-  set(MKF ${MKF} "-T ${CMAKE_GENERATOR_TOOLSET}")
+  set(MKF ${MKF} "-T" "${CMAKE_GENERATOR_TOOLSET}")
 endif(CMAKE_GENERATOR_TOOLSET)
 
 execute_process(
-  COMMAND "cmake" "-Bbuild" "-DCMAKE_BUILD_TYPE=Release"  ${MKF} "."
+  COMMAND "${CMAKE_COMMAND}" "-Bbuild" ${MKF} "."
   WORKING_DIRECTORY "${_fossl_work_dir}"
   OUTPUT_VARIABLE output
   ERROR_VARIABLE error
   RESULT_VARIABLE result
+  COMMAND_ECHO STDOUT
+  ECHO_OUTPUT_VARIABLE
+  ECHO_ERROR_VARIABLE
 )
 
 if (NOT ${result} EQUAL 0)
-  message(FATAL_ERROR "Error configuring findopensslfeatures: ${result}\n${error}")
+  message(FATAL_ERROR "Error configuring findopensslfeatures")
 endif()
 
 execute_process(
-  COMMAND "cmake" "--build" "build" "--config" "Release"
+  COMMAND "${CMAKE_COMMAND}" "--build" "build" --config "Release"
   WORKING_DIRECTORY "${_fossl_work_dir}"
   OUTPUT_VARIABLE output
   ERROR_VARIABLE error
   RESULT_VARIABLE result
+  COMMAND_ECHO STDOUT
+  ECHO_OUTPUT_VARIABLE
+  ECHO_ERROR_VARIABLE
 )
 
 if (NOT ${result} EQUAL 0)
-  message(FATAL_ERROR "Error building findopensslfeatures: ${result}\n${error}")
+  message(FATAL_ERROR "Error building findopensslfeatures")
 endif()
 
 set(OPENSSL_SUPPORTED_FEATURES "")
-if(WIN32 AND NOT MSYS)
+if(WIN32 AND NOT MINGW)
   set(FOF "build/Release/findopensslfeatures")
-else(WIN32 AND NOT MSYS)
+else(WIN32 AND NOT MINGW)
   set(FOF "build/findopensslfeatures")
-endif(WIN32 AND NOT MSYS)
+endif(WIN32 AND NOT MINGW)
 
 foreach(feature "hashes" "ciphers" "curves" "publickey")
   execute_process(
@@ -126,7 +149,7 @@ foreach(feature "hashes" "ciphers" "curves" "publickey")
   )
 
   if(NOT ${result} EQUAL 0)
-    message(FATAL_ERROR "Error getting supported OpenSSL ${feature}: \n${error}")
+    message(FATAL_ERROR "Error getting supported OpenSSL ${feature}: ${result}\n${error}")
   endif()
 
   string(TOUPPER ${feature} feature_up)

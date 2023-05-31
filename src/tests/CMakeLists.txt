@@ -66,11 +66,20 @@ else()
 endif()
 
 find_package(JSON-C 0.11 REQUIRED)
-if (CRYPTO_BACKEND_LOWERCASE STREQUAL "botan")
-  find_package(Botan2 2.14.0 REQUIRED)
+if (CRYPTO_BACKEND_BOTAN3)
+  find_package(Botan 3.0.0 REQUIRED)
+elseif (CRYPTO_BACKEND_BOTAN)
+  find_package(Botan 2.14.0 REQUIRED)
+  if(BOTAN_VERSION VERSION_GREATER_EQUAL 3.0.0)
+    set(CRYPTO_BACKEND_BOTAN3 1)
+  endif()
 endif()
 if (CRYPTO_BACKEND_LOWERCASE STREQUAL "openssl")
   find_package(OpenSSL 1.1.1 REQUIRED)
+endif()
+
+if(CRYPTO_BACKEND_BOTAN3)
+  set(CMAKE_CXX_STANDARD 20)
 endif()
 
 add_executable(rnp_tests
@@ -173,7 +182,7 @@ target_include_directories(rnp_tests
   PRIVATE
     "${PROJECT_SOURCE_DIR}/src"
     "${PROJECT_SOURCE_DIR}/src/lib"
-    "${BOTAN2_INCLUDE_DIRS}"
+    "${BOTAN_INCLUDE_DIRS}"
 )
 target_link_libraries(rnp_tests
   PRIVATE
@@ -185,10 +194,6 @@ target_link_libraries(rnp_tests
 if (CRYPTO_BACKEND_LOWERCASE STREQUAL "openssl")
   target_link_libraries(rnp_tests PRIVATE OpenSSL::Crypto)
 endif()
-
-if(MSYS)
-  target_link_libraries(rnp_tests PRIVATE regex)
-endif(MSYS)
 
 target_compile_definitions(rnp_tests
   PRIVATE
@@ -207,49 +212,6 @@ gtest_discover_tests(rnp_tests
     TIMEOUT 3000
     ENVIRONMENT "RNP_TEST_DATA=${CMAKE_CURRENT_SOURCE_DIR}/data"
 )
-
-# ruby-rnp
-# cruby does not currently play nice with ASaN et al.
-if (DOWNLOAD_RUBYRNP AND NOT ENABLE_SANITIZERS AND BUILD_SHARED_LIBS AND NOT WIN32)
-  include(ExternalProject)
-  set(_sourcedir "${CMAKE_BINARY_DIR}/ruby-rnp")
-  if (DEFINED ENV{RUBY_RNP_INSTALL})
-    set(_sourcedir "$ENV{RUBY_RNP_INSTALL}")
-  endif()
-  set(_ruby_rnp_ver "main")
-  if (DEFINED ENV{RUBY_RNP_VERSION})
-    set(_ruby_rnp_ver "$ENV{RUBY_RNP_VERSION}")
-  endif()
-  ExternalProject_Add(ruby-rnp
-    GIT_REPOSITORY https://github.com/rnpgp/ruby-rnp.git
-    GIT_TAG "${_ruby_rnp_ver}"
-    GIT_SHALLOW yes
-    SOURCE_DIR "${_sourcedir}"
-    BUILD_IN_SOURCE yes
-    CONFIGURE_COMMAND bundle config set --local path '.'
-    BUILD_COMMAND
-      COMMAND bundle add ffi --version 1.15.5
-      COMMAND bundle show parallel_tests || bundle add parallel_tests
-      COMMAND bundle install
-    INSTALL_COMMAND ""
-    TEST_COMMAND ""
-  )
-  set(_env "CI=false")
-  if (WIN32)
-    list(APPEND _env "PATH=$<TARGET_LINKER_FILE_DIR:librnp>\;$ENV{PATH}")
-  else()
-    list(APPEND _env "LD_LIBRARY_PATH=$<TARGET_LINKER_FILE_DIR:librnp>:$ENV{LD_LIBRARY_PATH}")
-  endif()
-  add_test(
-    NAME ruby-rnp
-    WORKING_DIRECTORY "${_sourcedir}"
-    COMMAND bundle exec parallel_rspec spec/
-  )
-  set_tests_properties(ruby-rnp PROPERTIES
-    TIMEOUT 1000
-    ENVIRONMENT "${_env}"
-  )
-endif()
 
 # cli_tests
 # Note that we do this call early because Google Test will also do

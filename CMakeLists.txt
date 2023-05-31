@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2020 Ribose Inc.
+# Copyright (c) 2018-2023 Ribose Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,8 @@
 # 3.12+ for NAMELINK_COMPONENT (for better RPM packaging)
 # 3.12+ for Python3 find module
 # 3.14+ for object library link dependency propagation
-cmake_minimum_required(VERSION 3.14)
+# 3.18+ for OpenSSL::applink
+cmake_minimum_required(VERSION 3.18)
 
 # contact email, other info
 include(cmake/info.cmake)
@@ -57,7 +58,6 @@ option(ENABLE_COVERAGE "Enable code coverage testing.")
 option(ENABLE_SANITIZERS "Enable ASan and other sanitizers.")
 option(ENABLE_FUZZERS "Enable fuzz targets.")
 option(DOWNLOAD_GTEST "Download Googletest" On)
-option(DOWNLOAD_RUBYRNP "Download ruby-rnp and run related tests." On)
 # crypto components
 function(tristate_feature_auto NAME DESCRIPTION)
   set(${NAME} Auto CACHE STRING ${DESCRIPTION})
@@ -108,14 +108,20 @@ endif()
 # crypto backend
 if (NOT CRYPTO_BACKEND)
   set(CRYPTO_BACKEND "botan" CACHE STRING
-    "Crypto backend. Possible values are botan and openssl (under development, only for debug builds). Default is botan."
+    "Crypto backend. Possible values are botan and openssl. Default is botan."
     FORCE
   )
 endif()
 string(TOLOWER ${CRYPTO_BACKEND} CRYPTO_BACKEND_LOWERCASE)
 if(CRYPTO_BACKEND_LOWERCASE STREQUAL "botan")
-  # Default value;
+  # Default value; version 2 or 3 of Botan
   set(CRYPTO_BACKEND_BOTAN 1)
+elseif(CRYPTO_BACKEND_LOWERCASE STREQUAL "botan3")
+  set(CRYPTO_BACKEND "botan")
+  set(CRYPTO_BACKEND_LOWERCASE "botan")
+  # Require version 3 of Botan
+  set(CRYPTO_BACKEND_BOTAN 1)
+  set(CRYPTO_BACKEND_BOTAN3 1)
 elseif(CRYPTO_BACKEND_LOWERCASE STREQUAL "openssl")
   set(CRYPTO_BACKEND_OPENSSL 1)
 else()
@@ -138,22 +144,10 @@ if(NOT MSVC)
   )
 endif(NOT MSVC)
 
-# MSYS-specific options
-if(MSYS)
-  add_compile_options(
-    -fstack-protector
-    -fopenmp
-  )
-  link_libraries(
-    -fstack-protector
-    -fopenmp
-  )
-endif(MSYS)
-
 # THis works both for MSVC and CL on Windows
-if(WIN32 AND NOT MSYS)
+if(WIN32)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
-endif(WIN32 AND NOT MSYS)
+endif(WIN32)
 
 # set a few other things at the top level to prevent incompatibilities
 set(CMAKE_C_STANDARD 99)

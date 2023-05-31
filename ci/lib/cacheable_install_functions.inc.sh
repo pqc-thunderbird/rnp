@@ -14,39 +14,30 @@
 install_botan() {
   # botan
   local botan_build=${LOCAL_BUILDS}/botan
-  if [[ ! -e "${BOTAN_INSTALL}/lib/libbotan-2.so" ]] && \
-     [[ ! -e "${BOTAN_INSTALL}/lib/libbotan-2.dylib" ]] && \
-     [[ ! -e "${BOTAN_INSTALL}/lib/libbotan-2.a" ]]; then
+  local botan_v=${BOTAN_VERSION::1}
+  if [[ ! -e "${BOTAN_INSTALL}/lib/libbotan-${botan_v}.so" ]] && \
+     [[ ! -e "${BOTAN_INSTALL}/lib/libbotan-${botan_v}.dylib" ]] && \
+     [[ ! -e "${BOTAN_INSTALL}/lib/libbotan-${botan_v}.a" ]]; then
 
     if [[ -d "${botan_build}" ]]; then
       rm -rf "${botan_build}"
     fi
 
     git clone --depth 1 --branch "${BOTAN_VERSION}" https://github.com/randombit/botan "${botan_build}"
-    pushd "${botan_build}"
 
     local osparam=()
     local cpuparam=()
     local run=run
+    local osslparam=()
+    local modules=""
+    [[ "${botan_v}" == "2" ]] && osslparam+=("--without-openssl") && modules=$(<ci/botan-modules tr '\n' ',')
+    [[ "${botan_v}" == "3" ]] && modules=$(<ci/botan3-modules tr '\n' ',')
+
+    pushd "${botan_build}"
     # Position independent code is a default for shared libraries at any xNIX platform
     # but it makes no sense and is not supported for Windows
     local extra_cflags="-fPIC"
     case "${OS}" in
-      msys)
-        osparam=(--os=mingw)
-        run=python
-        # Just get rid of all newlines!
-        BOTAN_MODULES="${BOTAN_MODULES//$'\r\n'/}"
-        BOTAN_MODULES="${BOTAN_MODULES//$'\r'/}"
-        BOTAN_MODULES="${BOTAN_MODULES//$'\n'/}"
-
-        # Deal with "error: ignoring '#pragma comment"
-        extra_cflags="-Wno-error=unknown-pragmas"
-        # Drop -fPIC
-        # Expecting implicit --cc-bin=g++/clang++ due to environment variable CXX
-        # Expecting implicit --cxxflags=-I/clang64/include  due to environment variable CXXFLAGS
-        # Expecting implicit --ldflags=-L<runner root>/clang64/lib -lomp due to environment variable LDFLAGS
-        ;;
       linux)
         case "${DIST_VERSION}" in
           centos-8|centos-9|fedora-*|debian-*)
@@ -62,8 +53,8 @@ install_botan() {
     is_use_static_dependencies && build_target="static,cli"
 
     "${run}" ./configure.py --prefix="${BOTAN_INSTALL}" --with-debug-info --extra-cxxflags="-fno-omit-frame-pointer ${extra_cflags}" \
-      ${osparam+"${osparam[@]}"} ${cpuparam+"${cpuparam[@]}"} --without-documentation --without-openssl --build-targets="${build_target}" \
-      --minimized-build --enable-modules="$BOTAN_MODULES"
+      ${osparam+"${osparam[@]}"} ${cpuparam+"${cpuparam[@]}"} --without-documentation ${osslparam+"${osslparam[@]}"} --build-targets="${build_target}" \
+      --minimized-build --enable-modules="$modules"
     ${MAKE} -j"${MAKE_PARALLEL}" install
     popd
   fi
@@ -222,7 +213,6 @@ _install_gpg() {
 
 
 install_gpg() {
-  # gpg - for msys/windows we use shipped gpg2 version
   local gpg_build=${LOCAL_BUILDS}/gpg
 
   # shellcheck disable=SC2153

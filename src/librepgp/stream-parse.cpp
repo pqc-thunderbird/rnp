@@ -88,10 +88,24 @@ typedef struct pgp_source_packet_param_t {
 } pgp_source_packet_param_t;
 
 typedef struct pgp_source_encrypted_param_t {
+#if 0
+<<<<<<< HEAD
     pgp_source_packet_param_t     pkt;            /* underlying packet-related params */
     std::vector<pgp_sk_sesskey_t> symencs;        /* array of sym-encrypted session keys */
     std::vector<pgp_pk_sesskey_t> pubencs;        /* array of pk-encrypted session keys */
+||||||| b693a358
+    pgp_source_packet_param_t     pkt;       /* underlying packet-related params */
+    std::vector<pgp_sk_sesskey_t> symencs;   /* array of sym-encrypted session keys */
+    std::vector<pgp_pk_sesskey_t> pubencs;   /* array of pk-encrypted session keys */
+=======
+#endif
+    pgp_source_packet_param_t     pkt{};     /* underlying packet-related params */
+    std::vector<pgp_sk_sesskey_t> symencs;   /* array of sym-encrypted session keys */
+    std::vector<pgp_pk_sesskey_t> pubencs;   /* array of pk-encrypted session keys */
+//>>>>>>> main
     rnp::AuthType                 auth_type; /* Authentication type */
+#if 0
+<<<<<<< HEAD
     bool        auth_validated;              /* Auth tag (MDC or AEAD) was already validated */
     bool                          aead;           /* AEAD encrypted data packet, tag 20 */
     
@@ -110,6 +124,43 @@ typedef struct pgp_source_encrypted_param_t {
     size_t                         aead_adlen; /* length of the additional data */
     pgp_symm_alg_t       salg;       /* data encryption algorithm */
     pgp_parse_handler_t *handler;    /* parsing handler with callbacks */
+||||||| b693a358
+    bool        auth_validated;              /* Auth tag (MDC or AEAD) was already validated */
+    pgp_crypt_t decrypt;                     /* decrypting crypto */
+    std::unique_ptr<rnp::Hash> mdc;          /* mdc SHA1 hash */
+    size_t                     chunklen;     /* size of AEAD chunk in bytes */
+    size_t                     chunkin;      /* number of bytes read from the current chunk */
+    size_t                     chunkidx;     /* index of the current chunk */
+    uint8_t                    cache[PGP_AEAD_CACHE_LEN]; /* read cache */
+    size_t                     cachelen;                  /* number of bytes in the cache */
+    size_t                     cachepos; /* index of first unread byte in the cache */
+    pgp_aead_hdr_t             aead_hdr; /* AEAD encryption parameters */
+    uint8_t                    aead_ad[PGP_AEAD_MAX_AD_LEN]; /* additional data */
+    size_t                     aead_adlen; /* length of the additional data */
+    pgp_symm_alg_t             salg;       /* data encryption algorithm */
+    pgp_parse_handler_t *      handler;    /* parsing handler with callbacks */
+=======
+#endif
+    bool        auth_validated{};            /* Auth tag (MDC or AEAD) was already validated */
+    pgp_crypt_t decrypt{};                   /* decrypting crypto */
+    std::unique_ptr<rnp::Hash> mdc;          /* mdc SHA1 hash */
+    size_t                     chunklen{};   /* size of AEAD chunk in bytes */
+    size_t                     chunkin{};    /* number of bytes read from the current chunk */
+    size_t                     chunkidx{};   /* index of the current chunk */
+    uint8_t                    cache[PGP_AEAD_CACHE_LEN]; /* read cache */
+    size_t                     cachelen{};                /* number of bytes in the cache */
+    size_t                     cachepos{}; /* index of first unread byte in the cache */
+    pgp_aead_hdr_t             aead_hdr;   /* AEAD encryption parameters */
+    uint8_t                    aead_ad[PGP_AEAD_MAX_AD_LEN]; /* additional data */
+    size_t                     aead_adlen{}; /* length of the additional data */
+    pgp_symm_alg_t             salg;         /* data encryption algorithm */
+    pgp_parse_handler_t *      handler{};    /* parsing handler with callbacks */
+    pgp_seipdv2_hdr_t          seipdv2_hdr; /* SEIPDv2 encryption parameters */
+
+    pgp_source_encrypted_param_t() : auth_type(rnp::AuthType::None), salg(PGP_SA_UNKNOWN)
+    {
+    }
+//>>>>>>> main
 
     bool
     use_cfb()
