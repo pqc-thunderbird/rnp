@@ -88,59 +88,11 @@ typedef struct pgp_source_packet_param_t {
 } pgp_source_packet_param_t;
 
 typedef struct pgp_source_encrypted_param_t {
-#if 0
-<<<<<<< HEAD
-    pgp_source_packet_param_t     pkt;            /* underlying packet-related params */
-    std::vector<pgp_sk_sesskey_t> symencs;        /* array of sym-encrypted session keys */
-    std::vector<pgp_pk_sesskey_t> pubencs;        /* array of pk-encrypted session keys */
-||||||| b693a358
-    pgp_source_packet_param_t     pkt;       /* underlying packet-related params */
-    std::vector<pgp_sk_sesskey_t> symencs;   /* array of sym-encrypted session keys */
-    std::vector<pgp_pk_sesskey_t> pubencs;   /* array of pk-encrypted session keys */
-=======
-#endif
     pgp_source_packet_param_t     pkt{};     /* underlying packet-related params */
     std::vector<pgp_sk_sesskey_t> symencs;   /* array of sym-encrypted session keys */
     std::vector<pgp_pk_sesskey_t> pubencs;   /* array of pk-encrypted session keys */
-//>>>>>>> main
+
     rnp::AuthType                 auth_type; /* Authentication type */
-#if 0
-<<<<<<< HEAD
-    bool        auth_validated;              /* Auth tag (MDC or AEAD) was already validated */
-    bool                          aead;           /* AEAD encrypted data packet, tag 20 */
-    
-    pgp_crypt_t                   decrypt;        /* decrypting crypto */
-    std::unique_ptr<rnp::Hash>    mdc;            /* mdc SHA1 hash */
-    size_t                        chunklen;       /* size of AEAD chunk in bytes */
-    size_t                        chunkin;  /* number of bytes read from the current chunk */
-    size_t                        chunkidx; /* index of the current chunk */
-    uint8_t                       cache[PGP_AEAD_CACHE_LEN]; /* read cache */
-    size_t                        cachelen;                  /* number of bytes in the cache */
-    size_t                        cachepos;    /* index of first unread byte in the cache */
-    pgp_aead_hdr_t                aead_hdr;    /* AEAD encryption parameters */
-    pgp_seipdv2_hdr_t             seipdv2_hdr; /* SEIPDv2 encryption parameters */
-    //std::vector<uint8_t>          seipd_v2_nonce;
-    uint8_t                       aead_ad[PGP_AEAD_MAX_AD_LEN];  /* additional data (used for AEAD and SEIPDv2 packets) */
-    size_t                         aead_adlen; /* length of the additional data */
-    pgp_symm_alg_t       salg;       /* data encryption algorithm */
-    pgp_parse_handler_t *handler;    /* parsing handler with callbacks */
-||||||| b693a358
-    bool        auth_validated;              /* Auth tag (MDC or AEAD) was already validated */
-    pgp_crypt_t decrypt;                     /* decrypting crypto */
-    std::unique_ptr<rnp::Hash> mdc;          /* mdc SHA1 hash */
-    size_t                     chunklen;     /* size of AEAD chunk in bytes */
-    size_t                     chunkin;      /* number of bytes read from the current chunk */
-    size_t                     chunkidx;     /* index of the current chunk */
-    uint8_t                    cache[PGP_AEAD_CACHE_LEN]; /* read cache */
-    size_t                     cachelen;                  /* number of bytes in the cache */
-    size_t                     cachepos; /* index of first unread byte in the cache */
-    pgp_aead_hdr_t             aead_hdr; /* AEAD encryption parameters */
-    uint8_t                    aead_ad[PGP_AEAD_MAX_AD_LEN]; /* additional data */
-    size_t                     aead_adlen; /* length of the additional data */
-    pgp_symm_alg_t             salg;       /* data encryption algorithm */
-    pgp_parse_handler_t *      handler;    /* parsing handler with callbacks */
-=======
-#endif
     bool        auth_validated{};            /* Auth tag (MDC or AEAD) was already validated */
     pgp_crypt_t decrypt{};                   /* decrypting crypto */
     std::unique_ptr<rnp::Hash> mdc;          /* mdc SHA1 hash */
@@ -160,7 +112,6 @@ typedef struct pgp_source_encrypted_param_t {
     pgp_source_encrypted_param_t() : auth_type(rnp::AuthType::None), salg(PGP_SA_UNKNOWN)
     {
     }
-//>>>>>>> main
 
     bool
     use_cfb()
@@ -539,7 +490,6 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
 
     RNP_DBG_LOG("DBG: stream-parse: encrypted_start_aead_chunk: idx = %lu, last = %i\n", idx, last);
     /* set chunk index for additional data */
-    //if (!param->is_v2_seipd()) {
     if (param->auth_type == rnp::AuthType::AEADv1) {
         STORE64BE(param->aead_ad + param->aead_adlen - 8, idx);
     }
@@ -554,10 +504,8 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
             /* reset the crypto in case we had empty chunk before the last one */
             pgp_cipher_aead_reset(&param->decrypt);
         }
-        //if(param->auth_type == rnp::AuthType::AEADv2) {
             STORE64BE(param->aead_ad + param->aead_adlen, total);
             param->aead_adlen += 8;
-        //}
     }
     uint8_t *add_data = param->aead_ad;
     size_t   add_data_len = param->aead_adlen;
@@ -576,7 +524,6 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
         }
         add_data = add_data_seipd_v2.data();
         add_data_len = add_data_seipd_v2.size();
-        //param->aead_adlen += 8;
     }
 #endif
     RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_set_ad called with ad", add_data, add_data_len);
@@ -590,13 +537,6 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
     param->chunkin = 0;
 
 
-#if 0
-#ifdef ENABLE_CRYPTO_REFRESH
-    if (param->is_v2_seipd()) {
-        nonce_base = param->seipd_v2_nonce.data();
-    }
-#endif
-#endif
     /* set chunk index for nonce */
     RNP_DBG_LOG("mode is EAX: %s", param->aead_hdr.aalg == PGP_AEAD_EAX ? "true" : "false");
     RNP_DBG_LOG_HEX("parse: pgp_cipher_aead_nonce() called with param->aead_hdr.iv(len=?)", param->aead_hdr.iv, 15);
