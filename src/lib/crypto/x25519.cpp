@@ -61,7 +61,7 @@ rnp_result_t generate_x25519_native(rnp::RNG *           rng,
 {
     Botan::Curve25519_PrivateKey priv_key(*(rng->obj()));
     pubkey = priv_key.public_value();
-    privkey = Botan::unlock(priv_key.get_x());
+    privkey = Botan::unlock(priv_key.raw_private_key_bits());
 
     return RNP_SUCCESS;
 }

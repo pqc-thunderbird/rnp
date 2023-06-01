@@ -44,7 +44,7 @@ rnp_result_t generate_ed25519_native(rnp::RNG *           rng,
 {
     Botan::Ed25519_PrivateKey private_key(*(rng->obj()));
     const size_t key_len = 32;
-    auto priv_pub = Botan::unlock(private_key.get_private_key());
+    auto priv_pub = Botan::unlock(private_key.raw_private_key_bits());
     assert(priv_pub.size() == 2 * key_len);
     privkey = std::vector<uint8_t>(priv_pub.begin(), priv_pub.begin() + key_len);
     pubkey = std::vector<uint8_t>(priv_pub.begin() + key_len, priv_pub.end());

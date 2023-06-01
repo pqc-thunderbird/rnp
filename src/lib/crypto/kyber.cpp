@@ -92,7 +92,7 @@ pgp_kyber_public_key_t::encapsulate(rnp::RNG *rng)
     assert(is_initialized_);
     auto decoded_kyber_pub = botan_key();
 
-    PK_KEM_Encryptor       kem_enc(decoded_kyber_pub, *rng->obj(), "Raw", "base");
+    PK_KEM_Encryptor       kem_enc(decoded_kyber_pub, "Raw", "base");
     secure_vector<uint8_t> encap_key;           // this has to go over the wire
     secure_vector<uint8_t> data_encryption_key; // this is the key used for
     // encryption of the payload data
