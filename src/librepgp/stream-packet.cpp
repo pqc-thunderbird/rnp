@@ -63,6 +63,15 @@ write_uint16(uint8_t *buf, uint16_t val)
     buf[1] = val & 0xff;
 }
 
+void
+write_uint32(uint8_t *buf, uint32_t val)
+{
+    buf[0] = val >> 24;
+    buf[1] = (val >> 16) & 0xff;
+    buf[2] = (val >> 8) & 0xff;
+    buf[3] = val & 0xff;
+}
+
 size_t
 write_packet_len(uint8_t *buf, size_t len)
 {
@@ -694,6 +703,13 @@ pgp_packet_body_t::add(const void *data, size_t len)
 }
 
 void
+pgp_packet_body_t::add(const std::vector<uint8_t> &data)
+{
+    add(data.data(), data.size());
+}
+
+
+void
 pgp_packet_body_t::add_byte(uint8_t bt)
 {
     data_.push_back(bt);
@@ -765,7 +781,17 @@ pgp_packet_body_t::add_subpackets(const pgp_signature_t &sig, bool hashed)
     if (spbody.data_.size() > 0xffff) {
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
-    add_uint16(spbody.data_.size());
+    if(sig.version == PGP_V4) {
+        add_uint16(spbody.data_.size());
+    }
+    else { /* PGP_V6 */
+#if defined(ENABLE_CRYPTO_REFRESH)
+        add_uint32(spbody.data_.size());
+#else
+        RNP_LOG("should not reach this code");
+        throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
+#endif
+    }
     add(spbody.data_.data(), spbody.data_.size());
 }
 

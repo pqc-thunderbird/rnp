@@ -268,8 +268,10 @@ void rnp_win_clear_args(int argc, char **argv);
 #endif
 
 /* TODO: we should decide what to do with functions/constants/defines below */
+#define RNP_PGP_VER_6 6
 #define RNP_KEYID_SIZE 8
-#define RNP_FP_SIZE 20
+#define RNP_FP_V4_SIZE 20
+#define RNP_FP_V6_SIZE 32
 #define RNP_GRIP_SIZE 20
 
 #define ERR_MSG(...)                           \

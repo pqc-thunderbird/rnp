@@ -119,6 +119,8 @@ typedef struct pgp_packet_body_t {
     bool get(pgp_s2k_t &s2k) noexcept;
     /** @brief append some bytes to the packet body */
     void add(const void *data, size_t len);
+    /** @brief append some bytes to the packet body */
+    void add(const std::vector<uint8_t> &data);
     /** @brief append single byte to the packet body */
     void add_byte(uint8_t bt);
     /** @brief append big endian 16-bit value to the packet body */
@@ -230,6 +232,9 @@ uint16_t read_uint16(const uint8_t *buf);
 uint32_t read_uint32(const uint8_t *buf);
 
 void write_uint16(uint8_t *buf, uint16_t val);
+
+void write_uint32(uint8_t *buf, uint32_t val);
+
 
 /** @brief write new packet length
  *  @param buf pre-allocated buffer, must have 5 bytes

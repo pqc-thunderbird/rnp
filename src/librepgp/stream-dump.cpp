@@ -435,6 +435,16 @@ dst_print_keyid(pgp_dest_t *dst, const char *name, const pgp_key_id_t &keyid)
 }
 
 static void
+dst_print_fp(pgp_dest_t *dst, const char *name, const pgp_fingerprint_t &fp)
+{
+    if (!name) {
+        name = "fingerprint";
+    }
+    dst_print_hex(dst, name, fp.fingerprint, fp.length, true);
+}
+
+
+static void
 dst_print_s2k(pgp_dest_t *dst, pgp_s2k_t *s2k)
 {
     dst_printf(dst, "s2k specifier: %d\n", (int) s2k->specifier);
@@ -574,7 +584,7 @@ signature_dump_subpacket(rnp_dump_ctx_t *ctx, pgp_dest_t *dst, const pgp_sig_sub
         dst_printf(dst, "class: %d\n", (int) subpkt.fields.revocation_key.klass);
         dst_print_palg(dst, NULL, subpkt.fields.revocation_key.pkalg);
         dst_print_hex(
-          dst, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_SIZE, true);
+          dst, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_V4_SIZE, true);
         break;
     case PGP_SIG_SUBPKT_ISSUER_KEY_ID:
         dst_print_hex(dst, sname, subpkt.fields.issuer, PGP_KEY_ID_SIZE, false);
@@ -655,6 +665,7 @@ signature_dump_subpacket(rnp_dump_ctx_t *ctx, pgp_dest_t *dst, const pgp_sig_sub
         dst_printf(dst, "%s", subpkt.fields.features & PGP_KEY_FEATURE_MDC ? "mdc " : "");
         dst_printf(dst, "%s", subpkt.fields.features & PGP_KEY_FEATURE_AEAD ? "aead " : "");
         dst_printf(dst, "%s", subpkt.fields.features & PGP_KEY_FEATURE_V5 ? "v5 keys " : "");
+        dst_printf(dst, "%s", subpkt.fields.features & PGP_KEY_FEATURE_SEIPDV2 ? "SEIPD v2 " : "");
         dst_printf(dst, ")\n");
         break;
     case PGP_SIG_SUBPKT_EMBEDDED_SIGNATURE:
@@ -1623,7 +1634,7 @@ signature_dump_subpacket_json(rnp_dump_ctx_t *        ctx,
                obj_add_field_json(
                  obj, "algorithm", json_object_new_int(subpkt.fields.revocation_key.pkalg)) &&
                obj_add_hex_json(
-                 obj, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_SIZE);
+                 obj, "fingerprint", subpkt.fields.revocation_key.fp, PGP_FINGERPRINT_V4_SIZE);
     case PGP_SIG_SUBPKT_ISSUER_KEY_ID:
         return obj_add_hex_json(obj, "issuer keyid", subpkt.fields.issuer, PGP_KEY_ID_SIZE);
     case PGP_SIG_SUBPKT_KEYSERV_PREFS:

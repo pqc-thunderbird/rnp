@@ -1176,6 +1176,15 @@ RNP_API rnp_result_t rnp_op_generate_clear_pref_ciphers(rnp_op_generate_t op);
 RNP_API rnp_result_t rnp_op_generate_set_pref_keyserver(rnp_op_generate_t op,
                                                         const char *      keyserver);
 
+#if defined(ENABLE_CRYPTO_REFRESH)
+/** Set the generated key version to v6.
+ *
+ * @param op pointer to opaque key generation context.
+ * @return RNP_SUCCESS or error code if failed.
+ */
+RNP_API rnp_result_t rnp_op_generate_set_v6_key(rnp_op_generate_t op);
+#endif
+
 /** Execute the prepared key or subkey generation operation.
  *  Note: if you set protection algorithm, then you need to specify ffi password provider to
  *        be able to request password for key encryption.
@@ -1715,6 +1724,14 @@ RNP_API rnp_result_t rnp_uid_remove(rnp_key_handle_t key, rnp_uid_handle_t uid);
  * @return RNP_SUCCESS or error code
  */
 RNP_API rnp_result_t rnp_uid_handle_destroy(rnp_uid_handle_t uid);
+
+/**
+ * @brief Get key's version as integer.
+ *
+ * @param key key handle, should not be NULL
+ * @return RNP_SUCCESS or error code on failure.
+ */
+RNP_API rnp_result_t rnp_key_get_version(rnp_key_handle_t handle, int *version);
 
 /** Get number of the key's subkeys.
  *

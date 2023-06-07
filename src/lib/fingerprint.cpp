@@ -57,13 +57,27 @@ pgp_fingerprint(pgp_fingerprint_t &fp, const pgp_key_pkt_t &key)
         }
     }
 
-    if (key.version != PGP_V4) {
+    if ((key.version != PGP_V4) && 
+#if defined(ENABLE_CRYPTO_REFRESH)
+    (key.version != PGP_V6)
+#else
+    true
+#endif
+    ) {
         RNP_LOG("unsupported key version");
         return RNP_ERROR_NOT_SUPPORTED;
     }
 
+    std::unique_ptr<rnp::Hash> hash;
+    if (key.version == PGP_V4) {
+        hash = rnp::Hash::create(PGP_HASH_SHA1);
+    }
+#if defined(ENABLE_CRYPTO_REFRESH)
+    else if (key.version == PGP_V6) {
+        hash = rnp::Hash::create(PGP_HASH_SHA256);
+    }
+#endif
     try {
-        auto hash = rnp::Hash::create(PGP_HASH_SHA1);
         signature_hash_key(key, *hash);
         fp.length = hash->finish(fp.fingerprint);
         return RNP_SUCCESS;
