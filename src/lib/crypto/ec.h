@@ -192,8 +192,17 @@ bool x25519_tweak_bits(pgp_ec_key_t &key);
  */
 bool x25519_bits_tweaked(const pgp_ec_key_t &key);
 
-
-
+/*
+ * @brief   Generates EC keys in "native" or SEC1-encoded uncompressed format
+ *
+ * @param   rng initialized rnp::RNG context*
+ * @param   privkey private key to be generated
+ * @param   pubkey public key to be generated
+ * @param   curve chosen curve
+ * @param   alg algorithm id
+ *
+ * @returns RNP_ERROR_BAD_PARAMETERS if the curve or alg parameter is invalid.
+ */
 rnp_result_t ec_generate_native(rnp::RNG *           rng,
                                 std::vector<uint8_t> &privkey, 
                                 std::vector<uint8_t> &pubkey,
