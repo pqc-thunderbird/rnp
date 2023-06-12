@@ -285,7 +285,9 @@ elseif(CRYPTO_BACKEND_BOTAN)
   endif()
   if(ENABLE_CRYPTO_REFRESH)
     list(APPEND CRYPTO_SOURCES 
+        crypto/x25519.cpp
         crypto/ed25519.cpp
+        crypto/exdsa_ecdhkem.cpp
     )
   endif()
 else()
