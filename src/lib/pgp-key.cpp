@@ -2778,11 +2778,29 @@ pgp_key_t::subkey_pkt_hash() const
 }
 #endif
 
+pgp_curve_t
+pgp_key_material_t::get_curve() const
+{
+    switch (alg) {
+    case PGP_PKA_ECDH: [[fallthrough]];
+    case PGP_PKA_ECDSA: [[fallthrough]];
+    case PGP_PKA_EDDSA: [[fallthrough]];
+    case PGP_PKA_SM2:
+        return ec.curve;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        return PGP_CURVE_ED25519;
+    case PGP_PKA_X25519:
+        return PGP_CURVE_25519;
+#endif
+    default:
+        PGP_CURVE_UNKNOWN;
+    }
+}
+
 size_t
 pgp_key_material_t::bits() const
 {
-    pgp_curve_t curve;
-
     switch (alg) {
     case PGP_PKA_RSA:
     case PGP_PKA_RSA_ENCRYPT_ONLY:
@@ -2793,20 +2811,18 @@ pgp_key_material_t::bits() const
     case PGP_PKA_ELGAMAL:
     case PGP_PKA_ELGAMAL_ENCRYPT_OR_SIGN:
         return 8 * mpi_bytes(&eg.y);
-    case PGP_PKA_ECDH:
-    case PGP_PKA_ECDSA:
-    case PGP_PKA_EDDSA:
-    case PGP_PKA_SM2:
-        curve = ec.curve;
-        break;
+    case PGP_PKA_ECDH: [[fallthrough]];
+    case PGP_PKA_ECDSA: [[fallthrough]];
+    case PGP_PKA_EDDSA: [[fallthrough]];
 #if defined(ENABLE_CRYPTO_REFRESH)
-    case PGP_PKA_ED25519:
-        curve = PGP_CURVE_ED25519;
-        break;
-    case PGP_PKA_X25519:
-        curve = PGP_CURVE_25519;
-        break;
+    case PGP_PKA_ED25519: [[fallthrough]];
+    case PGP_PKA_X25519: [[fallthrough]];
 #endif
+    case PGP_PKA_SM2: {
+    /* handle ecc cases */
+    const ec_curve_desc_t *curve_desc = get_curve_desc(get_curve());
+    return curve_desc ? curve_desc->bitlen : 0;
+    }
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519: [[fallthrough]];
     //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
@@ -2827,11 +2843,6 @@ pgp_key_material_t::bits() const
         RNP_LOG("Unknown public key alg: %d", (int) alg);
         return 0;
     }
-
-    /* handle remaining ecc cases */
-    // bn_num_bytes returns value <= curve order
-    const ec_curve_desc_t *curve_desc = get_curve_desc(curve);
-    return curve_desc ? curve_desc->bitlen : 0;
 }
 
 size_t
