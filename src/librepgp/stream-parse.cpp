@@ -504,12 +504,13 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
             /* reset the crypto in case we had empty chunk before the last one */
             pgp_cipher_aead_reset(&param->decrypt);
         }
-            STORE64BE(param->aead_ad + param->aead_adlen, total);
-            param->aead_adlen += 8;
+        STORE64BE(param->aead_ad + param->aead_adlen, total);
+        param->aead_adlen += 8;
     }
     uint8_t *add_data = param->aead_ad;
     size_t   add_data_len = param->aead_adlen;
 
+#ifdef ENABLE_CRYPTO_REFRESH
     std::vector<uint8_t> add_data_seipd_v2 = {
       static_cast<uint8_t>(PGP_PKT_SE_IP_DATA | PGP_PTAG_ALWAYS_SET | PGP_PTAG_NEW_FORMAT),
       static_cast<uint8_t>(param->seipdv2_hdr.version),
@@ -517,7 +518,6 @@ encrypted_start_aead_chunk(pgp_source_encrypted_param_t *param, size_t idx, bool
       static_cast<uint8_t>(param->seipdv2_hdr.aead_alg),
       param->seipdv2_hdr.chunk_size_octet};
 
-#ifdef ENABLE_CRYPTO_REFRESH
     if (param->is_v2_seipd()) {
         if(last) {
             std::copy(&param->aead_ad[5], &param->aead_ad[5 + 8], std::back_inserter(add_data_seipd_v2));

@@ -101,7 +101,9 @@ typedef struct pgp_dest_encrypted_param_t {
     size_t                     chunkidx; /* index of the current AEAD chunk */
     size_t                     cachelen; /* how many bytes are in cache, for AEAD */
     uint8_t cache[PGP_AEAD_CACHE_LEN];   /* pre-allocated cache for encryption */
+#ifdef ENABLE_CRYPTO_REFRESH
     std::array<uint8_t, PGP_SEIPDV2_SALT_LEN> v2_seipd_salt; /* SEIPDv2 salt value */
+#endif
 
     bool is_aead_auth()
     {
