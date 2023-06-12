@@ -2989,6 +2989,17 @@ RNP_API rnp_result_t rnp_op_encrypt_create(rnp_op_encrypt_t *op,
  */
 RNP_API rnp_result_t rnp_op_encrypt_add_recipient(rnp_op_encrypt_t op, rnp_key_handle_t key);
 
+#if defined(ENABLE_CRYPTO_REFRESH)
+/**
+ * @brief Enables the creation of PKESK v6 (instead of v3) which results in the use of SEIPDv2. 
+ * The actually created version depends on the capabilities of the list of recipients. 
+ *
+ * @param op opaque encrypting context. Must be allocated and initialized.
+ * @return RNP_SUCCESS or errorcode if failed.
+ */
+RNP_API rnp_result_t rnp_op_encrypt_enable_pkesk_v6(rnp_op_encrypt_t op);
+#endif
+
 /**
  * @brief Add signature to encrypting context, so data will be encrypted and signed.
  *

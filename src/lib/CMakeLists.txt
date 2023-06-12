@@ -52,6 +52,11 @@ if(CRYPTO_BACKEND_BOTAN3)
   set(CMAKE_CXX_STANDARD 20)
 endif()
 
+# check that AEAD is enabled and not turned off for ENABLE_CRYPTO_REFRESH
+  if(ENABLE_CRYPTO_REFRESH AND (NOT ENABLE_AEAD))
+    message(FATAL_ERROR "ENABLE_CRYPTO_REFRESH requires ENABLE_AEAD, but it's either Off or Auto and got turned off")
+  endif()
+
 # generate a config.h
 include(CheckIncludeFileCXX)
 include(CheckCXXSymbolExists)
@@ -173,10 +178,13 @@ if(CRYPTO_BACKEND_BOTAN)
   resolve_feature_state(ENABLE_AEAD "AEAD_EAX;AEAD_OCB")
   resolve_feature_state(ENABLE_TWOFISH "TWOFISH")
   resolve_feature_state(ENABLE_IDEA "IDEA")
-  # Botan supports Brainpool curves together with SECP via the ECC_GROUP define
+  resolve_feature_state(ENABLE_CRYPTO_REFRESH "HKDF")
   resolve_feature_state(ENABLE_BLOWFISH "BLOWFISH")
   resolve_feature_state(ENABLE_CAST5 "CAST_128")
   resolve_feature_state(ENABLE_RIPEMD160 "RIPEMD_160")
+  # Botan supports Brainpool curves together with SECP via the ECC_GROUP define
+
+
   set(CMAKE_REQUIRED_INCLUDES)
 endif()
 if(CRYPTO_BACKEND_OPENSSL)
@@ -212,6 +220,8 @@ if(CRYPTO_BACKEND_OPENSSL)
   openssl_nope(ENABLE_SM2 "it's on our roadmap, see https://github.com/rnpgp/rnp/issues/1877")
   #resolve_feature_state(ENABLE_SM2 "SM2;SM3;SM4-ECB")
   openssl_nope(ENABLE_TWOFISH "Twofish isn't and won't be supported by OpenSSL, see https://github.com/openssl/openssl/issues/2046")
+  openssl_nope(ENABLE_AEAD "it's on our roadmap, see https://github.com/rnpgp/rnp/issues/1642")
+  openssl_nope(ENABLE_CRYPTO_REFRESH, "not yet implemented")
 endif()
 
 configure_file(config.h.in config.h)
@@ -267,6 +277,8 @@ elseif(CRYPTO_BACKEND_BOTAN)
     crypto/mem.cpp
     crypto/cipher.cpp
     crypto/cipher_botan.cpp
+    crypto/hkdf.cpp
+    crypto/hkdf_botan.cpp
   )
   if(ENABLE_SM2)
     list(APPEND CRYPTO_SOURCES crypto/sm2.cpp)
@@ -290,6 +302,7 @@ add_library(librnp-obj OBJECT
   ../librepgp/stream-parse.cpp
   ../librepgp/stream-sig.cpp
   ../librepgp/stream-write.cpp
+  ../librepgp/v2_seipd.cpp
 
   # librekey
   ../librekey/key_store_g10.cpp

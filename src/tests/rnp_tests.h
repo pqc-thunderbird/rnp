@@ -49,6 +49,7 @@ typedef struct {
 } rnp_test_state_t;
 
 #if defined(RNP_TESTS_EXPECT)
+
 #define assert_true(a) EXPECT_TRUE((a))
 #define assert_false(a) EXPECT_FALSE((a))
 #define assert_string_equal(a, b) EXPECT_STREQ((a), (b))

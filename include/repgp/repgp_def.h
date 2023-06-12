@@ -466,7 +466,17 @@ typedef enum {
     PGP_C_UNKNOWN = 255
 } pgp_compression_type_t;
 
-enum { PGP_SE_IP_DATA_VERSION = 1, PGP_PKSK_V3 = 3, PGP_SKSK_V4 = 4, PGP_SKSK_V5 = 5 };
+enum { PGP_SKSK_V4 = 4, PGP_SKSK_V5 = 5 };
+typedef enum {
+    PGP_PKSK_V3 = 3,
+#if defined(ENABLE_CRYPTO_REFRESH)
+    PGP_PKSK_V6 = 6
+#endif
+} pgp_pkesk_version_t;
+typedef enum {
+    PGP_SE_IP_DATA_V1 = 1,
+    PGP_SE_IP_DATA_V2 = 2
+} pgp_seipd_version_t;
 
 /** Version.
  * OpenPGP has two different protocol versions: version 3 and version 4.
@@ -535,7 +545,15 @@ typedef enum pgp_key_store_format_t {
 } pgp_key_store_format_t;
 
 namespace rnp {
-enum class AuthType { None, MDC, AEADv1 };
-}
+enum class AuthType {
+    None,
+    MDC,
+    AEADv1,
+#ifdef ENABLE_CRYPTO_REFRESH
+    AEADv2
+#endif
+};
+
+} // namespace rnp
 
 #endif

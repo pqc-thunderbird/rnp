@@ -109,6 +109,7 @@ add_executable(rnp_tests
   ffi-key.cpp
   file-utils.cpp
   generatekey.cpp
+  hkdf.cpp
   kbx-nsigs-test.cpp
   key-add-userid.cpp
   key-grip.cpp

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019, [Ribose Inc](https://www.ribose.com).
+ * Copyright (c) 2022 MTG AG
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,56 +23,47 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef RNP_ERR_H_
-#define RNP_ERR_H_
 
-/*
- * Error code definitions
- */
-enum {
+#ifndef CRYPTO_HKDF_H_
+#define CRYPTO_HKDF_H_
 
-    RNP_SUCCESS = 0x00000000,
+#include <repgp/repgp_def.h>
+#include "types.h"
+#include "config.h"
 
-    /* Common error codes */
-    RNP_ERROR_GENERIC = 0x10000000,
-    RNP_ERROR_BAD_FORMAT,
-    RNP_ERROR_BAD_PARAMETERS,
-    RNP_ERROR_NOT_IMPLEMENTED,
-    RNP_ERROR_NOT_SUPPORTED,
-    RNP_ERROR_OUT_OF_MEMORY,
-    RNP_ERROR_SHORT_BUFFER,
-    RNP_ERROR_NULL_POINTER,
+namespace rnp {
+class Hkdf {
+    /*HKDF is used with SHA256 as hash algorithm, the session key as Initial Keying Material
+     * (IKM), the salt as salt, and the Packet Tag in OpenPGP format encoding (bits 7 and 6
+     * set, bits 5-0 carry the packet tag), version number, cipher algorithm octet, AEAD
+     * algorithm octet, and chunk size octet as info parameter.*/
 
-    /* Storage */
-    RNP_ERROR_ACCESS = 0x11000000,
-    RNP_ERROR_READ,
-    RNP_ERROR_WRITE,
+  protected:
+    pgp_hash_alg_t hash_alg_;
+    size_t         size_;
+    Hkdf(pgp_hash_alg_t hash_alg) : hash_alg_(hash_alg)
+    {
+        size_ = Hash::size(hash_alg);
+    };
 
-    /* Crypto */
-    RNP_ERROR_BAD_STATE = 0x12000000,
-    RNP_ERROR_MAC_INVALID,
-    RNP_ERROR_SIGNATURE_INVALID,
-    RNP_ERROR_KEY_GENERATION,
-    RNP_ERROR_BAD_PASSWORD,
-    RNP_ERROR_KEY_NOT_FOUND,
-    RNP_ERROR_NO_SUITABLE_KEY,
-    RNP_ERROR_DECRYPT_FAILED,
-    RNP_ERROR_ENCRYPT_FAILED,
-    RNP_ERROR_RNG,
-    RNP_ERROR_SIGNING_FAILED,
-    RNP_ERROR_NO_SIGNATURES_FOUND,
+  public:
+    static std::unique_ptr<Hkdf> create(pgp_hash_alg_t alg);
 
-    RNP_ERROR_SIGNATURE_EXPIRED,
-    RNP_ERROR_VERIFICATION_FAILED,
-    RNP_ERROR_SIGNATURE_UNKNOWN,
+    pgp_hash_alg_t alg() const;
+    size_t         size() const;
 
-    /* Parsing */
-    RNP_ERROR_NOT_ENOUGH_DATA = 0x13000000,
-    RNP_ERROR_UNKNOWN_TAG,
-    RNP_ERROR_PACKET_NOT_CONSUMED,
-    RNP_ERROR_NO_USERID,
-    RNP_ERROR_EOF
+    virtual void extract_expand(const uint8_t *salt,
+                                size_t         salt_len,
+                                const uint8_t *ikm,
+                                size_t         ikm_len,
+                                const uint8_t *info,
+                                size_t         info_len,
+                                uint8_t *      output_buf,
+                                size_t         output_length) = 0;
 
+    virtual ~Hkdf();
 };
+
+} // namespace rnp
 
 #endif

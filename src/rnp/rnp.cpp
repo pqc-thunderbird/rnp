@@ -60,6 +60,9 @@ static const char *usage =
   "  -V, --version        Print RNP version information.\n"
   "  -e, --encrypt        Encrypt data using the public key(s).\n"
   "    -r, --recipient    Specify recipient's key via uid/keyid/fingerprint.\n"
+#if defined(ENABLE_CRYPTO_REFRESH)
+  "    --v3-pkesk-only    Only create v3 PKESK (otherwise v6 will be created if appropirate).\n"
+#endif
   "    --cipher name      Specify symmetric cipher, used for encryption.\n"
   "    --aead[=EAX, OCB]  Use AEAD for encryption.\n"
   "    -z 0..9            Set the compression level.\n"
@@ -125,6 +128,9 @@ enum optdefs {
     OPT_KEY_STORE_FORMAT,
     OPT_USERID,
     OPT_RECIPIENT,
+#if defined(ENABLE_CRYPTO_REFRESH)
+    OPT_V3_PKESK_ONLY,
+#endif
     OPT_ARMOR,
     OPT_HOMEDIR,
     OPT_DETACHED,
@@ -189,6 +195,9 @@ static struct option options[] = {
   {"keystore-format", required_argument, NULL, OPT_KEY_STORE_FORMAT},
   {"userid", required_argument, NULL, OPT_USERID},
   {"recipient", required_argument, NULL, OPT_RECIPIENT},
+#if defined(ENABLE_CRYPTO_REFRESH)
+  {"v3-pkesk-only", optional_argument, NULL, OPT_V3_PKESK_ONLY},
+#endif
   {"home", required_argument, NULL, OPT_HOMEDIR},
   {"homedir", required_argument, NULL, OPT_HOMEDIR},
   {"keyfile", required_argument, NULL, OPT_KEYFILE},
@@ -397,6 +406,11 @@ setoption(rnp_cfg &cfg, int val, const char *arg)
     case OPT_RECIPIENT:
         cfg.add_str(CFG_RECIPIENTS, arg);
         return true;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case OPT_V3_PKESK_ONLY:
+        cfg.set_bool(CFG_V3_PKESK_ONLY, true);
+        return true;
+#endif
     case OPT_ARMOR:
         cfg.set_bool(CFG_ARMOR, true);
         return true;
