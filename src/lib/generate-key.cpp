@@ -267,6 +267,12 @@ get_numbits(const rnp_keygen_crypto_params_t *crypto)
             return 0;
         }
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        return 255;
+    case PGP_PKA_X25519:
+        return 255;
+#endif
     case PGP_PKA_DSA:
         return crypto->dsa.p_bitlen;
     case PGP_PKA_ELGAMAL:
