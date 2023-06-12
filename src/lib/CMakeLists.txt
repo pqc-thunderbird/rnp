@@ -283,6 +283,11 @@ elseif(CRYPTO_BACKEND_BOTAN)
   if(ENABLE_SM2)
     list(APPEND CRYPTO_SOURCES crypto/sm2.cpp)
   endif()
+  if(ENABLE_CRYPTO_REFRESH)
+    list(APPEND CRYPTO_SOURCES 
+        crypto/ed25519.cpp
+    )
+  endif()
 else()
   message(FATAL_ERROR "Unknown crypto backend: ${CRYPTO_BACKEND}.")
 endif()
