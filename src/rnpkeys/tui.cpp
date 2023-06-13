@@ -315,8 +315,8 @@ rnpkeys_ask_generate_params(rnp_cfg &cfg, FILE *input_fp)
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_DILITHIUM5_BP384);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_KYBER1024_BP384);
             cfg.set_str(CFG_KG_V6_KEY, "true");
-#endif
             break;
+#endif
         case 99: {
             cfg.set_str(CFG_KG_PRIMARY_ALG, RNP_ALGNAME_SM2);
             cfg.set_str(CFG_KG_SUBKEY_ALG, RNP_ALGNAME_SM2);
