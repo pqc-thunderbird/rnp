@@ -655,6 +655,19 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
         }
 #endif
 #if defined(ENABLE_PQC)
+        case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+        //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+        case PGP_PKA_KYBER768_P256: [[fallthrough]];
+        case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+        case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+        case PGP_PKA_KYBER1024_BP384:
+            tmpbuf.resize(pgp_kyber_ecdh_composite_private_key_t::encoded_size(key.alg));
+            if (!body.get(tmpbuf.data(), tmpbuf.size())) {
+                RNP_LOG("failed to parse kyber-ecdh secret key data");
+                return RNP_ERROR_BAD_FORMAT;
+            }
+            key.material.kyber_ecdh.priv = pgp_kyber_ecdh_composite_private_key_t(tmpbuf.data(), tmpbuf.size(), key.alg);
+            break;
         case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
         //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
         case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
@@ -801,6 +814,14 @@ write_secret_key_mpis(pgp_packet_body_t &body, pgp_key_pkt_t &key)
         break;
 #endif
 #if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        body.add(key.material.kyber_ecdh.priv.get_encoded());
+        break;
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
@@ -964,6 +985,14 @@ forget_secret_key_fields(pgp_key_material_t *key)
         break;
 #endif
 #if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        key->kyber_ecdh.priv.secure_clear();
+        break;
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
@@ -1424,6 +1453,19 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     }
 #endif
 #if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        tmpbuf.resize(pgp_kyber_ecdh_composite_public_key_t::encoded_size(alg));
+        if (!pkt.get(tmpbuf.data(), tmpbuf.size())) {
+            RNP_LOG("failed to parse kyber-ecdh public key data");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        material.kyber_ecdh.pub = pgp_kyber_ecdh_composite_public_key_t(tmpbuf, alg);
+        break;
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
@@ -1584,6 +1626,14 @@ void pgp_key_pkt_t::make_alg_spec_fields_for_public_key(pgp_packet_body_t & hbod
         break;
 #endif
 #if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519: [[fallthrough]];
+    //case PGP_PKA_KYBER1024_X448: [[fallthrough]];
+    case PGP_PKA_KYBER768_P256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_P384: [[fallthrough]];
+    case PGP_PKA_KYBER768_BP256: [[fallthrough]];
+    case PGP_PKA_KYBER1024_BP384:
+        hbody.add(material.kyber_ecdh.pub.get_encoded());
+        break;
     case PGP_PKA_DILITHIUM3_ED25519: [[fallthrough]];
     //case PGP_PKA_DILITHIUM5_ED448: [[fallthrough]];
     case PGP_PKA_DILITHIUM3_P256: [[fallthrough]];
