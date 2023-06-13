@@ -2794,7 +2794,7 @@ pgp_key_material_t::get_curve() const
         return PGP_CURVE_25519;
 #endif
     default:
-        PGP_CURVE_UNKNOWN;
+        return PGP_CURVE_UNKNOWN;
     }
 }
 
