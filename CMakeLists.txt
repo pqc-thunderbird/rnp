@@ -208,5 +208,14 @@ if (BUILD_TESTING)
 endif()
 
 
+OPTION(USE_CCACHE "Whether to use ccache as compiler launcher if this tool is installed." OFF)
+
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND AND USE_CCACHE)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache) # Less useful to do it for linking, see edit2
+endif(CCACHE_FOUND AND USE_CCACHE)
+
+
 # cpack packaging (RPM etc)
 include(cmake/packaging.cmake)
