@@ -81,8 +81,12 @@ for dir in "$@"; do
          -o -name '*.hpp' \) \
          | xargs -n1 "${FMT}" --Werror  --dry-run
     if [ $? -ne 0 ]; then
-        >&2 echo "Stopping with error. There could be more errors not yet found."
-        exit 1
+        has_err=true 
     fi
     popd &>/dev/null
 done
+
+if [ "$has_err" = true ]; then
+    >&2 echo "Code has format errors."
+    exit 1
+fi
