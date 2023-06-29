@@ -1518,6 +1518,13 @@ encrypted_try_key(pgp_source_encrypted_param_t *param,
         return false;
     }
 
+    // DEBUG
+    printf("session key:\n");
+    for (unsigned i = 0; i < keylen; i++) {
+        printf("%02x", decbuf[1 + i]);
+    }
+    printf("\n");
+    // end DEBUG
     if (param->use_cfb()) {
         /* Decrypt header */
         res = encrypted_decrypt_cfb_header(param, salg, &decbuf[1]);
