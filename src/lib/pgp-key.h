@@ -236,6 +236,7 @@ struct pgp_key_t {
     bool     is_secret() const;
     bool     is_primary() const;
     bool     is_subkey() const;
+    bool     is_seipdv2_capable() const;
     /** @brief check if a key is currently locked, i.e. secret fields are not decrypted.
      *  Note: Key locking does not apply to unprotected keys.
      */
@@ -457,8 +458,14 @@ struct pgp_key_t {
      * @param hash hash algorithm to use (may be changed if it is not suitable for public key
      *             algorithm).
      * @param creation signature's creation time.
+     * @param version signature version
      */
-    void sign_init(pgp_signature_t &sig, pgp_hash_alg_t hash, uint64_t creation) const;
+    void sign_init(rnp::RNG &       rng,
+                   pgp_signature_t &sig,
+                   pgp_hash_alg_t   hash,
+                   uint64_t         creation,
+                   pgp_version_t    version) const;
+
     /**
      * @brief Calculate a certification and fill signature material.
      *        Note: secret key must be unlocked before calling this function.

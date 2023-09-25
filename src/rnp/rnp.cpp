@@ -60,6 +60,10 @@ static const char *usage =
   "  -V, --version        Print RNP version information.\n"
   "  -e, --encrypt        Encrypt data using the public key(s).\n"
   "    -r, --recipient    Specify recipient's key via uid/keyid/fingerprint.\n"
+#if defined(ENABLE_CRYPTO_REFRESH)
+  "    --v3-pkesk-only    Only create v3 PKESK (otherwise v6 will be created if "
+  "appropriate).\n"
+#endif
   "    --cipher name      Specify symmetric cipher, used for encryption.\n"
   "    --aead[=EAX, OCB]  Use AEAD for encryption.\n"
   "    -z 0..9            Set the compression level.\n"
@@ -125,6 +129,9 @@ enum optdefs {
     OPT_KEY_STORE_FORMAT,
     OPT_USERID,
     OPT_RECIPIENT,
+#if defined(ENABLE_CRYPTO_REFRESH)
+    OPT_V3_PKESK_ONLY,
+#endif
     OPT_ARMOR,
     OPT_HOMEDIR,
     OPT_DETACHED,
@@ -189,6 +196,9 @@ static struct option options[] = {
   {"keystore-format", required_argument, NULL, OPT_KEY_STORE_FORMAT},
   {"userid", required_argument, NULL, OPT_USERID},
   {"recipient", required_argument, NULL, OPT_RECIPIENT},
+#if defined(ENABLE_CRYPTO_REFRESH)
+  {"v3-pkesk-only", optional_argument, NULL, OPT_V3_PKESK_ONLY},
+#endif
   {"home", required_argument, NULL, OPT_HOMEDIR},
   {"homedir", required_argument, NULL, OPT_HOMEDIR},
   {"keyfile", required_argument, NULL, OPT_KEYFILE},
@@ -297,9 +307,7 @@ setcmd(rnp_cfg &cfg, int cmd, const char *arg)
         break;
     case CMD_CLEARSIGN:
         cfg.set_bool(CFG_CLEARTEXT, true);
-#if (!defined(_MSVC_LANG) || _MSVC_LANG >= 201703L)
-        [[fallthrough]];
-#endif
+        FALLTHROUGH_STATEMENT;
     case CMD_SIGN:
         cfg.set_bool(CFG_NEEDSSECKEY, true);
         cfg.set_bool(CFG_SIGN_NEEDED, true);
@@ -316,9 +324,7 @@ setcmd(rnp_cfg &cfg, int cmd, const char *arg)
     case CMD_VERIFY:
         /* single verify will discard output, decrypt will not */
         cfg.set_bool(CFG_NO_OUTPUT, true);
-#if (!defined(_MSVC_LANG) || _MSVC_LANG >= 201703L)
-        [[fallthrough]];
-#endif
+        FALLTHROUGH_STATEMENT;
     case CMD_VERIFY_CAT:
         newcmd = CMD_PROCESS;
         break;
@@ -401,6 +407,11 @@ setoption(rnp_cfg &cfg, int val, const char *arg)
     case OPT_RECIPIENT:
         cfg.add_str(CFG_RECIPIENTS, arg);
         return true;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case OPT_V3_PKESK_ONLY:
+        cfg.set_bool(CFG_V3_PKESK_ONLY, true);
+        return true;
+#endif
     case OPT_ARMOR:
         cfg.set_bool(CFG_ARMOR, true);
         return true;
@@ -592,9 +603,7 @@ set_short_option(rnp_cfg &cfg, int ch, const char *arg)
         cfg.set_bool(CFG_KEYSTORE_DISABLED, true);
         break;
     case 'h':
-#if (!defined(_MSVC_LANG) || _MSVC_LANG >= 201703L)
-        [[fallthrough]];
-#endif
+        FALLTHROUGH_STATEMENT;
     default:
         return setcmd(cfg, CMD_HELP, optarg);
     }

@@ -28,6 +28,7 @@
 #include "crypto/signatures.h"
 #include "librepgp/stream-packet.h"
 #include "librepgp/stream-sig.h"
+#include "librepgp/stream-key.h"
 #include "utils.h"
 #include "sec_profile.hpp"
 
@@ -44,21 +45,30 @@ static void
 signature_hash_finish(const pgp_signature_t &sig, rnp::Hash &hash, uint8_t *hbuf, size_t &hlen)
 {
     hash.add(sig.hashed_data, sig.hashed_len);
-    if (sig.version > PGP_V3) {
-        uint8_t trailer[6] = {0x04, 0xff, 0x00, 0x00, 0x00, 0x00};
+    if (sig.version >= PGP_V4) {
+        uint8_t trailer[6] = {0x00, 0xff, 0x00, 0x00, 0x00, 0x00};
+        trailer[0] = sig.version;
         write_uint32(&trailer[2], sig.hashed_len);
+
         hash.add(trailer, 6);
     }
     hlen = hash.finish(hbuf);
 }
 
 std::unique_ptr<rnp::Hash>
-signature_init(const pgp_key_material_t &key, pgp_hash_alg_t hash_alg)
+signature_init(const pgp_key_pkt_t &key, const pgp_signature_t &sig)
 {
-    auto hash = rnp::Hash::create(hash_alg);
-    if (key.alg == PGP_PKA_SM2) {
+    auto hash = rnp::Hash::create(sig.halg);
+
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if (key.version == PGP_V6) {
+        hash->add(sig.salt, sig.salt_size);
+    }
+#endif
+
+    if (key.material.alg == PGP_PKA_SM2) {
 #if defined(ENABLE_SM2)
-        rnp_result_t r = sm2_compute_za(key.ec, *hash);
+        rnp_result_t r = sm2_compute_za(key.material.ec, *hash);
         if (r != RNP_SUCCESS) {
             RNP_LOG("failed to compute SM2 ZA field");
             throw rnp::rnp_exception(r);
@@ -125,6 +135,15 @@ signature_calculate(pgp_signature_t &     sig,
             RNP_LOG("eddsa signing failed");
         }
         break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        ret =
+          ed25519_sign_native(&ctx.rng, material.ed25519.sig, seckey.ed25519.priv, hval, hlen);
+        if (ret) {
+            RNP_LOG("ed25519 signing failed");
+        }
+        break;
+#endif
     case PGP_PKA_DSA:
         ret = dsa_sign(&ctx.rng, &material.dsa, hval, hlen, &seckey.dsa);
         if (ret != RNP_SUCCESS) {
@@ -175,6 +194,26 @@ signature_calculate(pgp_signature_t &     sig,
         }
         break;
     }
+#if defined(ENABLE_PQC)
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        ret = seckey.dilithium_exdsa.priv.sign(
+          &ctx.rng, &material.dilithium_exdsa, hash_alg, hval, hlen);
+        break;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        ret = seckey.sphincsplus.priv.sign(&ctx.rng, &material.sphincsplus, hval, hlen);
+        break;
+#endif
     default:
         RNP_LOG("Unsupported algorithm %d", sig.palg);
         break;
@@ -212,6 +251,26 @@ signature_validate(const pgp_signature_t &     sig,
         return RNP_ERROR_SIGNATURE_INVALID;
     }
 
+#if defined(ENABLE_PQC)
+    /* check that hash matches key requirements */
+    bool hash_alg_valid = false;
+    switch (key.alg) {
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        hash_alg_valid = key.sphincsplus.pub.validate_signature_hash_requirements(hash.alg());
+        break;
+    default:
+        hash_alg_valid = true;
+        break;
+    }
+    if (!hash_alg_valid) {
+        RNP_LOG("Signature invalid since hash algorithm requirements are not met for the "
+                "given key.");
+        return RNP_ERROR_SIGNATURE_INVALID;
+    }
+#endif
+
     /* Finalize hash */
     uint8_t hval[PGP_MAX_HASH_SIZE];
     size_t  hlen = 0;
@@ -244,6 +303,11 @@ signature_validate(const pgp_signature_t &     sig,
     case PGP_PKA_EDDSA:
         ret = eddsa_verify(&material.ecc, hval, hlen, &key.ec);
         break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        ret = ed25519_verify_native(material.ed25519.sig, key.ed25519.pub, hval, hlen);
+        break;
+#endif
     case PGP_PKA_SM2:
 #if defined(ENABLE_SM2)
         ret = sm2_verify(&material.ecc, hash.alg(), hval, hlen, &key.ec);
@@ -273,6 +337,26 @@ signature_validate(const pgp_signature_t &     sig,
         RNP_LOG("ElGamal are considered as invalid.");
         ret = RNP_ERROR_SIGNATURE_INVALID;
         break;
+#if defined(ENABLE_PQC)
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        ret =
+          key.dilithium_exdsa.pub.verify(&material.dilithium_exdsa, hash.alg(), hval, hlen);
+        break;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        ret = key.sphincsplus.pub.verify(&material.sphincsplus, hval, hlen);
+        break;
+#endif
     default:
         RNP_LOG("Unknown algorithm");
         ret = RNP_ERROR_BAD_PARAMETERS;

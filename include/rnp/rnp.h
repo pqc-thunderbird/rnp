@@ -1176,6 +1176,31 @@ RNP_API rnp_result_t rnp_op_generate_clear_pref_ciphers(rnp_op_generate_t op);
 RNP_API rnp_result_t rnp_op_generate_set_pref_keyserver(rnp_op_generate_t op,
                                                         const char *      keyserver);
 
+/** Set the generated key version to v6.
+ * NOTE: This is an experimantal feature and this function can be replaced (or removed) at any
+ * time.
+ *
+ * @param op pointer to opaque key generation context.
+ * @return RNP_SUCCESS or error code if failed.
+ */
+RNP_API rnp_result_t rnp_op_generate_set_v6_key(rnp_op_generate_t op);
+
+/** Set the SPHINCS+ parameter set
+ * NOTE: This is an experimantal feature and this function can be replaced (or removed) at any
+ * time.
+ *
+ * @param op pointer to opaque key generation context.
+ * @param param string, representing the SHPINCS+ parameter set.
+ *               Possible Values:
+ *                  128s, 128f, 192s, 192f, 256s, 256f
+ *               All parameter sets refer to the simple variant and the hash function is given
+ * by the algorithm id.
+ *
+ * @return RNP_SUCCESS or error code if failed.
+ */
+RNP_API rnp_result_t rnp_op_generate_set_sphincsplus_param(rnp_op_generate_t op,
+                                                           const char *      param);
+
 /** Execute the prepared key or subkey generation operation.
  *  Note: if you set protection algorithm, then you need to specify ffi password provider to
  *        be able to request password for key encryption.
@@ -1715,6 +1740,14 @@ RNP_API rnp_result_t rnp_uid_remove(rnp_key_handle_t key, rnp_uid_handle_t uid);
  * @return RNP_SUCCESS or error code
  */
 RNP_API rnp_result_t rnp_uid_handle_destroy(rnp_uid_handle_t uid);
+
+/**
+ * @brief Get key's version as integer.
+ *
+ * @param key key handle, should not be NULL
+ * @return RNP_SUCCESS or error code on failure.
+ */
+RNP_API rnp_result_t rnp_key_get_version(rnp_key_handle_t handle, uint32_t *version);
 
 /** Get number of the key's subkeys.
  *
@@ -2973,6 +3006,17 @@ RNP_API rnp_result_t rnp_op_encrypt_create(rnp_op_encrypt_t *op,
 RNP_API rnp_result_t rnp_op_encrypt_add_recipient(rnp_op_encrypt_t op, rnp_key_handle_t key);
 
 /**
+ * @brief Enables the creation of PKESK v6 (instead of v3) which results in the use of SEIPDv2.
+ * The actually created version depends on the capabilities of the list of recipients.
+ * NOTE: This is an experimental feature and this function can be replaced (or removed) at any
+ * time.
+ *
+ * @param op opaque encrypting context. Must be allocated and initialized.
+ * @return RNP_SUCCESS or errorcode if failed.
+ */
+RNP_API rnp_result_t rnp_op_encrypt_enable_pkesk_v6(rnp_op_encrypt_t op);
+
+/**
  * @brief Add signature to encrypting context, so data will be encrypted and signed.
  *
  * @param op opaque encrypting context. Must be allocated and initialized.
@@ -3368,6 +3412,22 @@ RNP_API const char *rnp_backend_version();
 #define RNP_ALGNAME_ECDH "ECDH"
 #define RNP_ALGNAME_ECDSA "ECDSA"
 #define RNP_ALGNAME_EDDSA "EDDSA"
+#define RNP_ALGNAME_ED25519 "ED25519"
+#define RNP_ALGNAME_X25519 "X25519"
+#define RNP_ALGNAME_KYBER768_X25519 "KYBER768_X25519"
+#define RNP_ALGNAME_KYBER1024_X448 "KYBER1024_X448"
+#define RNP_ALGNAME_KYBER768_P256 "KYBER768_P256"
+#define RNP_ALGNAME_KYBER1024_P384 "KYBER1024_P384"
+#define RNP_ALGNAME_KYBER768_BP256 "KYBER768_BP256"
+#define RNP_ALGNAME_KYBER1024_BP384 "KYBER1024_BP384"
+#define RNP_ALGNAME_DILITHIUM3_ED25519 "DILITHIUM3_ED25519"
+#define RNP_ALGNAME_DILITHIUM5_ED448 "DILITHIUM5_ED448"
+#define RNP_ALGNAME_DILITHIUM3_P256 "DILITHIUM3_P256"
+#define RNP_ALGNAME_DILITHIUM5_P384 "DILITHIUM5_P384"
+#define RNP_ALGNAME_DILITHIUM3_BP256 "DILITHIUM3_BP256"
+#define RNP_ALGNAME_DILITHIUM5_BP384 "DILITHIUM5_BP384"
+#define RNP_ALGNAME_SPHINCSPLUS_SHA2 "SPHINCSPLUS_SHA2"
+#define RNP_ALGNAME_SPHINCSPLUS_SHAKE "SPHINCSPLUS_SHAKE"
 #define RNP_ALGNAME_IDEA "IDEA"
 #define RNP_ALGNAME_TRIPLEDES "TRIPLEDES"
 #define RNP_ALGNAME_CAST5 "CAST5"

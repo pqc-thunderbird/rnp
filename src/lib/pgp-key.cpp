@@ -193,12 +193,49 @@ pgp_pk_alg_capabilities(pgp_pubkey_alg_t alg)
     case PGP_PKA_EDDSA:
         return pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY | PGP_KF_AUTH);
 
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        return pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY | PGP_KF_AUTH);
+    case PGP_PKA_X25519:
+        return PGP_KF_ENCRYPT;
+#endif
+
     case PGP_PKA_SM2:
         return pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY | PGP_KF_AUTH | PGP_KF_ENCRYPT);
 
     case PGP_PKA_ECDH:
     case PGP_PKA_ELGAMAL:
         return PGP_KF_ENCRYPT;
+
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        return PGP_KF_ENCRYPT;
+
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        return pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY | PGP_KF_AUTH);
+#endif
 
     default:
         RNP_LOG("unknown pk alg: %d\n", alg);
@@ -483,6 +520,28 @@ find_suitable_key(pgp_op_t            op,
 pgp_hash_alg_t
 pgp_hash_adjust_alg_to_key(pgp_hash_alg_t hash, const pgp_key_pkt_t *pubkey)
 {
+#if defined(ENABLE_PQC)
+    switch (pubkey->alg) {
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        return sphincsplus_default_hash_alg(pubkey->alg,
+                                            pubkey->material.sphincsplus.pub.param());
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        return dilithium_default_hash_alg();
+    default:
+        break;
+    }
+#endif
+
     if ((pubkey->alg != PGP_PKA_DSA) && (pubkey->alg != PGP_PKA_ECDSA)) {
         return hash;
     }
@@ -1159,6 +1218,12 @@ pgp_key_t::curve() const
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2:
         return pkt_.material.ec.curve;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        return PGP_CURVE_ED25519;
+    case PGP_PKA_X25519:
+        return PGP_CURVE_25519;
+#endif
     default:
         return PGP_CURVE_UNKNOWN;
     }
@@ -1667,7 +1732,7 @@ pgp_key_t::write_xfer(pgp_dest_t &dst, const rnp_key_store_t *keyring) const
     for (auto &fp : subkey_fps_) {
         const pgp_key_t *subkey = rnp_key_store_get_key_by_fpr(keyring, fp);
         if (!subkey) {
-            char fphex[PGP_FINGERPRINT_SIZE * 2 + 1] = {0};
+            char fphex[PGP_MAX_FINGERPRINT_SIZE * 2 + 1] = {0};
             rnp::hex_encode(
               fp.fingerprint, fp.length, fphex, sizeof(fphex), rnp::HEX_LOWERCASE);
             RNP_LOG("Warning! Subkey %s not found.", fphex);
@@ -2276,14 +2341,27 @@ pgp_key_t::mark_valid()
 }
 
 void
-pgp_key_t::sign_init(pgp_signature_t &sig, pgp_hash_alg_t hash, uint64_t creation) const
+pgp_key_t::sign_init(rnp::RNG &       rng,
+                     pgp_signature_t &sig,
+                     pgp_hash_alg_t   hash,
+                     uint64_t         creation,
+                     pgp_version_t    version) const
 {
-    sig.version = PGP_V4;
+    sig.version = version;
     sig.halg = pgp_hash_adjust_alg_to_key(hash, &pkt_);
     sig.palg = alg();
     sig.set_keyfp(fp());
     sig.set_creation(creation);
-    sig.set_keyid(keyid());
+    if (version == PGP_V4) {
+        // for v6 issuing keys, this MUST NOT be included
+        sig.set_keyid(keyid());
+    }
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if (version == PGP_V6) {
+        sig.salt_size = rnp::Hash::size(sig.halg) / 2;
+        rng.get(sig.salt, sig.salt_size);
+    }
+#endif
 }
 
 void
@@ -2325,7 +2403,7 @@ pgp_key_t::gen_revocation(const pgp_revoke_t &  revoke,
                           pgp_signature_t &     sig,
                           rnp::SecurityContext &ctx)
 {
-    sign_init(sig, hash, ctx.time());
+    sign_init(ctx.rng, sig, hash, ctx.time(), key.version);
     sig.set_type(is_primary_key_pkt(key.tag) ? PGP_SIG_REV_KEY : PGP_SIG_REV_SUBKEY);
     sig.set_revocation_reason(revoke.code, revoke.reason);
 
@@ -2349,7 +2427,7 @@ pgp_key_t::sign_subkey_binding(pgp_key_t &           sub,
     /* add primary key binding subpacket if requested */
     if (subsign) {
         pgp_signature_t embsig;
-        sub.sign_init(embsig, sig.halg, ctx.time());
+        sub.sign_init(ctx.rng, embsig, sig.halg, ctx.time(), sub.version());
         embsig.set_type(PGP_SIG_PRIMARY);
         sub.sign_binding(pkt(), embsig, ctx);
         sig.set_embedded_sig(embsig);
@@ -2396,7 +2474,7 @@ pgp_key_t::add_uid_cert(rnp_selfsig_cert_info_t &cert,
     /* Fill the transferable userid */
     pgp_userid_pkt_t uid;
     pgp_signature_t  sig;
-    sign_init(sig, hash, ctx.time());
+    sign_init(ctx.rng, sig, hash, ctx.time(), pkt().version);
     cert.populate(uid, sig);
     try {
         sign_cert(pkt_, uid, sig, ctx);
@@ -2430,7 +2508,7 @@ pgp_key_t::add_sub_binding(pgp_key_t &                       subsec,
 
     /* populate signature */
     pgp_signature_t sig;
-    sign_init(sig, hash, ctx.time());
+    sign_init(ctx.rng, sig, hash, ctx.time(), version());
     sig.set_type(PGP_SIG_SUBKEY);
     if (binding.key_expiration) {
         sig.set_key_expiration(binding.key_expiration);
@@ -2722,6 +2800,29 @@ pgp_key_t::merge(const pgp_key_t &src, pgp_key_t *primary)
     return true;
 }
 
+pgp_curve_t
+pgp_key_material_t::curve() const
+{
+    switch (alg) {
+    case PGP_PKA_ECDH:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_ECDSA:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_EDDSA:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SM2:
+        return ec.curve;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        return PGP_CURVE_ED25519;
+    case PGP_PKA_X25519:
+        return PGP_CURVE_25519;
+#endif
+    default:
+        return PGP_CURVE_UNKNOWN;
+    }
+}
+
 size_t
 pgp_key_material_t::bits() const
 {
@@ -2736,13 +2837,50 @@ pgp_key_material_t::bits() const
     case PGP_PKA_ELGAMAL_ENCRYPT_OR_SIGN:
         return 8 * mpi_bytes(&eg.y);
     case PGP_PKA_ECDH:
+        FALLTHROUGH_STATEMENT;
     case PGP_PKA_ECDSA:
+        FALLTHROUGH_STATEMENT;
     case PGP_PKA_EDDSA:
+        FALLTHROUGH_STATEMENT;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_X25519:
+        FALLTHROUGH_STATEMENT;
+#endif
     case PGP_PKA_SM2: {
-        // bn_num_bytes returns value <= curve order
-        const ec_curve_desc_t *curve = get_curve_desc(ec.curve);
-        return curve ? curve->bitlen : 0;
+        /* handle ecc cases */
+        const ec_curve_desc_t *curve_desc = get_curve_desc(curve());
+        return curve_desc ? curve_desc->bitlen : 0;
     }
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        return 8 * kyber_ecdh.pub.get_encoded().size(); /* public key length */
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        return 8 * dilithium_exdsa.pub.get_encoded().size(); /* public key length*/
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        return 8 * sphincsplus.pub.get_encoded().size(); /* public key length */
+#endif
     default:
         RNP_LOG("Unknown public key alg: %d", (int) alg);
         return 0;

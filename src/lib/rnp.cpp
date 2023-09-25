@@ -162,6 +162,26 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_ECDSA, RNP_ALGNAME_ECDSA},
   {PGP_PKA_EDDSA, RNP_ALGNAME_EDDSA},
   {PGP_PKA_SM2, RNP_ALGNAME_SM2},
+#if defined(ENABLE_CRYPTO_REFRESH)
+  {PGP_PKA_ED25519, RNP_ALGNAME_ED25519},
+  {PGP_PKA_X25519, RNP_ALGNAME_X25519},
+#endif
+#if defined(ENABLE_PQC)
+  {PGP_PKA_KYBER768_X25519, RNP_ALGNAME_KYBER768_X25519},
+  //{PGP_PKA_KYBER1024_X448, RNP_ALGNAME_KYBER1024_X448},
+  {PGP_PKA_KYBER768_P256, RNP_ALGNAME_KYBER768_P256},
+  {PGP_PKA_KYBER1024_P384, RNP_ALGNAME_KYBER1024_P384},
+  {PGP_PKA_KYBER768_BP256, RNP_ALGNAME_KYBER768_BP256},
+  {PGP_PKA_KYBER1024_BP384, RNP_ALGNAME_KYBER1024_BP384},
+  {PGP_PKA_DILITHIUM3_ED25519, RNP_ALGNAME_DILITHIUM3_ED25519},
+  //{PGP_PKA_DILITHIUM5_ED448, RNP_ALGNAME_DILITHIUM5_ED448},
+  {PGP_PKA_DILITHIUM3_P256, RNP_ALGNAME_DILITHIUM3_P256},
+  {PGP_PKA_DILITHIUM5_P384, RNP_ALGNAME_DILITHIUM5_P384},
+  {PGP_PKA_DILITHIUM3_BP256, RNP_ALGNAME_DILITHIUM3_BP256},
+  {PGP_PKA_DILITHIUM5_BP384, RNP_ALGNAME_DILITHIUM5_BP384},
+  {PGP_PKA_SPHINCSPLUS_SHA2, RNP_ALGNAME_SPHINCSPLUS_SHA2},
+  {PGP_PKA_SPHINCSPLUS_SHAKE, RNP_ALGNAME_SPHINCSPLUS_SHAKE},
+#endif
   {0, NULL}};
 
 static const id_str_pair symm_alg_map[] = {{PGP_SA_IDEA, RNP_ALGNAME_IDEA},
@@ -321,6 +341,26 @@ pub_alg_supported(int alg)
     case PGP_PKA_EDDSA:
 #if defined(ENABLE_SM2)
     case PGP_PKA_SM2:
+#endif
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_X25519:
+    case PGP_PKA_ED25519:
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+    // case PGP_PKA_KYBER1024_X448:
+    case PGP_PKA_KYBER768_P256:
+    case PGP_PKA_KYBER1024_P384:
+    case PGP_PKA_KYBER768_BP256:
+    case PGP_PKA_KYBER1024_BP384:
+    case PGP_PKA_DILITHIUM3_ED25519:
+    // case PGP_PKA_DILITHIUM5_ED448:
+    case PGP_PKA_DILITHIUM3_P256:
+    case PGP_PKA_DILITHIUM5_P384:
+    case PGP_PKA_DILITHIUM3_BP256:
+    case PGP_PKA_DILITHIUM5_BP384:
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
 #endif
         return true;
     default:
@@ -765,6 +805,8 @@ rnp_result_to_string(rnp_result_t result)
         return "No suitable key";
     case RNP_ERROR_DECRYPT_FAILED:
         return "Decryption failed";
+    case RNP_ERROR_ENCRYPT_FAILED:
+        return "Encryption failed";
     case RNP_ERROR_RNG:
         return "Failure of random number generator";
     case RNP_ERROR_SIGNING_FAILED:
@@ -2534,6 +2576,22 @@ try {
 FFI_GUARD
 
 rnp_result_t
+rnp_op_encrypt_enable_pkesk_v6(rnp_op_encrypt_t op)
+try {
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if (!op) {
+        return RNP_ERROR_NULL_POINTER;
+    }
+
+    op->rnpctx.enable_pkesk_v6 = true;
+    return RNP_SUCCESS;
+#else
+    return RNP_ERROR_NOT_IMPLEMENTED;
+#endif
+}
+FFI_GUARD
+
+rnp_result_t
 rnp_op_encrypt_add_signature(rnp_op_encrypt_t         op,
                              rnp_key_handle_t         key,
                              rnp_op_sign_signature_t *sig)
@@ -2660,6 +2718,15 @@ try {
         FFI_LOG(op->ffi, "Invalid AEAD algorithm: %s", alg);
         return RNP_ERROR_BAD_PARAMETERS;
     }
+#ifdef ENABLE_CRYPTO_REFRESH
+    if (op->rnpctx.aalg == PGP_AEAD_NONE && op->rnpctx.enable_pkesk_v6) {
+        FFI_LOG(op->ffi,
+                "Setting AEAD algorithm to PGP_AEAD_NONE (%s) would contradict the previously "
+                "enabled PKESKv6 setting",
+                alg);
+        return RNP_ERROR_BAD_PARAMETERS;
+    }
+#endif
     return RNP_SUCCESS;
 }
 FFI_GUARD
@@ -3727,14 +3794,17 @@ str_to_locator(rnp_ffi_t         ffi,
         }
     } break;
     case PGP_KEY_SEARCH_FINGERPRINT: {
-        // TODO: support v5 fingerprints
-        // Note: v2/v3 fingerprint are 16 bytes (32 chars) long.
-        if ((strlen(identifier) != (PGP_FINGERPRINT_SIZE * 2)) && (strlen(identifier) != 32)) {
+        // Note: v2/v3 fingerprint are 16 bytes (32 chars) long
+        if (strlen(identifier) != (PGP_FINGERPRINT_V4_SIZE * 2) &&
+#if defined(ENABLE_CRYPTO_REFRESH)
+            strlen(identifier) != (PGP_FINGERPRINT_V6_SIZE * 2) &&
+#endif
+            (strlen(identifier) != 32)) {
             FFI_LOG(ffi, "Invalid fingerprint: %s", identifier);
             return RNP_ERROR_BAD_PARAMETERS;
         }
         locator->by.fingerprint.length = rnp::hex_decode(
-          identifier, locator->by.fingerprint.fingerprint, PGP_FINGERPRINT_SIZE);
+          identifier, locator->by.fingerprint.fingerprint, PGP_MAX_FINGERPRINT_SIZE);
         if (!locator->by.fingerprint.length) {
             FFI_LOG(ffi, "Invalid fingerprint: %s", identifier);
             return RNP_ERROR_BAD_PARAMETERS;
@@ -5188,6 +5258,40 @@ default_key_flags(pgp_pubkey_alg_t alg, bool subkey)
     case PGP_PKA_ECDH:
     case PGP_PKA_ELGAMAL:
         return PGP_KF_ENCRYPT;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        return subkey ? PGP_KF_SIGN : pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY);
+    case PGP_PKA_X25519:
+        return PGP_KF_ENCRYPT;
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        return PGP_KF_ENCRYPT;
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        return subkey ? PGP_KF_SIGN : pgp_key_flags_t(PGP_KF_SIGN | PGP_KF_CERTIFY);
+#endif
     default:
         return PGP_KF_NONE;
     }
@@ -5587,6 +5691,56 @@ try {
 FFI_GUARD
 
 rnp_result_t
+rnp_op_generate_set_v6_key(rnp_op_generate_t op)
+try {
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if (!op) {
+        return RNP_ERROR_NULL_POINTER;
+    }
+    op->pgp_version = PGP_V6;
+    return RNP_SUCCESS;
+#else
+    return RNP_ERROR_NOT_IMPLEMENTED;
+#endif
+}
+FFI_GUARD
+
+rnp_result_t
+rnp_op_generate_set_sphincsplus_param(rnp_op_generate_t op, const char *param_cstr)
+try {
+#if defined(ENABLE_PQC)
+    if (!op) {
+        return RNP_ERROR_NULL_POINTER;
+    }
+
+    sphincsplus_parameter_t param;
+    std::string             param_str = param_cstr;
+
+    if (param_str == "128s") {
+        param = sphincsplus_simple_128s;
+    } else if (param_str == "128f") {
+        param = sphincsplus_simple_128f;
+    } else if (param_str == "192s") {
+        param = sphincsplus_simple_192s;
+    } else if (param_str == "192f") {
+        param = sphincsplus_simple_192f;
+    } else if (param_str == "256s") {
+        param = sphincsplus_simple_256s;
+    } else if (param_str == "256f") {
+        param = sphincsplus_simple_256f;
+    } else {
+        return RNP_ERROR_BAD_PARAMETERS;
+    }
+
+    op->crypto.sphincsplus.param = param;
+    return RNP_SUCCESS;
+#else
+    return RNP_ERROR_NOT_IMPLEMENTED;
+#endif
+}
+FFI_GUARD
+
+rnp_result_t
 rnp_op_generate_execute(rnp_op_generate_t op)
 try {
     if (!op || !op->ffi) {
@@ -5602,6 +5756,7 @@ try {
         rnp_keygen_primary_desc_t keygen = {};
         keygen.crypto = op->crypto;
         keygen.cert = op->cert;
+        keygen.pgp_version = op->pgp_version;
         op->cert.prefs = {}; /* generate call will free prefs */
 
         if (!pgp_generate_primary_key(keygen, true, sec, pub, op->ffi->secring->format)) {
@@ -5612,6 +5767,7 @@ try {
         rnp_keygen_subkey_desc_t keygen = {};
         keygen.crypto = op->crypto;
         keygen.binding = op->binding;
+        keygen.pgp_version = op->pgp_version;
         if (!pgp_generate_subkey(keygen,
                                  true,
                                  *op->primary_sec,
@@ -6403,6 +6559,18 @@ rnp_result_t
 rnp_uid_handle_destroy(rnp_uid_handle_t uid)
 try {
     free(uid);
+    return RNP_SUCCESS;
+}
+FFI_GUARD
+
+rnp_result_t
+rnp_key_get_version(rnp_key_handle_t handle, uint32_t *version)
+try {
+    if (!handle || !version) {
+        return RNP_ERROR_NULL_POINTER;
+    }
+
+    *version = get_key_prefer_public(handle)->version();
     return RNP_SUCCESS;
 }
 FFI_GUARD
@@ -7373,6 +7541,39 @@ add_json_public_mpis(json_object *jso, pgp_key_t *key)
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2:
         return add_json_mpis(jso, "point", &km.ec.p, NULL);
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+    case PGP_PKA_X25519:
+        return RNP_SUCCESS; /* TODO */
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        return RNP_SUCCESS; /* TODO */
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        return RNP_SUCCESS; /* TODO */
+#endif
     default:
         return RNP_ERROR_NOT_SUPPORTED;
     }
@@ -7399,6 +7600,24 @@ add_json_secret_mpis(json_object *jso, pgp_key_t *key)
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2:
         return add_json_mpis(jso, "x", &km.ec.x, NULL);
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+    case PGP_PKA_X25519:
+        return RNP_SUCCESS; /* TODO */
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        return RNP_SUCCESS; /* TODO */
+#endif
     default:
         return RNP_ERROR_NOT_SUPPORTED;
     }
@@ -7431,6 +7650,28 @@ add_json_sig_mpis(json_object *jso, const pgp_signature_t *sig)
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2:
         return add_json_mpis(jso, "r", &material.ecc.r, "s", &material.ecc.s, NULL);
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+    case PGP_PKA_X25519:
+        return RNP_SUCCESS; /* TODO */
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        return RNP_SUCCESS; /* TODO */
+#endif
     default:
         // TODO: we could use info->unknown and add a hex string of raw data here
         return RNP_ERROR_NOT_SUPPORTED;
@@ -7633,10 +7874,7 @@ key_to_json(json_object *jso, rnp_key_handle_t handle, uint32_t flags)
             return RNP_ERROR_OUT_OF_MEMORY;
         }
     }
-
-#if (!defined(_MSVC_LANG) || _MSVC_LANG >= 201703L)
-        [[fallthrough]];
-#endif
+        FALLTHROUGH_STATEMENT;
     case PGP_PKA_ECDSA:
     case PGP_PKA_EDDSA:
     case PGP_PKA_SM2: {
@@ -7648,6 +7886,39 @@ key_to_json(json_object *jso, rnp_key_handle_t handle, uint32_t flags)
             return RNP_ERROR_OUT_OF_MEMORY;
         }
     } break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+    case PGP_PKA_X25519:
+        return RNP_SUCCESS; /* TODO */
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        return RNP_SUCCESS; /* TODO */
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        return RNP_SUCCESS; /* TODO */
+#endif
     default:
         break;
     }
@@ -7661,7 +7932,7 @@ key_to_json(json_object *jso, rnp_key_handle_t handle, uint32_t flags)
         return RNP_ERROR_OUT_OF_MEMORY;
     }
     // fingerprint
-    char fpr[PGP_FINGERPRINT_SIZE * 2 + 1];
+    char fpr[PGP_MAX_FINGERPRINT_SIZE * 2 + 1];
     if (!rnp::hex_encode(key->fp().fingerprint, key->fp().length, fpr, sizeof(fpr))) {
         return RNP_ERROR_GENERIC;
     }

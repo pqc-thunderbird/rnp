@@ -55,6 +55,26 @@ static const id_str_pair pubkey_alg_map[] = {
   {PGP_PKA_RESERVED_DH, "Reserved for Diffie-Hellman (X9.42)"},
   {PGP_PKA_EDDSA, "EdDSA"},
   {PGP_PKA_SM2, "SM2"},
+#if defined(ENABLE_CRYPTO_REFRESH)
+  {PGP_PKA_ED25519, "ED25519"},
+  {PGP_PKA_X25519, "X25519"},
+#endif
+#if defined(ENABLE_PQC)
+  {PGP_PKA_KYBER768_X25519, "Kyber-X25519"},
+  //{PGP_PKA_KYBER1024_X448, "Kyber-X448"},
+  {PGP_PKA_KYBER768_P256, "Kyber-P256"},
+  {PGP_PKA_KYBER1024_P384, "Kyber-P384"},
+  {PGP_PKA_KYBER768_BP256, "Kyber-BP256"},
+  {PGP_PKA_KYBER1024_BP384, "Kyber-BP384"},
+  {PGP_PKA_DILITHIUM3_ED25519, "Dilithium-ED25519"},
+  //{PGP_PKA_DILITHIUM5_ED448, "Dilithium-ED448"},
+  {PGP_PKA_DILITHIUM3_P256, "Dilithium-P256"},
+  {PGP_PKA_DILITHIUM5_P384, "Dilithium-P384"},
+  {PGP_PKA_DILITHIUM3_BP256, "Dilithium-BP256"},
+  {PGP_PKA_DILITHIUM5_BP384, "Dilithium-BP384"},
+  {PGP_PKA_SPHINCSPLUS_SHA2, "SPHINCS+-SHA2"},
+  {PGP_PKA_SPHINCSPLUS_SHAKE, "SPHINCS+-SHAKE"},
+#endif
   {PGP_PKA_PRIVATE00, "Private/Experimental"},
   {PGP_PKA_PRIVATE01, "Private/Experimental"},
   {PGP_PKA_PRIVATE02, "Private/Experimental"},
@@ -249,11 +269,45 @@ get_numbits(const rnp_keygen_crypto_params_t *crypto)
             return 0;
         }
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        return 255;
+    case PGP_PKA_X25519:
+        return 255;
+#endif
     case PGP_PKA_DSA:
         return crypto->dsa.p_bitlen;
     case PGP_PKA_ELGAMAL:
     case PGP_PKA_ELGAMAL_ENCRYPT_OR_SIGN:
         return crypto->elgamal.key_bitlen;
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        return pgp_kyber_ecdh_composite_public_key_t::encoded_size(crypto->key_alg) * 8;
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        return pgp_dilithium_exdsa_composite_public_key_t::encoded_size(crypto->key_alg) * 8;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        return sphincsplus_pubkey_size(crypto->sphincsplus.param) * 8;
+#endif
     default:
         return 0;
     }
@@ -299,6 +353,40 @@ keygen_primary_merge_defaults(rnp_keygen_primary_desc_t &desc)
     }
 }
 
+#if defined(ENABLE_PQC)
+static bool
+pgp_check_key_hash_requirements(rnp_keygen_crypto_params_t &crypto)
+{
+    switch (crypto.key_alg) {
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        if (!sphincsplus_hash_allowed(
+              crypto.key_alg, crypto.sphincsplus.param, crypto.hash_alg)) {
+            return false;
+        }
+        break;
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        if (!dilithium_hash_allowed(crypto.hash_alg)) {
+            return false;
+        }
+        break;
+    default:
+        break;
+    }
+    return true;
+}
+#endif
+
 bool
 pgp_generate_primary_key(rnp_keygen_primary_desc_t &desc,
                          bool                       merge_defaults,
@@ -322,9 +410,17 @@ pgp_generate_primary_key(rnp_keygen_primary_desc_t &desc,
             return false;
         }
 
+#if defined(ENABLE_PQC)
+        // check hash requirements
+        if (!pgp_check_key_hash_requirements(desc.crypto)) {
+            RNP_LOG("invalid hash algorithm for the chosen key");
+            return false;
+        }
+#endif
+
         // generate the raw key and fill tag/secret fields
         pgp_key_pkt_t secpkt;
-        if (!pgp_generate_seckey(desc.crypto, secpkt, true)) {
+        if (!pgp_generate_seckey(desc.crypto, secpkt, true, desc.pgp_version)) {
             return false;
         }
 
@@ -418,6 +514,14 @@ pgp_generate_subkey(rnp_keygen_subkey_desc_t &     desc,
         return false;
     }
 
+#if defined(ENABLE_PQC)
+    // check hash requirements
+    if (!pgp_check_key_hash_requirements(desc.crypto)) {
+        RNP_LOG("invalid hash algorithm for the chosen key");
+        return false;
+    }
+#endif
+
     try {
         /* decrypt the primary seckey if needed (for signatures) */
         rnp::KeyLocker primlock(primary_sec);
@@ -428,7 +532,7 @@ pgp_generate_subkey(rnp_keygen_subkey_desc_t &     desc,
         }
         /* generate the raw subkey */
         pgp_key_pkt_t secpkt;
-        if (!pgp_generate_seckey(desc.crypto, secpkt, false)) {
+        if (!pgp_generate_seckey(desc.crypto, secpkt, false, desc.pgp_version)) {
             return false;
         }
         pgp_key_pkt_t pubpkt = pgp_key_pkt_t(secpkt, true);

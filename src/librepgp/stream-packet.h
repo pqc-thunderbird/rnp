@@ -119,6 +119,8 @@ typedef struct pgp_packet_body_t {
     bool get(pgp_s2k_t &s2k) noexcept;
     /** @brief append some bytes to the packet body */
     void add(const void *data, size_t len);
+    /** @brief append some bytes to the packet body */
+    void add(const std::vector<uint8_t> &data);
     /** @brief append single byte to the packet body */
     void add_byte(uint8_t bt);
     /** @brief append big endian 16-bit value to the packet body */
@@ -155,10 +157,18 @@ typedef struct pgp_packet_body_t {
 
 /** public-key encrypted session key packet */
 typedef struct pgp_pk_sesskey_t {
-    unsigned             version{};
-    pgp_key_id_t         key_id{};
+    pgp_pkesk_version_t  version{};
     pgp_pubkey_alg_t     alg{};
     std::vector<uint8_t> material_buf{};
+
+    /* v3 PKESK */
+    pgp_key_id_t   key_id{};
+    pgp_symm_alg_t salg;
+
+#if defined(ENABLE_CRYPTO_REFRESH)
+    /* v6 PKESK */
+    pgp_fingerprint_t fp{};
+#endif
 
     void         write(pgp_dest_t &dst) const;
     rnp_result_t parse(pgp_source_t &src);
@@ -182,7 +192,7 @@ typedef struct pgp_sk_sesskey_t {
     pgp_s2k_t      s2k{};
     uint8_t        enckey[PGP_MAX_KEY_SIZE + PGP_AEAD_MAX_TAG_LEN + 1]{};
     unsigned       enckeylen{};
-    /* v5 specific fields */
+    /* v5/v6 specific fields */
     pgp_aead_alg_t aalg{};
     uint8_t        iv[PGP_MAX_BLOCK_SIZE]{};
     unsigned       ivlen{};

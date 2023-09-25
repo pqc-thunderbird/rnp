@@ -102,7 +102,7 @@ class id_str_pair {
 
 /** pgp_fingerprint_t */
 typedef struct pgp_fingerprint_t {
-    uint8_t  fingerprint[PGP_FINGERPRINT_SIZE];
+    uint8_t  fingerprint[PGP_MAX_FINGERPRINT_SIZE];
     unsigned length;
     bool     operator==(const pgp_fingerprint_t &src) const;
     bool     operator!=(const pgp_fingerprint_t &src) const;
@@ -117,9 +117,10 @@ template <> struct hash<pgp_fingerprint_t> {
     {
         /* since fingerprint value is hash itself, we may use its low bytes */
         size_t res = 0;
-        static_assert(sizeof(fp.fingerprint) == PGP_FINGERPRINT_SIZE,
+        static_assert(sizeof(fp.fingerprint) == PGP_MAX_FINGERPRINT_SIZE,
                       "pgp_fingerprint_t size mismatch");
-        static_assert(PGP_FINGERPRINT_SIZE >= sizeof(res), "pgp_fingerprint_t size mismatch");
+        static_assert(PGP_MAX_FINGERPRINT_SIZE >= sizeof(res),
+                      "pgp_fingerprint_t size mismatch");
         std::memcpy(&res, fp.fingerprint, sizeof(res));
         return res;
     }
@@ -187,7 +188,18 @@ typedef struct pgp_key_material_t {
         pgp_eg_key_t  eg;
         pgp_ec_key_t  ec;
     };
+#if defined(ENABLE_CRYPTO_REFRESH)
+    pgp_ed25519_key_t ed25519; /* non-trivial type, cannot be in a union */
+    pgp_x25519_key_t  x25519;  /* non-trivial type, cannot be in a union */
+#endif
+#if defined(ENABLE_PQC)
+    pgp_kyber_ecdh_key_t      kyber_ecdh;      /* non-trivial type, cannot be in a union */
+    pgp_dilithium_exdsa_key_t dilithium_exdsa; /* non-trivial type, cannot be in a union */
+    pgp_sphincsplus_key_t     sphincsplus;     /* non-trivial type, cannot be in a union */
+#endif
 
+    pgp_curve_t curve()
+      const; /* return curve for EC algorithms, PGP_CURVE_UNKNOWN otherwise */
     size_t bits() const;
     size_t qbits() const;
     void   validate(rnp::SecurityContext &ctx, bool reset = true);
@@ -204,6 +216,14 @@ typedef struct pgp_signature_material_t {
         pgp_ec_signature_t  ecc;
         pgp_eg_signature_t  eg;
     };
+#if defined(ENABLE_CRYPTO_REFRESH)
+    pgp_ed25519_signature_t ed25519; // non-trivial type cannot be member in union
+#endif
+#if defined(ENABLE_PQC)
+    pgp_dilithium_exdsa_signature_t
+                                dilithium_exdsa; // non-trivial type cannot be member in union
+    pgp_sphincsplus_signature_t sphincsplus;     // non-trivial type cannot be member in union
+#endif
 } pgp_signature_material_t;
 
 /**
@@ -216,6 +236,12 @@ typedef struct pgp_encrypted_material_t {
         pgp_sm2_encrypted_t  sm2;
         pgp_ecdh_encrypted_t ecdh;
     };
+#if defined(ENABLE_CRYPTO_REFRESH)
+    pgp_x25519_encrypted_t x25519; // non-trivial type cannot be member in union
+#endif
+#if defined(ENABLE_PQC)
+    pgp_kyber_ecdh_encrypted_t kyber_ecdh; // non-trivial type cannot be member in union
+#endif
 } pgp_encrypted_material_t;
 
 typedef struct pgp_s2k_t {
@@ -362,6 +388,16 @@ typedef struct pgp_aead_hdr_t {
     }
 } pgp_aead_hdr_t;
 
+#ifdef ENABLE_CRYPTO_REFRESH
+typedef struct pgp_seipdv2_hdr_t {
+    pgp_seipd_version_t version;                    /* version of the SEIPD packet */
+    pgp_symm_alg_t      cipher_alg;                 /* underlying symmetric algorithm */
+    pgp_aead_alg_t      aead_alg;                   /* AEAD algorithm, i.e. EAX, OCB, etc */
+    uint8_t             chunk_size_octet;           /* chunk size octet */
+    uint8_t             salt[PGP_SEIPDV2_SALT_LEN]; /* SEIPDv2 salt value */
+} pgp_seipdv2_hdr_t;
+#endif
+
 /** litdata_type_t */
 typedef enum {
     PGP_LDT_BINARY = 'b',
@@ -423,6 +459,12 @@ struct rnp_keygen_elgamal_params_t {
     size_t key_bitlen;
 };
 
+#if defined(ENABLE_PQC)
+struct rnp_keygen_sphincsplus_params_t {
+    sphincsplus_parameter_t param;
+};
+#endif
+
 /* structure used to hold context of key generation */
 namespace rnp {
 class SecurityContext;
@@ -440,6 +482,9 @@ typedef struct rnp_keygen_crypto_params_t {
         struct rnp_keygen_rsa_params_t     rsa;
         struct rnp_keygen_dsa_params_t     dsa;
         struct rnp_keygen_elgamal_params_t elgamal;
+#if defined(ENABLE_PQC)
+        struct rnp_keygen_sphincsplus_params_t sphincsplus;
+#endif
     };
 } rnp_keygen_crypto_params_t;
 
@@ -465,11 +510,13 @@ typedef struct rnp_selfsig_binding_info_t {
 typedef struct rnp_keygen_primary_desc_t {
     rnp_keygen_crypto_params_t crypto{};
     rnp_selfsig_cert_info_t    cert{};
+    pgp_version_t              pgp_version = PGP_V4;
 } rnp_keygen_primary_desc_t;
 
 typedef struct rnp_keygen_subkey_desc_t {
     rnp_keygen_crypto_params_t crypto;
     rnp_selfsig_binding_info_t binding;
+    pgp_version_t              pgp_version = PGP_V4;
 } rnp_keygen_subkey_desc_t;
 
 typedef struct rnp_key_protection_params_t {

@@ -48,6 +48,7 @@
 #include "crypto/signatures.h"
 #include "crypto/mem.h"
 #include "../librekey/key_store_pgp.h"
+#include "str-utils.h"
 #include <set>
 #include <algorithm>
 #include <cassert>
@@ -540,6 +541,12 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
     /* check the cleartext data */
     switch (key.sec_protection.s2k.usage) {
     case PGP_S2KU_NONE:
+#if defined(ENABLE_CRYPTO_REFRESH)
+        if (key.version == PGP_V6) {
+            break; /* checksum removed for v6 and usage byte zero */
+        }
+        FALLTHROUGH_STATEMENT;
+#endif
     case PGP_S2KU_ENCRYPTED: {
         /* calculate and check sum16 of the cleartext */
         if (len < 2) {
@@ -591,6 +598,10 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
         /* parse mpis depending on algorithm */
         pgp_packet_body_t body(mpis, len);
 
+#if defined(ENABLE_CRYPTO_REFRESH)
+        std::vector<uint8_t> tmpbuf;
+#endif
+
         switch (key.alg) {
         case PGP_PKA_RSA:
         case PGP_PKA_RSA_ENCRYPT_ONLY:
@@ -623,6 +634,83 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
                 return RNP_ERROR_BAD_FORMAT;
             }
             break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+        case PGP_PKA_ED25519: {
+            const ec_curve_desc_t *ec_desc = get_curve_desc(PGP_CURVE_ED25519);
+            tmpbuf.resize(BITS_TO_BYTES(ec_desc->bitlen));
+            if (!body.get(tmpbuf.data(), tmpbuf.size())) {
+                RNP_LOG("failed to parse Ed25519 secret key data");
+                return RNP_ERROR_BAD_FORMAT;
+            }
+            key.material.ed25519.priv = tmpbuf;
+            break;
+        }
+        case PGP_PKA_X25519: {
+            const ec_curve_desc_t *ec_desc = get_curve_desc(PGP_CURVE_25519);
+            tmpbuf.resize(BITS_TO_BYTES(ec_desc->bitlen));
+            if (!body.get(tmpbuf.data(), tmpbuf.size())) {
+                RNP_LOG("failed to parse X25519 secret key data");
+                return RNP_ERROR_BAD_FORMAT;
+            }
+            key.material.x25519.priv = tmpbuf;
+            break;
+        }
+#endif
+#if defined(ENABLE_PQC)
+        case PGP_PKA_KYBER768_X25519:
+            FALLTHROUGH_STATEMENT;
+        // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+        case PGP_PKA_KYBER768_P256:
+            FALLTHROUGH_STATEMENT;
+        case PGP_PKA_KYBER1024_P384:
+            FALLTHROUGH_STATEMENT;
+        case PGP_PKA_KYBER768_BP256:
+            FALLTHROUGH_STATEMENT;
+        case PGP_PKA_KYBER1024_BP384:
+            tmpbuf.resize(pgp_kyber_ecdh_composite_private_key_t::encoded_size(key.alg));
+            if (!body.get(tmpbuf.data(), tmpbuf.size())) {
+                RNP_LOG("failed to parse kyber-ecdh secret key data");
+                return RNP_ERROR_BAD_FORMAT;
+            }
+            key.material.kyber_ecdh.priv =
+              pgp_kyber_ecdh_composite_private_key_t(tmpbuf.data(), tmpbuf.size(), key.alg);
+            break;
+        case PGP_PKA_DILITHIUM3_ED25519:
+            FALLTHROUGH_STATEMENT;
+        // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+        case PGP_PKA_DILITHIUM3_P256:
+            FALLTHROUGH_STATEMENT;
+        case PGP_PKA_DILITHIUM5_P384:
+            FALLTHROUGH_STATEMENT;
+        case PGP_PKA_DILITHIUM3_BP256:
+            FALLTHROUGH_STATEMENT;
+        case PGP_PKA_DILITHIUM5_BP384:
+            tmpbuf.resize(pgp_dilithium_exdsa_composite_private_key_t::encoded_size(key.alg));
+            if (!body.get(tmpbuf.data(), tmpbuf.size())) {
+                RNP_LOG("failed to parse dilithium-ecdsa/eddsa secret key data");
+                return RNP_ERROR_BAD_FORMAT;
+            }
+            key.material.dilithium_exdsa.priv = pgp_dilithium_exdsa_composite_private_key_t(
+              tmpbuf.data(), tmpbuf.size(), key.alg);
+            break;
+        case PGP_PKA_SPHINCSPLUS_SHA2:
+            FALLTHROUGH_STATEMENT;
+        case PGP_PKA_SPHINCSPLUS_SHAKE: {
+            uint8_t param;
+            if (!body.get(param)) {
+                RNP_LOG("failed to parse sphincs+ secret key data");
+                return RNP_ERROR_BAD_FORMAT;
+            }
+            tmpbuf.resize(sphincsplus_privkey_size((sphincsplus_parameter_t) param));
+            if (!body.get(tmpbuf.data(), tmpbuf.size())) {
+                RNP_LOG("failed to parse sphincs+ secret key data");
+                return RNP_ERROR_BAD_FORMAT;
+            }
+            key.material.sphincsplus.priv =
+              pgp_sphincsplus_private_key_t(tmpbuf, (sphincsplus_parameter_t) param, key.alg);
+            break;
+        }
+#endif
         default:
             RNP_LOG("unknown pk alg : %d", (int) key.alg);
             return RNP_ERROR_BAD_PARAMETERS;
@@ -700,6 +788,10 @@ decrypt_secret_key(pgp_key_pkt_t *key, const char *password)
             }
             ret = decrypt_secret_key_v3(&crypt, decdata.data(), key->sec_data, key->sec_len);
             break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+        case PGP_V6:
+            FALLTHROUGH_STATEMENT;
+#endif
         case PGP_V4:
             pgp_cipher_cfb_decrypt(&crypt, decdata.data(), key->sec_data, key->sec_len);
             ret = RNP_SUCCESS;
@@ -746,10 +838,56 @@ write_secret_key_mpis(pgp_packet_body_t &body, pgp_key_pkt_t &key)
     case PGP_PKA_ELGAMAL_ENCRYPT_OR_SIGN:
         body.add(key.material.eg.x);
         break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        body.add(key.material.ed25519.priv);
+        break;
+    case PGP_PKA_X25519:
+        body.add(key.material.x25519.priv);
+        break;
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        body.add(key.material.kyber_ecdh.priv.get_encoded());
+        break;
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        body.add(key.material.dilithium_exdsa.priv.get_encoded());
+        break;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        body.add_byte((uint8_t) key.material.sphincsplus.priv.param());
+        body.add(key.material.sphincsplus.priv.get_encoded());
+        break;
+#endif
     default:
         RNP_LOG("unknown pk alg : %d", (int) key.alg);
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
+
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if (key.version == PGP_V6 && key.sec_protection.s2k.usage == PGP_S2KU_NONE) {
+        return; /* checksum removed for v6 and usage byte zero */
+    }
+#endif
 
     /* add sum16 if sha1 is not used */
     if (key.sec_protection.s2k.usage != PGP_S2KU_ENCRYPTED_AND_HASHED) {
@@ -883,6 +1021,47 @@ forget_secret_key_fields(pgp_key_material_t *key)
     case PGP_PKA_ECDH:
         mpi_forget(&key->ec.x);
         break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        secure_clear(key->ed25519.priv.data(), key->ed25519.priv.size());
+        key->ed25519.priv.clear();
+        break;
+    case PGP_PKA_X25519:
+        secure_clear(key->x25519.priv.data(), key->x25519.priv.size());
+        key->x25519.priv.clear();
+        break;
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        key->kyber_ecdh.priv.secure_clear();
+        break;
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        key->dilithium_exdsa.priv.secure_clear();
+        break;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        key->sphincsplus.priv.secure_clear();
+        break;
+#endif
     default:
         RNP_LOG("unknown key algorithm: %d", (int) key->alg);
     }
@@ -1145,6 +1324,54 @@ pgp_key_pkt_t::~pgp_key_pkt_t()
     free(sec_data);
 }
 
+uint8_t
+pgp_key_pkt_t::s2k_specifier_len(pgp_s2k_specifier_t specifier)
+{
+    switch (specifier) {
+    case PGP_S2KS_SIMPLE:
+        return 2;
+    case PGP_S2KS_SALTED:
+        return 10;
+    case PGP_S2KS_ITERATED_AND_SALTED:
+        return 11;
+    default:
+        RNP_LOG("invalid specifier");
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
+    }
+}
+
+void
+pgp_key_pkt_t::make_s2k_params(pgp_packet_body_t &hbody)
+{
+    switch (sec_protection.s2k.usage) {
+    case PGP_S2KU_NONE:
+        break;
+    case PGP_S2KU_ENCRYPTED_AND_HASHED:
+    case PGP_S2KU_ENCRYPTED: {
+        hbody.add_byte(sec_protection.symm_alg);
+#if defined(ENABLE_CRYPTO_REFRESH)
+        if (version == PGP_V6) {
+            // V6 packages contain length of the following field
+            hbody.add_byte(s2k_specifier_len(sec_protection.s2k.specifier));
+        }
+#endif
+        hbody.add(sec_protection.s2k);
+        if (sec_protection.s2k.specifier != PGP_S2KS_EXPERIMENTAL) {
+            size_t blsize = pgp_block_size(sec_protection.symm_alg);
+            if (!blsize) {
+                RNP_LOG("wrong block size");
+                throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
+            }
+            hbody.add(sec_protection.iv, blsize);
+        }
+        break;
+    }
+    default:
+        RNP_LOG("wrong s2k usage");
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
+    }
+}
+
 void
 pgp_key_pkt_t::write(pgp_dest_t &dst)
 {
@@ -1172,27 +1399,16 @@ pgp_key_pkt_t::write(pgp_dest_t &dst)
     }
     pktbody.add_byte(sec_protection.s2k.usage);
 
-    switch (sec_protection.s2k.usage) {
-    case PGP_S2KU_NONE:
-        break;
-    case PGP_S2KU_ENCRYPTED_AND_HASHED:
-    case PGP_S2KU_ENCRYPTED: {
-        pktbody.add_byte(sec_protection.symm_alg);
-        pktbody.add(sec_protection.s2k);
-        if (sec_protection.s2k.specifier != PGP_S2KS_EXPERIMENTAL) {
-            size_t blsize = pgp_block_size(sec_protection.symm_alg);
-            if (!blsize) {
-                RNP_LOG("wrong block size");
-                throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
-            }
-            pktbody.add(sec_protection.iv, blsize);
-        }
-        break;
+    pgp_packet_body_t s2k_params(tag);
+    make_s2k_params(s2k_params);
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if ((version == PGP_V6) && (sec_protection.s2k.usage != PGP_S2KU_NONE)) {
+        // V6 packages contain the count of the optional 1-byte parameters
+        pktbody.add_byte(s2k_params.size());
     }
-    default:
-        RNP_LOG("wrong s2k usage");
-        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
-    }
+#endif
+    pktbody.add(s2k_params.data(), s2k_params.size());
+
     if (sec_len) {
         /* if key is stored on card, or exported via gpg --export-secret-subkeys, then
          * sec_data is empty */
@@ -1211,6 +1427,10 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
         return RNP_ERROR_BAD_FORMAT;
     }
 
+#if defined(ENABLE_CRYPTO_REFRESH)
+    std::vector<uint8_t> tmpbuf;
+#endif
+
     pgp_packet_body_t pkt((pgp_pkt_type_t) atag);
     /* Read the packet into memory */
     rnp_result_t res = pkt.read(src);
@@ -1221,7 +1441,22 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
     tag = (pgp_pkt_type_t) atag;
     /* version */
     uint8_t ver = 0;
-    if (!pkt.get(ver) || (ver < PGP_V2) || (ver > PGP_V4)) {
+    if (!pkt.get(ver)) {
+        RNP_LOG("unable to retrieve key packet version");
+        return RNP_ERROR_BAD_FORMAT;
+    }
+    switch (ver) {
+    case PGP_V2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_V3:
+        FALLTHROUGH_STATEMENT;
+    case PGP_V4:
+        break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_V6:
+        break;
+#endif
+    default:
         RNP_LOG("wrong key packet version");
         return RNP_ERROR_BAD_FORMAT;
     }
@@ -1246,6 +1481,15 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
         RNP_LOG("wrong v3 pk algorithm");
         return RNP_ERROR_BAD_FORMAT;
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
+    /* v6 length field for public key material */
+    if (version == PGP_V6) {
+        uint32_t material_len;
+        if (!pkt.get(material_len)) {
+            return RNP_ERROR_BAD_FORMAT;
+        }
+    }
+#endif
     /* algorithm specific fields */
     switch (alg) {
     case PGP_PKA_RSA:
@@ -1293,6 +1537,81 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
         material.ec.key_wrap_alg = (pgp_symm_alg_t) walg;
         break;
     }
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519: {
+        const ec_curve_desc_t *ec_desc = get_curve_desc(PGP_CURVE_ED25519);
+        tmpbuf.resize(BITS_TO_BYTES(ec_desc->bitlen));
+        if (!pkt.get(tmpbuf.data(), tmpbuf.size())) {
+            RNP_LOG("failed to parse Ed25519 public key data");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        material.ed25519.pub = tmpbuf;
+        break;
+    }
+    case PGP_PKA_X25519: {
+        const ec_curve_desc_t *ec_desc = get_curve_desc(PGP_CURVE_25519);
+        tmpbuf.resize(BITS_TO_BYTES(ec_desc->bitlen));
+        if (!pkt.get(tmpbuf.data(), tmpbuf.size())) {
+            RNP_LOG("failed to parse X25519 public key data");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        material.x25519.pub = tmpbuf;
+        break;
+    }
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        tmpbuf.resize(pgp_kyber_ecdh_composite_public_key_t::encoded_size(alg));
+        if (!pkt.get(tmpbuf.data(), tmpbuf.size())) {
+            RNP_LOG("failed to parse kyber-ecdh public key data");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        material.kyber_ecdh.pub = pgp_kyber_ecdh_composite_public_key_t(tmpbuf, alg);
+        break;
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        tmpbuf.resize(pgp_dilithium_exdsa_composite_public_key_t::encoded_size(alg));
+        if (!pkt.get(tmpbuf.data(), tmpbuf.size())) {
+            RNP_LOG("failed to parse dilithium-ecdsa/eddsa public key data");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        material.dilithium_exdsa.pub = pgp_dilithium_exdsa_composite_public_key_t(tmpbuf, alg);
+        break;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE: {
+        uint8_t param;
+        if (!pkt.get(param)) {
+            RNP_LOG("failed to parse sphincs+ public key data");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        tmpbuf.resize(sphincsplus_pubkey_size((sphincsplus_parameter_t) param));
+        if (!pkt.get(tmpbuf.data(), tmpbuf.size())) {
+            RNP_LOG("failed to parse sphincs+ public key data");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+        material.sphincsplus.pub =
+          pgp_sphincsplus_public_key_t(tmpbuf, (sphincsplus_parameter_t) param, alg);
+        break;
+    }
+#endif
     default:
         RNP_LOG("unknown key algorithm: %d", (int) alg);
         return RNP_ERROR_BAD_FORMAT;
@@ -1312,8 +1631,25 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
             RNP_LOG("failed to read key protection");
             return RNP_ERROR_BAD_FORMAT;
         }
+#if defined(ENABLE_CRYPTO_REFRESH)
+        if (version == PGP_V6 && usage == 255) {
+            RNP_LOG(
+              "Error when parsing S2K usage: A version 6 packet MUST NOT use the value 255.");
+            return RNP_ERROR_BAD_FORMAT;
+        }
+#endif
         sec_protection.s2k.usage = (pgp_s2k_usage_t) usage;
         sec_protection.cipher_mode = PGP_CIPHER_MODE_CFB;
+
+#if defined(ENABLE_CRYPTO_REFRESH)
+        if (version == PGP_V6 && sec_protection.s2k.usage != PGP_S2KU_NONE) {
+            // V6 packages contain the count of the optional 1-byte parameters
+            uint8_t s2k_params_count;
+            if (!pkt.get(s2k_params_count)) {
+                RNP_LOG("failed to read key protection");
+            }
+        }
+#endif
 
         switch (sec_protection.s2k.usage) {
         case PGP_S2KU_NONE:
@@ -1322,8 +1658,21 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
         case PGP_S2KU_ENCRYPTED_AND_HASHED: {
             /* we have s2k */
             uint8_t salg = 0;
-            if (!pkt.get(salg) || !pkt.get(sec_protection.s2k)) {
-                RNP_LOG("failed to read key protection");
+            if (!pkt.get(salg)) {
+                RNP_LOG("failed to read key protection (symmetric alg)");
+                return RNP_ERROR_BAD_FORMAT;
+            }
+#if defined(ENABLE_CRYPTO_REFRESH)
+            if (version == PGP_V6) {
+                // V6 packages contain the length of the following field
+                uint8_t s2k_specifier_len;
+                if (!pkt.get(s2k_specifier_len)) {
+                    RNP_LOG("failed to read key protection (s2k specifier length)");
+                }
+            }
+#endif
+            if (!pkt.get(sec_protection.s2k)) {
+                RNP_LOG("failed to read key protection (s2k)");
                 return RNP_ERROR_BAD_FORMAT;
             }
             sec_protection.symm_alg = (pgp_symm_alg_t) salg;
@@ -1371,19 +1720,8 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
 }
 
 void
-pgp_key_pkt_t::fill_hashed_data()
+pgp_key_pkt_t::make_alg_spec_fields_for_public_key(pgp_packet_body_t &hbody)
 {
-    /* we don't have a need to write v2-v3 signatures */
-    if (version != PGP_V4) {
-        RNP_LOG("unknown key version %d", (int) version);
-        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
-    }
-
-    pgp_packet_body_t hbody(PGP_PKT_RESERVED);
-    hbody.add_byte(version);
-    hbody.add_uint32(creation_time);
-    hbody.add_byte(alg);
-    /* Algorithm specific fields */
     switch (alg) {
     case PGP_PKA_RSA:
     case PGP_PKA_RSA_ENCRYPT_ONLY:
@@ -1417,10 +1755,82 @@ pgp_key_pkt_t::fill_hashed_data()
         hbody.add_byte(material.ec.kdf_hash_alg);
         hbody.add_byte(material.ec.key_wrap_alg);
         break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        hbody.add(material.ed25519.pub);
+        break;
+    case PGP_PKA_X25519:
+        hbody.add(material.x25519.pub);
+        break;
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        hbody.add(material.kyber_ecdh.pub.get_encoded());
+        break;
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        hbody.add(material.dilithium_exdsa.pub.get_encoded());
+        break;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        hbody.add_byte((uint8_t) material.sphincsplus.pub.param());
+        hbody.add(material.sphincsplus.pub.get_encoded());
+        break;
+#endif
     default:
         RNP_LOG("unknown key algorithm: %d", (int) alg);
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
+}
+
+void
+pgp_key_pkt_t::fill_hashed_data()
+{
+    /* we don't have a need to write v2-v3 signatures */
+    switch (version) {
+    case PGP_V4:
+        break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_V6:
+        break;
+#endif
+    default:
+        RNP_LOG("unknown key version %d", (int) version);
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
+    }
+
+    pgp_packet_body_t hbody(PGP_PKT_RESERVED);
+    hbody.add_byte(version);
+    hbody.add_uint32(creation_time);
+    hbody.add_byte(alg);
+
+    /* Algorithm specific fields */
+    pgp_packet_body_t alg_spec_fields(PGP_PKT_RESERVED);
+    make_alg_spec_fields_for_public_key(alg_spec_fields);
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if (version == PGP_V6) {
+        hbody.add_uint32(alg_spec_fields.size());
+    }
+#endif
+    hbody.add(alg_spec_fields.data(), alg_spec_fields.size());
 
     hashed_data = (uint8_t *) malloc(hbody.size());
     if (!hashed_data) {

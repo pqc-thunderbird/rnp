@@ -83,11 +83,16 @@ __RCSID("$NetBSD: crypto.c,v 1.36 2014/02/17 07:39:19 agc Exp $");
 bool
 pgp_generate_seckey(const rnp_keygen_crypto_params_t &crypto,
                     pgp_key_pkt_t &                   seckey,
-                    bool                              primary)
+                    bool                              primary,
+                    pgp_version_t                     pgp_version)
 {
     /* populate pgp key structure */
     seckey = {};
+#if defined(ENABLE_CRYPTO_REFRESH)
+    seckey.version = pgp_version;
+#else
     seckey.version = PGP_V4;
+#endif
     seckey.creation_time = crypto.ctx->time();
     seckey.alg = crypto.key_alg;
     seckey.material.alg = crypto.key_alg;
@@ -128,9 +133,7 @@ pgp_generate_seckey(const rnp_keygen_crypto_params_t &crypto,
             seckey.material.ec.curve = crypto.ecc.curve;
             break;
         }
-#if (!defined(_MSVC_LANG) || _MSVC_LANG >= 201703L)
-        [[fallthrough]];
-#endif
+        FALLTHROUGH_STATEMENT;
     case PGP_PKA_ECDSA:
     case PGP_PKA_SM2:
         if (!curve_supported(crypto.ecc.curve)) {
@@ -150,6 +153,70 @@ pgp_generate_seckey(const rnp_keygen_crypto_params_t &crypto,
             return false;
         }
         break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        if (generate_ed25519_native(&crypto.ctx->rng,
+                                    seckey.material.ed25519.priv,
+                                    seckey.material.ed25519.pub) != RNP_SUCCESS) {
+            RNP_LOG("failed to generate ED25519 key");
+            return false;
+        }
+        break;
+    case PGP_PKA_X25519:
+        if (generate_x25519_native(&crypto.ctx->rng,
+                                   seckey.material.x25519.priv,
+                                   seckey.material.x25519.pub) != RNP_SUCCESS) {
+            RNP_LOG("failed to generate X25519 key");
+            return false;
+        }
+        break;
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        if (pgp_kyber_ecdh_composite_key_t::gen_keypair(
+              &crypto.ctx->rng, &seckey.material.kyber_ecdh, seckey.alg)) {
+            RNP_LOG("failed to generate Kyber-ECDH-composite key for PK alg %d", seckey.alg);
+            return false;
+        }
+        break;
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        if (pgp_dilithium_exdsa_composite_key_t::gen_keypair(
+              &crypto.ctx->rng, &seckey.material.dilithium_exdsa, seckey.alg)) {
+            RNP_LOG("failed to generate Dilithium-ecdsa/eddsa-composite key for PK alg %d",
+                    seckey.alg);
+            return false;
+        }
+        break;
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        if (pgp_sphincsplus_generate(&crypto.ctx->rng,
+                                     &seckey.material.sphincsplus,
+                                     crypto.sphincsplus.param,
+                                     seckey.alg)) {
+            RNP_LOG("failed to generate SPHINCS+ key for PK alg %d", seckey.alg);
+            return false;
+        }
+        break;
+#endif
     default:
         RNP_LOG("key generation not implemented for PK alg: %d", seckey.alg);
         return false;
@@ -190,6 +257,40 @@ key_material_equal(const pgp_key_material_t *key1, const pgp_key_material_t *key
     case PGP_PKA_ECDSA:
     case PGP_PKA_SM2:
         return (key1->ec.curve == key2->ec.curve) && mpi_equal(&key1->ec.p, &key2->ec.p);
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        return (key1->ed25519.pub == key2->ed25519.pub);
+    case PGP_PKA_X25519:
+        return (key1->x25519.pub == key2->x25519.pub);
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        return (key1->kyber_ecdh.pub == key2->kyber_ecdh.pub);
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        return (key1->dilithium_exdsa.pub == key2->dilithium_exdsa.pub);
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        return (key1->sphincsplus.pub == key2->sphincsplus.pub);
+#endif
     default:
         RNP_LOG("unknown public key algorithm: %d", (int) key1->alg);
         return false;
@@ -237,6 +338,40 @@ validate_pgp_key_material(const pgp_key_material_t *material, rnp::RNG *rng)
     case PGP_PKA_ELGAMAL_ENCRYPT_OR_SIGN:
         return elgamal_validate_key(&material->eg, material->secret) ? RNP_SUCCESS :
                                                                        RNP_ERROR_GENERIC;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_PKA_ED25519:
+        return ed25519_validate_key_native(rng, &material->ed25519, material->secret);
+    case PGP_PKA_X25519:
+        return x25519_validate_key_native(rng, &material->x25519, material->secret);
+#endif
+#if defined(ENABLE_PQC)
+    case PGP_PKA_KYBER768_X25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER768_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_KYBER1024_BP384:
+        return kyber_ecdh_validate_key(rng, &material->kyber_ecdh, material->secret);
+    case PGP_PKA_DILITHIUM3_ED25519:
+        FALLTHROUGH_STATEMENT;
+    // TODO: add case PGP_PKA_DILITHIUM5_ED448: FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_P256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_P384:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM3_BP256:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_DILITHIUM5_BP384:
+        return dilithium_exdsa_validate_key(rng, &material->dilithium_exdsa, material->secret);
+    case PGP_PKA_SPHINCSPLUS_SHA2:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE:
+        return sphincsplus_validate_key(rng, &material->sphincsplus, material->secret);
+#endif
     default:
         RNP_LOG("unknown public key algorithm: %d", (int) material->alg);
     }

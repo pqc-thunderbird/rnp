@@ -35,6 +35,7 @@
 #include <repgp/repgp_def.h>
 #include "crypto/rng.h"
 #include "crypto/mpi.h"
+#include <vector>
 
 #define MAX_CURVE_BIT_SIZE 521 // secp521r1
 /* Maximal byte size of elliptic curve order (NIST P-521) */
@@ -88,6 +89,27 @@ typedef struct pgp_ec_signature_t {
     pgp_mpi_t r;
     pgp_mpi_t s;
 } pgp_ec_signature_t;
+
+#if defined(ENABLE_CRYPTO_REFRESH)
+typedef struct pgp_ed25519_key_t {
+    std::vector<uint8_t> pub;  // \  native encoding
+    std::vector<uint8_t> priv; // /
+} pgp_ed25519_key_t;
+
+typedef struct pgp_ed25519_signature_t {
+    std::vector<uint8_t> sig; // native encoding
+} pgp_ed25519_signature_t;
+
+typedef struct pgp_x25519_key_t {
+    std::vector<uint8_t> pub;  // \  native encoding
+    std::vector<uint8_t> priv; // /
+} pgp_x25519_key_t;
+
+typedef struct pgp_x25519_encrypted_t {
+    std::vector<uint8_t> eph_key;
+    std::vector<uint8_t> enc_sess_key;
+} pgp_x25519_encrypted_t;
+#endif
 
 /*
  * @brief   Finds curve ID by hex representation of OID
@@ -170,4 +192,20 @@ bool x25519_tweak_bits(pgp_ec_key_t &key);
  */
 bool x25519_bits_tweaked(const pgp_ec_key_t &key);
 
+/*
+ * @brief   Generates EC keys in "native" or SEC1-encoded uncompressed format
+ *
+ * @param   rng initialized rnp::RNG context*
+ * @param   privkey private key to be generated
+ * @param   pubkey public key to be generated
+ * @param   curve chosen curve
+ * @param   alg algorithm id
+ *
+ * @returns RNP_ERROR_BAD_PARAMETERS if the curve or alg parameter is invalid.
+ */
+rnp_result_t ec_generate_native(rnp::RNG *            rng,
+                                std::vector<uint8_t> &privkey,
+                                std::vector<uint8_t> &pubkey,
+                                pgp_curve_t           curve,
+                                pgp_pubkey_alg_t      alg);
 #endif

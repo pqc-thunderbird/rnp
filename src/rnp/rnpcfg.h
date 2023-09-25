@@ -50,8 +50,11 @@
 #define CFG_NEEDSSECKEY "needsseckey"    /* needs secret key for the ongoing operation */
 #define CFG_USERID "userid"              /* userid for the ongoing operation */
 #define CFG_RECIPIENTS "recipients"      /* list of encrypted data recipients */
-#define CFG_SIGNERS "signers"            /* list of signers */
-#define CFG_HOMEDIR "homedir"            /* home directory - folder with keyrings and so on */
+#if defined(ENABLE_CRYPTO_REFRESH)
+#define CFG_V3_PKESK_ONLY "v3-pkesk-only" /* disable v6 PKESK */
+#endif
+#define CFG_SIGNERS "signers"     /* list of signers */
+#define CFG_HOMEDIR "homedir"     /* home directory - folder with keyrings and so on */
 #define CFG_KEYFILE "keyfile"     /* path to the file with key(s), used instead of keyring */
 #define CFG_PASSFD "pass-fd"      /* password file descriptor */
 #define CFG_PASSWD "password"     /* password as command-line constant */
@@ -116,6 +119,12 @@
 #define CFG_KG_PROT_HASH "kg-prot-hash"
 #define CFG_KG_PROT_ALG "kg-prot-alg"
 #define CFG_KG_PROT_ITERATIONS "kg-prot-iterations"
+#define CFG_KG_V6_KEY \
+    "kg-v6-key" /* represents a boolean property: non-empty string means 'true' */
+#define CFG_KG_PRIMARY_SPHINCSPLUS_PARAM \
+    "kg-primary-sphincsplus-param" /* 128f, 128s, 192f, 192s, 256f, 256s */
+#define CFG_KG_SUBKEY_SPHINCSPLUS_PARAM \
+    "kg-subkey-sphincsplus-param" /* 128f, 128s, 192f, 192s, 256f, 256s */
 
 /* rnp CLI config : contains all the system-dependent and specified by the user configuration
  * options */
