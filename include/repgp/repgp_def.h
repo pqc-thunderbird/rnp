@@ -354,6 +354,9 @@ typedef enum : uint8_t {
     PGP_S2KS_SIMPLE = 0,
     PGP_S2KS_SALTED = 1,
     PGP_S2KS_ITERATED_AND_SALTED = 3,
+#if defined(ENABLE_CRYPTO_REFRESH)
+    PGP_S2KS_ARGON2 = 4,
+#endif
     PGP_S2KS_EXPERIMENTAL = 101
 } pgp_s2k_specifier_t;
 
