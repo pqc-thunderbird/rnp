@@ -1871,6 +1871,14 @@ rnp_selfsig_cert_info_t::populate(pgp_signature_t &sig)
             sig.set_preferred_aead_algs(prefs.aead_prefs);
         }
     }
+    /* also for v4 keys signal that this implementation understands v2 SEIPD.
+    RNP doesn't use direct key signatures for v4 certificates. */
+    else if (sig.version == PGP_V4) {
+        /* implicitly this is PGP_CERT_POSITIVE already here. */
+        if (sig.type() == PGP_CERT_POSITIVE) {
+            sig.set_key_features(PGP_KEY_FEATURE_MDC | PGP_KEY_FEATURE_SEIPDV2);
+        }
+    }
 #endif
     if (key_flags) {
         sig.set_key_flags(key_flags);
