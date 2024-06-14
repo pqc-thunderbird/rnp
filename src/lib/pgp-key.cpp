@@ -2652,7 +2652,8 @@ pgp_key_t::add_sub_binding(pgp_key_t &                       subsec,
     }
 
     // add subpacket 99
-    std::vector<uint8_t> data = std::vector<uint8_t>(100);
+    std::vector<uint8_t> data = std::vector<uint8_t>({0x04 /* sig version */, 0x00 /* sig type */, 0x01 /* pk algo = RSA S+E */, 0x00, 0x00 /* 2-octet hashed 
+subpackets length for v4 */ } );
     sig.set_subpacket99(data, data.size());
 
     /* calculate binding */
