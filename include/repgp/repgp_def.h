@@ -445,6 +445,7 @@ typedef enum {
     PGP_SIG_SUBPKT_EMBEDDED_SIGNATURE = 32, /* embedded signature */
     PGP_SIG_SUBPKT_ISSUER_FPR = 33,         /* issuer fingerprint */
     PGP_SIG_SUBPKT_PREFERRED_AEAD = 34,     /* preferred AEAD algorithms */
+    PGP_SIG_SUBPKT_99 = 99,                 /* unknown uncritical subpacket */
 #if defined(ENABLE_CRYPTO_REFRESH)
     /* PGP_SIG_SUBPKT_INTENDED_RECIPIENT_FINGERPRINT = 35, */
     PGP_SIG_SUBPKT_PREFERRED_AEAD_CIPHERSUITES = 39,

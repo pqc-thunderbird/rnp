@@ -2650,6 +2650,11 @@ pgp_key_t::add_sub_binding(pgp_key_t &                       subsec,
     if (binding.key_flags) {
         sig.set_key_flags(binding.key_flags);
     }
+
+    // add subpacket 99
+    std::vector<uint8_t> data = std::vector<uint8_t>(100);
+    sig.set_subpacket99(data, data.size());
+
     /* calculate binding */
     pgp_key_flags_t realkf = (pgp_key_flags_t) binding.key_flags;
     if (!realkf) {

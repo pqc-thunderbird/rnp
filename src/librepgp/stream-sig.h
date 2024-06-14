@@ -214,6 +214,9 @@ typedef struct pgp_signature_t {
      *         corresponding subpacket is deleted. */
     void set_preferred_symm_algs(const std::vector<uint8_t> &algs);
 
+    void set_subpacket99(const std::vector<uint8_t> &data, size_t len);
+
+
     /** @brief Get preferred hash algorithms if any. If there are no ones then empty vector is
      *         returned.*/
     std::vector<uint8_t> preferred_hash_algs() const;

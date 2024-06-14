@@ -412,6 +412,10 @@ pgp_sig_subpkt_t::parse()
         fields.preferred.len = len;
         break;
 #endif
+    case PGP_SIG_SUBPKT_99:
+        fields.subpacket99.len = len;
+        fields.subpacket99.data = data;
+        break;
     case PGP_SIG_SUBPKT_PRIVATE_100:
     case PGP_SIG_SUBPKT_PRIVATE_101:
     case PGP_SIG_SUBPKT_PRIVATE_102:
@@ -934,6 +938,16 @@ pgp_signature_t::set_preferred(const std::vector<uint8_t> &data, pgp_sig_subpack
     memcpy(subpkt.data, data.data(), data.size());
     subpkt.fields.preferred.arr = subpkt.data;
     subpkt.fields.preferred.len = data.size();
+}
+
+void
+pgp_signature_t::set_subpacket99(const std::vector<uint8_t> &data, size_t len)
+{
+    pgp_sig_subpkt_t &subpkt = add_subpkt(PGP_SIG_SUBPKT_99, data.size(), true);
+    subpkt.parsed = true;
+    subpkt.hashed = true;
+    subpkt.fields.subpacket99.data = subpkt.data;
+    subpkt.fields.subpacket99.len = len;
 }
 
 std::vector<uint8_t>

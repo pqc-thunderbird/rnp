@@ -344,6 +344,10 @@ typedef struct pgp_sig_subpkt_t {
             uint8_t *fp;
             unsigned len;
         } issuer_fp; /* 5.2.3.28.  Issuer Fingerprint, RFC 4880 bis 04 */
+        struct {
+            const uint8_t *data;
+            unsigned len;
+        } subpacket99;
     } fields;        /* parsed contents of the subpacket */
 
     pgp_sig_subpkt_t()
