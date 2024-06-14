@@ -946,7 +946,8 @@ pgp_signature_t::set_subpacket99(const std::vector<uint8_t> &data, size_t len)
     pgp_sig_subpkt_t &subpkt = add_subpkt(PGP_SIG_SUBPKT_99, data.size(), true);
     subpkt.parsed = true;
     subpkt.hashed = true;
-    subpkt.fields.subpacket99.data = subpkt.data;
+    memcpy(subpkt.data, data.data(), data.size());
+    subpkt.fields.subpacket99.data = subpkt.data; // needed?
     subpkt.fields.subpacket99.len = len;
 }
 
