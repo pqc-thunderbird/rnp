@@ -2495,6 +2495,7 @@ pgp_key_t::sign_binding(const pgp_key_pkt_t & key,
                         pgp_signature_t &     sig,
                         rnp::SecurityContext &ctx)
 {
+    printf("Computing Binding Signature\n");
     sig.fill_hashed_data();
     auto hash = is_primary() ? signature_hash_binding(sig, pkt(), key) :
                                signature_hash_binding(sig, key, pkt());

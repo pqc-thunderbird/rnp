@@ -92,6 +92,7 @@ signature_hash_finish(const pgp_signature_t &  sig,
 std::unique_ptr<rnp::Hash>
 signature_init(const pgp_key_pkt_t &key, const pgp_signature_t &sig)
 {
+    printf("\nInitialize Hash\n");
     auto hash = rnp::Hash::create(sig.halg);
 
 #if defined(ENABLE_CRYPTO_REFRESH)

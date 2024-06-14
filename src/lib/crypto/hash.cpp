@@ -44,6 +44,13 @@ static const id_str_pair botan_alg_map[] = {
   {0, NULL},
 };
 
+
+static void print_hex(const unsigned char *buf, size_t buf_len)
+{
+    for (size_t i = 0; i < buf_len; ++i)
+        printf("%02X", buf[i]);
+}
+
 namespace rnp {
 
 Hash_Botan::Hash_Botan(pgp_hash_alg_t alg) : Hash(alg)
@@ -93,6 +100,10 @@ Hash_Botan::add(const void *buf, size_t len)
         throw rnp_exception(RNP_ERROR_NULL_POINTER);
     }
     fn_->update(static_cast<const uint8_t *>(buf), len);
+
+    printf("Hashing:\n\t");
+    print_hex((const uint8_t*)buf, len);
+    printf("\n");
 }
 
 size_t
