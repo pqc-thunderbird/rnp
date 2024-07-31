@@ -658,7 +658,10 @@ parse_secret_key_mpis(pgp_key_pkt_t &key, const uint8_t *mpis, size_t len)
 #if defined(ENABLE_PQC)
         case PGP_PKA_KYBER768_X25519:
             FALLTHROUGH_STATEMENT;
-        // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+#if defined(ENABLE_X448)
+        case PGP_PKA_KYBER1024_X448:
+            FALLTHROUGH_STATEMENT;
+#endif
         case PGP_PKA_KYBER768_P256:
             FALLTHROUGH_STATEMENT;
         case PGP_PKA_KYBER1024_P384:
@@ -852,7 +855,10 @@ write_secret_key_mpis(pgp_packet_body_t &body, pgp_key_pkt_t &key)
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519:
         FALLTHROUGH_STATEMENT;
-    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+#if defined(ENABLE_X448)
+    case PGP_PKA_KYBER1024_X448:
+        FALLTHROUGH_STATEMENT;
+#endif
     case PGP_PKA_KYBER768_P256:
         FALLTHROUGH_STATEMENT;
     case PGP_PKA_KYBER1024_P384:
@@ -1040,7 +1046,10 @@ forget_secret_key_fields(pgp_key_material_t *key)
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519:
         FALLTHROUGH_STATEMENT;
-    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+#if defined(ENABLE_X448)
+    case PGP_PKA_KYBER1024_X448:
+        FALLTHROUGH_STATEMENT;
+#endif
     case PGP_PKA_KYBER768_P256:
         FALLTHROUGH_STATEMENT;
     case PGP_PKA_KYBER1024_P384:
@@ -1596,7 +1605,10 @@ pgp_key_pkt_t::parse(pgp_source_t &src)
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519:
         FALLTHROUGH_STATEMENT;
-    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+#if defined(ENABLE_X448)
+    case PGP_PKA_KYBER1024_X448:
+        FALLTHROUGH_STATEMENT;
+#endif
     case PGP_PKA_KYBER768_P256:
         FALLTHROUGH_STATEMENT;
     case PGP_PKA_KYBER1024_P384:
@@ -1822,7 +1834,10 @@ pgp_key_pkt_t::make_alg_spec_fields_for_public_key(pgp_packet_body_t &hbody)
 #if defined(ENABLE_PQC)
     case PGP_PKA_KYBER768_X25519:
         FALLTHROUGH_STATEMENT;
-    // TODO add case PGP_PKA_KYBER1024_X448: FALLTHROUGH_STATEMENT;
+#if defined(ENABLE_X448)
+    case PGP_PKA_KYBER1024_X448:
+        FALLTHROUGH_STATEMENT;
+#endif
     case PGP_PKA_KYBER768_P256:
         FALLTHROUGH_STATEMENT;
     case PGP_PKA_KYBER1024_P384:
