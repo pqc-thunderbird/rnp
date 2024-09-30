@@ -322,9 +322,11 @@ KeyMaterial::create(pgp_pubkey_alg_t alg)
         FALLTHROUGH_STATEMENT;
     case PGP_PKA_DILITHIUM5_BP384:
         return std::unique_ptr<KeyMaterial>(new DilithiumEccKeyMaterial(alg));
-    case PGP_PKA_SPHINCSPLUS_SHA2:
+    case PGP_PKA_SPHINCSPLUS_SHAKE_128f:
         FALLTHROUGH_STATEMENT;
-    case PGP_PKA_SPHINCSPLUS_SHAKE:
+    case PGP_PKA_SPHINCSPLUS_SHAKE_128s:
+        FALLTHROUGH_STATEMENT;
+    case PGP_PKA_SPHINCSPLUS_SHAKE_256s:
         return std::unique_ptr<KeyMaterial>(new SlhdsaKeyMaterial(alg));
 #endif
     default:
@@ -1817,36 +1819,24 @@ bool
 SlhdsaKeyMaterial::parse(pgp_packet_body_t &pkt) noexcept
 {
     secret_ = false;
-    uint8_t bt = 0;
-    if (!pkt.get(bt)) {
-        RNP_LOG("failed to parse SLH-DSA public key data");
-        return false;
-    }
-    sphincsplus_parameter_t param = (sphincsplus_parameter_t) bt;
-    std::vector<uint8_t>    buf(sphincsplus_pubkey_size(param));
+    std::vector<uint8_t>    buf(sphincsplus_pubkey_size(alg()));
     if (!pkt.get(buf.data(), buf.size())) {
         RNP_LOG("failed to parse SLH-DSA public key data");
         return false;
     }
-    key_.pub = pgp_sphincsplus_public_key_t(buf, param, alg());
+    key_.pub = pgp_sphincsplus_public_key_t(buf, alg());
     return true;
 }
 
 bool
 SlhdsaKeyMaterial::parse_secret(pgp_packet_body_t &pkt) noexcept
 {
-    uint8_t bt = 0;
-    if (!pkt.get(bt)) {
-        RNP_LOG("failed to parse SLH-DSA secret key data");
-        return false;
-    }
-    sphincsplus_parameter_t param = (sphincsplus_parameter_t) bt;
-    std::vector<uint8_t>    buf(sphincsplus_privkey_size(param));
+    std::vector<uint8_t>    buf(sphincsplus_privkey_size(alg()));
     if (!pkt.get(buf.data(), buf.size())) {
         RNP_LOG("failed to parse SLH-DSA secret key data");
         return false;
     }
-    key_.priv = pgp_sphincsplus_private_key_t(buf, param, alg());
+    key_.priv = pgp_sphincsplus_private_key_t(buf, alg());
     secret_ = true;
     return true;
 }
@@ -1854,21 +1844,19 @@ SlhdsaKeyMaterial::parse_secret(pgp_packet_body_t &pkt) noexcept
 void
 SlhdsaKeyMaterial::write(pgp_packet_body_t &pkt) const
 {
-    pkt.add_byte((uint8_t) key_.pub.param());
     pkt.add(key_.pub.get_encoded());
 }
 
 void
 SlhdsaKeyMaterial::write_secret(pgp_packet_body_t &pkt) const
 {
-    pkt.add_byte((uint8_t) key_.priv.param());
     pkt.add(key_.priv.get_encoded());
 }
 
 bool
 SlhdsaKeyMaterial::generate(const rnp_keygen_crypto_params_t &params)
 {
-    if (pgp_sphincsplus_generate(&params.ctx->rng, &key_, params.sphincsplus.param, alg_)) {
+    if (pgp_sphincsplus_generate(&params.ctx->rng, &key_, alg_)) {
         RNP_LOG("failed to generate SLH-DSA key for PK alg %d", alg_);
         return false;
     }
@@ -1894,7 +1882,7 @@ SlhdsaKeyMaterial::sign(rnp::SecurityContext &             ctx,
 pgp_hash_alg_t
 SlhdsaKeyMaterial::adjust_hash(pgp_hash_alg_t hash) const
 {
-    return sphincsplus_default_hash_alg(alg_, key_.pub.param());
+    return sphincsplus_default_hash_alg(alg());
 }
 
 bool
