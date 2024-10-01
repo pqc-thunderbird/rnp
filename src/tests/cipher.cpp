@@ -680,7 +680,7 @@ TEST_F(rnp_tests, sphincsplus_signverify_success)
         // data
         global_ctx.rng.get(message, sizeof(message));
 
-        rnp_keygen_crypto_params_t  key_desc;
+        rnp_keygen_crypto_params_t key_desc;
         key_desc.key_alg = algs[i];
         key_desc.ctx = &global_ctx;
 
