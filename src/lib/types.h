@@ -176,6 +176,7 @@ typedef struct pgp_signature_material_t {
     };
 #if defined(ENABLE_CRYPTO_REFRESH)
     pgp_ed25519_signature_t ed25519; // non-trivial type cannot be member in union
+    pgp_ed448_signature_t   ed448;   // non-trivial type cannot be member in union
 #endif
 #if defined(ENABLE_PQC)
     pgp_dilithium_exdsa_signature_t
@@ -197,6 +198,7 @@ typedef struct pgp_encrypted_material_t {
     };
 #if defined(ENABLE_CRYPTO_REFRESH)
     pgp_x25519_encrypted_t x25519; // non-trivial type cannot be member in union
+    pgp_x448_encrypted_t   x448;   // non-trivial type cannot be member in union
 #endif
 #if defined(ENABLE_PQC)
     pgp_kyber_ecdh_encrypted_t kyber_ecdh; // non-trivial type cannot be member in union
