@@ -470,8 +470,7 @@ pgp_signature_t::pgp_signature_t(const pgp_signature_t &src)
     memcpy(lbits, src.lbits, sizeof(src.lbits));
 #if defined(ENABLE_CRYPTO_REFRESH)
     if (version == PGP_V6) {
-        salt_size = src.salt_size;
-        memcpy(salt, src.salt, salt_size);
+        salt = src.salt;
     }
 #endif
     creation_time = src.creation_time;
@@ -505,8 +504,7 @@ pgp_signature_t::pgp_signature_t(pgp_signature_t &&src)
     memcpy(lbits, src.lbits, sizeof(src.lbits));
 #if defined(ENABLE_CRYPTO_REFRESH)
     if (version == PGP_V6) {
-        salt_size = src.salt_size;
-        memcpy(salt, src.salt, salt_size);
+        salt = src.salt;
     }
 #endif
     creation_time = src.creation_time;
@@ -561,8 +559,7 @@ pgp_signature_t::operator=(const pgp_signature_t &src)
     memcpy(lbits, src.lbits, sizeof(src.lbits));
 #if defined(ENABLE_CRYPTO_REFRESH)
     if (version == PGP_V6) {
-        salt_size = src.salt_size;
-        memcpy(salt, src.salt, salt_size);
+        salt = src.salt;
     }
 #endif
     creation_time = src.creation_time;
@@ -1303,6 +1300,10 @@ pgp_signature_t::matches_onepass(const pgp_one_pass_sig_t &onepass) const
             return false;
         }
     }
+    /* check keyid (V3) */
+    if (onepass.version == PGP_OPS_V3 && (onepass.keyid != keyid())) {
+        return false;
+    }
 #if defined(ENABLE_CRYPTO_REFRESH)
     /* checks for V6 */
     if (onepass.version == PGP_OPS_V6) {
@@ -1314,17 +1315,12 @@ pgp_signature_t::matches_onepass(const pgp_one_pass_sig_t &onepass) const
         if (onepass.fp != keyfp()) {
             return false;
         }
-        /* check salt (V6) */
-        if (onepass.salt.size() != salt_size &&
-            !memcmp(onepass.salt.data(), salt, salt_size)) {
+        /* check salt */
+        if (onepass.salt != salt) {
             return false;
         }
     }
 #endif
-    /* check keyid (V3) */
-    if (onepass.version == PGP_OPS_V3 && (onepass.keyid != keyid())) {
-        return false;
-    }
     /* check the remaining common attributes */
     return (halg == onepass.halg) && (palg == onepass.palg) && (type_ == onepass.type);
 }
@@ -1589,6 +1585,7 @@ pgp_signature_t::parse(pgp_packet_body_t &pkt)
 
 #if defined(ENABLE_CRYPTO_REFRESH)
     if (ver == PGP_V6) {
+        uint8_t salt_size;
         if (!pkt.get(salt_size)) {
             RNP_LOG("not enough data for v6 salt size octet");
             return RNP_ERROR_BAD_FORMAT;
@@ -1602,7 +1599,8 @@ pgp_signature_t::parse(pgp_packet_body_t &pkt)
             RNP_LOG("invalid salt size");
             return RNP_ERROR_BAD_FORMAT;
         }
-        if (!pkt.get(salt, salt_size)) {
+        salt.resize(salt_size);
+        if (!pkt.get(salt.data(), salt_size)) {
             RNP_LOG("not enough data for v6 signature salt");
             return RNP_ERROR_BAD_FORMAT;
         }
@@ -1767,8 +1765,8 @@ pgp_signature_t::write(pgp_dest_t &dst) const
     pktbody.add(lbits, 2);
 #if defined(ENABLE_CRYPTO_REFRESH)
     if (version == PGP_V6) {
-        pktbody.add_byte(salt_size);
-        pktbody.add(salt, salt_size);
+        pktbody.add_byte(salt.size());
+        pktbody.add(salt);
     }
 #endif
     /* write mpis */

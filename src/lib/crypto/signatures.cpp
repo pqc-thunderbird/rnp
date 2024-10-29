@@ -96,7 +96,7 @@ signature_init(const pgp_key_pkt_t &key, const pgp_signature_t &sig)
 
 #if defined(ENABLE_CRYPTO_REFRESH)
     if (key.version == PGP_V6) {
-        hash->add(sig.salt, sig.salt_size);
+        hash->add(sig.salt);
     }
 #endif
 
