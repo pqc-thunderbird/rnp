@@ -210,14 +210,34 @@ typedef struct pgp_s2k_t {
     /* below fields may not all be valid, depending on the usage field above */
     pgp_s2k_specifier_t specifier{};
     pgp_hash_alg_t      hash_alg{};
-    uint8_t             salt[PGP_SALT_SIZE];
-    unsigned            iterations{};
+#if defined(ENABLE_CRYPTO_REFRESH)
+    uint8_t salt[16];
+#else
+    uint8_t salt[PGP_SALT_SIZE];
+#endif
+    unsigned iterations{};
     /* GnuPG custom s2k data */
     pgp_s2k_gpg_extension_t gpg_ext_num{};
     uint8_t                 gpg_serial_len{};
     uint8_t                 gpg_serial[16];
     /* Experimental s2k data */
     std::vector<uint8_t> experimental{};
+
+#if defined(ENABLE_CRYPTO_REFRESH)
+    /* argon2 */
+    uint8_t argon2_t;
+    uint8_t argon2_p;
+    uint8_t argon2_encoded_m;
+#endif
+
+    static size_t
+    salt_size(pgp_s2k_specifier_t specifier)
+    {
+#if defined(ENABLE_CRYPTO_REFRESH)
+        return (specifier == PGP_S2KS_ARGON2 ? 16 : 8);
+#endif
+        return 8;
+    }
 } pgp_s2k_t;
 
 typedef struct pgp_key_protection_t {

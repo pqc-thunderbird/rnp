@@ -239,6 +239,9 @@ static const id_str_pair s2k_type_map[] = {
   {PGP_S2KS_SIMPLE, "Simple"},
   {PGP_S2KS_SALTED, "Salted"},
   {PGP_S2KS_ITERATED_AND_SALTED, "Iterated and salted"},
+#if defined(ENABLE_CRYPTO_REFRESH)
+  {PGP_S2KS_ARGON2, "Argon2"},
+#endif
   {0, NULL}};
 
 static const id_str_pair key_usage_map[] = {

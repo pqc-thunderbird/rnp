@@ -1221,6 +1221,9 @@ pgp_key_t::has_secret() const noexcept
     case PGP_S2KS_SIMPLE:
     case PGP_S2KS_SALTED:
     case PGP_S2KS_ITERATED_AND_SALTED:
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_S2KS_ARGON2:
+#endif
         return true;
     default:
         return false;

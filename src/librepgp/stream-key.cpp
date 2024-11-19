@@ -626,7 +626,8 @@ encrypt_secret_key(pgp_key_pkt_t *key, const char *password, rnp::RNG &rng)
         /* generate iv and s2k salt */
         rng.get(key->sec_protection.iv, blsize);
         if ((key->sec_protection.s2k.specifier != PGP_S2KS_SIMPLE)) {
-            rng.get(key->sec_protection.s2k.salt, PGP_SALT_SIZE);
+            rng.get(key->sec_protection.s2k.salt,
+                    key->sec_protection.s2k.salt_size(key->sec_protection.s2k.specifier));
         }
         /* derive key */
         rnp::secure_array<uint8_t, PGP_MAX_KEY_SIZE> keybuf;
@@ -857,6 +858,10 @@ pgp_key_pkt_t::s2k_specifier_len(pgp_s2k_specifier_t specifier)
         return 10;
     case PGP_S2KS_ITERATED_AND_SALTED:
         return 11;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_S2KS_ARGON2:
+        return 20;
+#endif
     default:
         RNP_LOG("invalid specifier");
         throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);

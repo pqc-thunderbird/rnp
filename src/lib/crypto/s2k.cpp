@@ -42,8 +42,13 @@
 #include "types.h"
 #include "utils.h"
 #ifdef CRYPTO_BACKEND_BOTAN
+#if defined(ENABLE_CRYPTO_REFRESH)
+#include "botan/bigint.h"
+#endif
 #include <botan/ffi.h>
 #include "hash_botan.hpp"
+#include <botan/pwdhash.h>
+#include <cmath>
 #endif
 
 bool
@@ -66,11 +71,30 @@ pgp_s2k_derive_key(pgp_s2k_t *s2k, const char *password, uint8_t *key, int keysi
             iterations = s2k->iterations;
         }
         break;
+#if defined(ENABLE_CRYPTO_REFRESH)
+    case PGP_S2KS_ARGON2:
+        saltptr = s2k->salt;
+        break;
+#endif
     default:
         return false;
     }
 
-    if (pgp_s2k_iterated(s2k->hash_alg, key, keysize, password, saltptr, iterations)) {
+#if defined(ENABLE_CRYPTO_REFRESH)
+    if (s2k->specifier == PGP_S2KS_ARGON2) {
+        if (pgp_s2k_argon2(key,
+                           keysize,
+                           password,
+                           saltptr,
+                           s2k->argon2_t,
+                           s2k->argon2_p,
+                           s2k->argon2_encoded_m)) {
+            RNP_LOG("s2k argon2 failed");
+            return false;
+        }
+    } else
+#endif
+      if (pgp_s2k_iterated(s2k->hash_alg, key, keysize, password, saltptr, iterations)) {
         RNP_LOG("s2k failed");
         return false;
     }
@@ -79,6 +103,46 @@ pgp_s2k_derive_key(pgp_s2k_t *s2k, const char *password, uint8_t *key, int keysi
 }
 
 #ifdef CRYPTO_BACKEND_BOTAN
+#if defined(ENABLE_CRYPTO_REFRESH)
+#include <iostream>
+int
+pgp_s2k_argon2(uint8_t *      out,
+               size_t         output_len,
+               const char *   password,
+               const uint8_t *salt,
+               uint8_t        t,
+               uint8_t        p,
+               uint8_t        encoded_m)
+{
+    const size_t argon2_salt_size = 16;
+
+    /* check constraints on p and t */
+    if (!p || !t) {
+        RNP_LOG("Argon2 t and p must be non-zero");
+        return -1;
+    }
+    /* check constraints on m. Floating point calculation is fine due to restricted data range
+     * (uint8_t) */
+    if (encoded_m < (3 + (uint8_t) std::ceil(std::log2(p))) || encoded_m > 31) {
+        RNP_LOG("Argon2 encoded_m must be between 3+ceil(log2(p)) and 31");
+        return -1;
+    }
+
+    try {
+        auto pwdhash_fam = Botan::PasswordHashFamily::create_or_throw("Argon2id");
+
+        std::unique_ptr<Botan::PasswordHash> pwhash =
+          pwdhash_fam->from_params(1 << encoded_m, t, p);
+        pwhash->derive_key(
+          out, output_len, password, std::strlen(password), salt, argon2_salt_size);
+    } catch (const std::exception &e) {
+        RNP_LOG("%s", e.what());
+        return -1;
+    }
+    return 0;
+}
+#endif
+
 int
 pgp_s2k_iterated(pgp_hash_alg_t alg,
                  uint8_t *      out,
