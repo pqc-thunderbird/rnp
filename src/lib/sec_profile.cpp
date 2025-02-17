@@ -196,6 +196,10 @@ SecurityContext::SecurityContext() : time_(0), prov_state_(NULL), rng(RNG::Type:
                       SecurityAction::VerifyKey});
     /* Mark MD5 insecure since 2012-01-01 */
     profile.add_rule({FeatureType::Hash, PGP_HASH_MD5, SecurityLevel::Insecure, 1325376000});
+#if defined(ENABLE_CRYPTO_REFRESH)
+    /* Mark RIPEMD insecure */
+    profile.add_rule({FeatureType::Hash, PGP_HASH_RIPEMD, SecurityLevel::Insecure, 0});
+#endif
 }
 
 SecurityContext::~SecurityContext()

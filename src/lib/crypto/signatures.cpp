@@ -168,15 +168,6 @@ signature_validate(const pgp_signature_t &     sig,
         return RNP_ERROR_SIGNATURE_INVALID;
     }
 
-#if defined(ENABLE_PQC)
-    /* check that hash matches key requirements */
-    if (!key.sig_hash_allowed(hash.alg())) {
-        RNP_LOG("Signature invalid since hash algorithm requirements are not met for the "
-                "given key.");
-        return RNP_ERROR_SIGNATURE_INVALID;
-    }
-#endif
-
     /* Finalize hash */
     auto hval = signature_hash_finish(sig, hash, hdr);
     /* compare lbits */
