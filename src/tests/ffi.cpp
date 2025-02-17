@@ -5959,7 +5959,11 @@ TEST_F(rnp_tests, test_ffi_security_profile)
     removed = 0;
     assert_rnp_failure(rnp_remove_security_rule(ffi, NULL, NULL, 0, 0x17, 0, &removed));
     assert_rnp_success(rnp_remove_security_rule(ffi, NULL, NULL, 0, 0, 0, &removed));
-    assert_int_equal(removed, 3);
+    size_t expected_removed = 3;
+  #if defined(ENABLE_CRYPTO_REFRESH)
+    expected_removed = 4;
+  #endif
+    assert_int_equal(removed, expected_removed);
     rnp_ffi_destroy(ffi);
     rnp_ffi_create(&ffi, "GPG", "GPG");
     /* Remove all rules for hash */
@@ -5968,7 +5972,7 @@ TEST_F(rnp_tests, test_ffi_security_profile)
     removed = 0;
     assert_rnp_success(
       rnp_remove_security_rule(ffi, RNP_FEATURE_HASH_ALG, NULL, 0, 0, 0, &removed));
-    assert_int_equal(removed, 3);
+    assert_int_equal(removed, expected_removed);
     rnp_ffi_destroy(ffi);
     rnp_ffi_create(&ffi, "GPG", "GPG");
     /* Remove all rules for specific hash */
