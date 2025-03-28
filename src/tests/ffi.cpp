@@ -5960,9 +5960,9 @@ TEST_F(rnp_tests, test_ffi_security_profile)
     assert_rnp_failure(rnp_remove_security_rule(ffi, NULL, NULL, 0, 0x17, 0, &removed));
     assert_rnp_success(rnp_remove_security_rule(ffi, NULL, NULL, 0, 0, 0, &removed));
     size_t expected_removed = 3;
-  #if defined(ENABLE_CRYPTO_REFRESH)
+#if defined(ENABLE_CRYPTO_REFRESH)
     expected_removed = 4;
-  #endif
+#endif
     assert_int_equal(removed, expected_removed);
     rnp_ffi_destroy(ffi);
     rnp_ffi_create(&ffi, "GPG", "GPG");
