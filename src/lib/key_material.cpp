@@ -369,6 +369,12 @@ KeyMaterial::adjust_hash(pgp_hash_alg_t hash) const
     return hash;
 }
 
+bool
+KeyMaterial::sig_hash_allowed(pgp_hash_alg_t hash) const
+{
+    return true;
+}
+
 pgp_curve_t
 KeyMaterial::curve() const noexcept
 {
@@ -1505,6 +1511,21 @@ Ed25519KeyMaterial::sign(rnp::SecurityContext &             ctx,
     return ed25519_sign_native(&ctx.rng, sig.ed25519.sig, key_.priv, hash.data(), hash.size());
 }
 
+pgp_hash_alg_t
+Ed25519KeyMaterial::adjust_hash(pgp_hash_alg_t hash) const
+{
+    if (!sig_hash_allowed(hash)) {
+        return PGP_HASH_SHA256;
+    }
+    return hash;
+}
+
+bool
+Ed25519KeyMaterial::sig_hash_allowed(pgp_hash_alg_t hash) const
+{
+    return rnp::Hash::size(hash) >= 32;
+}
+
 size_t
 Ed25519KeyMaterial::bits() const noexcept
 {
@@ -1757,6 +1778,21 @@ Ed448KeyMaterial::sign(rnp::SecurityContext &             ctx,
                        const rnp::secure_vector<uint8_t> &hash) const
 {
     return ed448_sign_native(&ctx.rng, sig.ed448.sig, key_.priv, hash.data(), hash.size());
+}
+
+pgp_hash_alg_t
+Ed448KeyMaterial::adjust_hash(pgp_hash_alg_t hash) const
+{
+    if (!sig_hash_allowed(hash)) {
+        return PGP_HASH_SHA256;
+    }
+    return hash;
+}
+
+bool
+Ed448KeyMaterial::sig_hash_allowed(pgp_hash_alg_t hash) const
+{
+    return rnp::Hash::size(hash) >= 64;
 }
 
 size_t
@@ -2131,6 +2167,21 @@ DilithiumEccKeyMaterial::sign(rnp::SecurityContext &             ctx,
     return key_.priv.sign(&ctx.rng, &sig.dilithium_exdsa, sig.halg, hash.data(), hash.size());
 }
 
+pgp_hash_alg_t
+DilithiumEccKeyMaterial::adjust_hash(pgp_hash_alg_t hash) const
+{
+    if (!sig_hash_allowed(hash)) {
+        return PGP_HASH_SHA256;
+    }
+    return hash;
+}
+
+bool
+DilithiumEccKeyMaterial::sig_hash_allowed(pgp_hash_alg_t hash) const
+{
+    return rnp::Hash::size(hash) >= 32;
+}
+
 size_t
 DilithiumEccKeyMaterial::bits() const noexcept
 {
@@ -2251,6 +2302,21 @@ SlhdsaKeyMaterial::sign(rnp::SecurityContext &             ctx,
                         const rnp::secure_vector<uint8_t> &hash) const
 {
     return key_.priv.sign(&ctx.rng, &sig.sphincsplus, hash.data(), hash.size());
+}
+
+pgp_hash_alg_t
+SlhdsaKeyMaterial::adjust_hash(pgp_hash_alg_t hash) const
+{
+    if (!sig_hash_allowed(hash)) {
+        return PGP_HASH_SHA256;
+    }
+    return hash;
+}
+
+bool
+SlhdsaKeyMaterial::sig_hash_allowed(pgp_hash_alg_t hash) const
+{
+    return rnp::Hash::size(hash) >= 32;
 }
 
 size_t
