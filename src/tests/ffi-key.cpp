@@ -4718,9 +4718,11 @@ TEST_F(rnp_tests, test_v5_keys)
     assert_true(check_has_key(ffi, "817f60336bb9d133", true));
     assert_true(check_has_key(ffi, "08b67c2205cfd75b", true));
 
+#ifndef ENABLE_CRYPTO_REFRESH // we implement Ed448 and this does not fail then.
     /* v5 ecc 448 key : not supported yet */
     assert_false(import_pub_keys(ffi, "data/test_stream_key_load/v5-ecc-448-pub.asc"));
     assert_false(import_sec_keys(ffi, "data/test_stream_key_load/v5-ecc-448-sec.asc"));
+#endif
 
     /* v5 ecc p256 key */
     assert_true(import_pub_keys(ffi, "data/test_stream_key_load/v5-ecc-p256-pub.asc"));
