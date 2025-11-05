@@ -176,17 +176,17 @@ pgp_kyber_ecdh_composite_key_t::pk_alg_to_kyber_id(pgp_pubkey_alg_t pk_alg)
     case PGP_PKA_KYBER768_X25519:
 #if defined(ENABLE_CRYPTO_REFRESH)
         FALLTHROUGH_STATEMENT;
-    case PGP_PKA_KYBER768_P256:
+    case PGP_PKA_KYBER768_P384:
         FALLTHROUGH_STATEMENT;
-    case PGP_PKA_KYBER768_BP256:
+    case PGP_PKA_KYBER768_BP384:
 #endif
         return kyber_768;
 #if defined(ENABLE_CRYPTO_REFRESH)
     case PGP_PKA_KYBER1024_X448:
         FALLTHROUGH_STATEMENT;
-    case PGP_PKA_KYBER1024_BP384:
+    case PGP_PKA_KYBER1024_BP512:
         FALLTHROUGH_STATEMENT;
-    case PGP_PKA_KYBER1024_P384:
+    case PGP_PKA_KYBER1024_P521:
         return kyber_1024;
 #endif
     default:
@@ -202,13 +202,13 @@ pgp_kyber_ecdh_composite_key_t::pk_alg_to_curve_id(pgp_pubkey_alg_t pk_alg)
     case PGP_PKA_KYBER768_X25519:
         return PGP_CURVE_25519;
 #if defined(ENABLE_CRYPTO_REFRESH)
-    case PGP_PKA_KYBER768_P256:
+    case PGP_PKA_KYBER768_P384:
         return PGP_CURVE_NIST_P_256;
-    case PGP_PKA_KYBER768_BP256:
+    case PGP_PKA_KYBER768_BP384:
         return PGP_CURVE_BP256;
-    case PGP_PKA_KYBER1024_BP384:
+    case PGP_PKA_KYBER1024_BP512:
         return PGP_CURVE_BP384;
-    case PGP_PKA_KYBER1024_P384:
+    case PGP_PKA_KYBER1024_P521:
         return PGP_CURVE_NIST_P_384;
     case PGP_PKA_KYBER1024_X448:
         return PGP_CURVE_448;
