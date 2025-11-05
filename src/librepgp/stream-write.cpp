@@ -1042,6 +1042,7 @@ init_encrypted_dst(rnp_ctx_t &ctx, pgp_dest_t &dst, pgp_dest_t &writedst)
     rnp::secure_bytes enckey(keylen, 0); /* content encryption key */
 
     /* Build SKESK and generate CEK */
+    ctx.sec_ctx.rng.get(enckey.data(), keylen);
     rnp_result_t ret = RNP_ERROR_BAD_PARAMETERS;
     if (!encrypted_build_skesk(*param, enckey, keylen)) {
         goto finish;
